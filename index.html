@@ -235,7 +235,8 @@ select.fi{cursor:pointer}
         <!-- Screen Print: color count -->
         <div id="sp-colors-wrap">
           <div class="slbl">Number of Colors <span style="font-size:10px;color:#555">(per location)</span></div>
-          <select class="fi" id="ncolors" onchange="updatePriceEstimate()">
+          <select class="fi" id="ncolors" onchange="onColorChange()">
+            <option value="unsure">I'm not sure</option>
             <option value="1">1 Color</option>
             <option value="2">2 Colors</option>
             <option value="3">3 Colors</option>
@@ -245,6 +246,9 @@ select.fi{cursor:pointer}
             <option value="7">7 Colors</option>
             <option value="8">8 Colors</option>
           </select>
+          <div id="sp-unsure-note" style="margin-top:8px;background:rgba(249,115,22,.07);border:1px solid rgba(249,115,22,.2);border-radius:10px;padding:10px 13px;font-size:12px;color:#fdba74;line-height:1.5">
+            No worries! Share your artwork and we'll work out the color count and pricing in your quote.
+          </div>
         </div>
 
         <!-- Embroidery: stitch count -->
@@ -1159,7 +1163,7 @@ function buildReview(){
     <div class="sum-row"><span class="sum-k">Quantities</span><span class="sum-v"><div class="chips">${S.product.sizes.filter(s=>S.qty[s]>0).map(s=>`<span class="chip">${s}: ${S.qty[s]}</span>`).join('')}</div><span class="s2">Total: ${tot} pcs</span></span></div>
     <div class="sum-row"><span class="sum-k">Placement</span><span class="sum-v">${S.placement}</span></div>
     <div class="sum-row"><span class="sum-k">Print Type</span><span class="sum-v">${document.getElementById('ptype').value}</span></div>
-    <div class="sum-row"><span class="sum-k">Colors</span><span class="sum-v">${document.getElementById('ncolors').value}</span></div>`;
+    <div class="sum-row"><span class="sum-k">${document.getElementById('ptype').value==='Embroidery'?'Stitch Count':'Colors'}</span><span class="sum-v">${document.getElementById('ptype').value==='Embroidery'?(document.getElementById('nstitches').value==='unsure'?'Not sure – quoted after artwork review':document.getElementById('nstitches').value+' stitches'):(document.getElementById('ncolors').value==='unsure'?'Not sure – quoted after artwork review':document.getElementById('ncolors').value+' color(s)')}</span></div>`;
 
   document.getElementById('sum-right').innerHTML=`
     <div style="font-weight:700;font-size:15px;margin-bottom:14px;color:#f97316">👤 Contact Info</div>
@@ -1189,7 +1193,7 @@ async function submitOrder(){
     total_qty: tot,
     placement: S.placement,
     print_type: document.getElementById('ptype').value,
-    print_colors: document.getElementById('ptype').value==='Embroidery' ? (document.getElementById('nstitches').value==='unsure' ? 'To be quoted' : document.getElementById('nstitches').value+' stitches') : document.getElementById('ncolors').value+' color(s)',
+    print_colors: document.getElementById('ptype').value==='Embroidery' ? (document.getElementById('nstitches').value==='unsure' ? 'To be quoted' : document.getElementById('nstitches').value+' stitches') : (document.getElementById('ncolors').value==='unsure' ? 'To be quoted' : document.getElementById('ncolors').value+' color(s)'),
     customer_first_name: S.customer.firstName,
     customer_last_name: S.customer.lastName,
     customer_email: S.customer.email,
@@ -1288,6 +1292,14 @@ function onPrintTypeChange(){
   const isEmb = pt === 'Embroidery';
   document.getElementById('sp-colors-wrap').style.display = isSP ? '' : 'none';
   document.getElementById('emb-stitch-wrap').style.display = isEmb ? '' : 'none';
+  onColorChange();
+  onStitchChange();
+}
+
+function onColorChange(){
+  const val = document.getElementById('ncolors').value;
+  const note = document.getElementById('sp-unsure-note');
+  if(note) note.style.display = val === 'unsure' ? '' : 'none';
   updatePriceEstimate();
 }
 
@@ -1311,7 +1323,9 @@ function updatePriceEstimate(){
   let pricePerPc = null;
 
   if(pt === 'Screen Print'){
-    const colors = parseInt(document.getElementById('ncolors').value) || 1;
+    const colorVal = document.getElementById('ncolors').value;
+    if(colorVal === 'unsure'){ box.style.display='none'; return; }
+    const colors = parseInt(colorVal) || 1;
     pricePerPc = getSPPrice(tot, colors);
     if(pricePerPc === null && colors > 6 && tot < 36){
       box.style.display='';
