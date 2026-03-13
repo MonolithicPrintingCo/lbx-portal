@@ -1404,8 +1404,7 @@ async function buildReviewMockups() {
         const canvas = document.createElement('canvas');
         canvas.width = 280; canvas.height = 280;
         const ctx = canvas.getContext('2d');
-        ctx.fillStyle = '#f8f8f8';
-        ctx.fillRect(0, 0, 280, 280);
+        // Keep canvas transparent so the garment <img> underneath shows through
 
         // Garment bg is drawn separately as an <img> to avoid CORS issues
         // Canvas only draws the artwork layers (data: URLs)
