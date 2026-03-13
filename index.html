@@ -1,0 +1,1183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>LBX Printing & Design — Order Portal</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0f0f0f;color:#f1f1f1;min-height:100vh}
+
+.header{border-bottom:1px solid rgba(255,255,255,0.07);background:rgba(0,0,0,0.6);position:sticky;top:0;z-index:50;padding:14px 24px;display:flex;align-items:center;justify-content:space-between}
+.logo{width:36px;height:36px;background:linear-gradient(135deg,#f97316,#c2410c);border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:12px;color:white;margin-right:10px;flex-shrink:0}
+.brand-name{font-weight:700;font-size:14px}
+.brand-sub{font-size:11px;color:#555}
+.content{max-width:960px;margin:0 auto;padding:32px 24px}
+
+.step-indicators{display:flex;align-items:center;gap:4px}
+.sdot{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;flex-shrink:0}
+.sdot.done{background:#22c55e;color:#fff}
+.sdot.active{background:#f97316;color:#fff}
+.sdot.pending{background:#2a2a2a;color:#555}
+.sline{width:14px;height:1px;background:rgba(255,255,255,0.1)}
+
+.card{display:none}.card.active{display:block}
+h2{font-size:22px;font-weight:800;margin-bottom:4px}
+.sub{color:#888;font-size:13px;margin-bottom:24px}
+
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:24px}
+.grid4{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}
+@media(min-width:640px){.grid4{grid-template-columns:repeat(4,1fr)}}
+@media(max-width:600px){.grid2{grid-template-columns:1fr}}
+
+/* Product cards with real images */
+.pcard{background:#161616;border:2px solid transparent;border-radius:14px;overflow:hidden;cursor:pointer;transition:all .18s;text-align:center}
+.pcard:hover{border-color:#f97316;transform:translateY(-2px)}
+.pcard.sel{border-color:#f97316;background:#1e1e1e}
+.pcard-img{width:100%;aspect-ratio:1;object-fit:cover;background:#1a1a1a;display:block}
+.pcard-img-placeholder{width:100%;aspect-ratio:1;display:flex;align-items:center;justify-content:center;font-size:40px;background:#1a1a1a}
+.pcard-body{padding:10px 12px 14px}
+.pname{font-weight:700;font-size:13px}
+.pmeta{font-size:11px;color:#666;margin-top:2px}
+
+/* Color swatches */
+.swatches{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;max-height:200px;overflow-y:auto;padding:4px 0}
+.sw{width:26px;height:26px;border-radius:50%;cursor:pointer;border:2px solid transparent;transition:all .15s;flex-shrink:0;background-size:cover;background-position:center}
+.sw:hover,.sw.sel{border-color:#f97316;transform:scale(1.15)}
+.sw-lbl{font-size:12px;color:#888;min-height:18px;margin-top:4px}
+
+.slbl{font-size:11px;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px}
+.size-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.size-key{font-size:13px;font-weight:500;color:#ccc;width:48px}
+.qty-in{width:80px;text-align:center;background:#1a1a1a;border:1px solid #2e2e2e;color:#f1f1f1;border-radius:8px;padding:8px;font-size:14px;outline:none}
+.qty-in:focus{border-color:#f97316}
+.total-row{display:flex;justify-content:space-between;align-items:center;background:rgba(255,255,255,.05);border-radius:10px;padding:12px 16px;margin-top:16px}
+.total-v{font-size:20px;font-weight:800;color:#f97316}
+
+/* Garment preview with real photo */
+.garment-preview{position:relative;border-radius:14px;overflow:hidden;background:#1a1a1a;aspect-ratio:1;display:flex;align-items:center;justify-content:center}
+.garment-img{width:100%;height:100%;object-fit:cover;display:block;border-radius:14px}
+.garment-placeholder{font-size:48px;opacity:.4}
+.view-toggle{display:flex;gap:6px;margin-top:8px}
+.view-btn{flex:1;padding:5px;background:#1a1a1a;border:1px solid #2e2e2e;color:#888;border-radius:7px;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .15s}
+.view-btn.active{background:#f97316;border-color:#f97316;color:#fff}
+
+/* Artwork step */
+.upload-zone{border:2px dashed #333;border-radius:12px;padding:28px 20px;text-align:center;cursor:pointer;transition:all .18s;margin-bottom:18px}
+.upload-zone:hover,.upload-zone.over{border-color:#f97316;background:rgba(249,115,22,.04)}
+.uicon{font-size:34px;margin-bottom:8px}
+.utxt{font-size:14px;font-weight:500;color:#ccc}
+.uhint{font-size:11px;color:#666;margin-top:4px}
+
+.pla-group{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px}
+.pla-btn{padding:6px 13px;border-radius:8px;font-size:12px;font-weight:600;border:1px solid #333;color:#888;cursor:pointer;background:transparent;transition:all .15s;font-family:inherit}
+.pla-btn:hover,.pla-btn.active{background:#f97316;border-color:#f97316;color:#fff}
+
+/* Mockup area - real photo with artwork overlay */
+.mockup-wrap{position:relative;border-radius:14px;overflow:hidden;background:#1a1a1a;aspect-ratio:1}
+.mockup-base-img{width:100%;height:100%;object-fit:cover;display:block;user-select:none;pointer-events:none}
+.mockup-overlay{position:absolute;inset:0}
+.art-layer{position:absolute;cursor:move;user-select:none;touch-action:none}
+.art-layer img{width:100%;height:100%;display:block}
+.art-layer.selected{outline:2px dashed rgba(249,115,22,.8);outline-offset:2px}
+.resize-handle{position:absolute;bottom:-6px;right:-6px;width:14px;height:14px;background:#f97316;border-radius:3px;cursor:se-resize;display:none}
+.art-layer.selected .resize-handle{display:block}
+.print-zone{position:absolute;border:1px dashed rgba(249,115,22,.3);border-radius:4px;pointer-events:none;display:none}
+.print-zone.show{display:block}
+.mockup-hint{font-size:11px;color:#555;text-align:center;margin-top:6px}
+.art-ctrl{display:none;margin-top:12px}
+.art-ctrl.show{display:flex;gap:8px;flex-wrap:wrap}
+.canvas-wrap{border:2px dashed #2a2a2a;border-radius:12px;overflow:hidden;background:#1a1a1a;position:relative}
+
+.fi{width:100%;background:#1a1a1a;border:1px solid #2e2e2e;color:#f1f1f1;border-radius:8px;padding:10px 14px;font-size:14px;outline:none;font-family:inherit}
+.fi:focus{border-color:#f97316}
+textarea.fi{resize:vertical;min-height:80px}
+select.fi{cursor:pointer}
+.fl{display:block;font-size:11px;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px}
+.fg{margin-bottom:16px}
+
+.btn{padding:12px 26px;border-radius:10px;font-weight:700;cursor:pointer;border:none;font-size:15px;font-family:inherit;transition:all .18s}
+.btn-p{background:linear-gradient(135deg,#f97316,#ea580c);color:#fff}
+.btn-p:hover{transform:translateY(-1px);box-shadow:0 8px 24px rgba(249,115,22,.35)}
+.btn-p:disabled{opacity:.5;cursor:not-allowed;transform:none;box-shadow:none}
+.btn-s{background:#1e1e1e;color:#ccc;border:1px solid #2e2e2e}
+.btn-s:hover{background:#2a2a2a;color:#fff}
+.btn-sm{padding:7px 14px;font-size:12px}
+.btn-row{display:flex;gap:12px;margin-top:28px;flex-wrap:wrap}
+
+.sum-card{background:rgba(255,255,255,.04);border-radius:14px;padding:20px}
+.sum-row{display:flex;justify-content:space-between;align-items:flex-start;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.06);font-size:13px}
+.sum-row:last-child{border-bottom:none}
+.sum-k{color:#888;flex-shrink:0;margin-right:12px}
+.sum-v{font-weight:600;text-align:right}
+.sum-v .s2{font-weight:400;color:#666;font-size:11px;display:block}
+.chips{display:flex;flex-wrap:wrap;gap:4px;justify-content:flex-end}
+.chip{background:rgba(255,255,255,.08);border-radius:6px;padding:2px 8px;font-size:11px}
+.ora{color:#f97316}
+.info-box{background:rgba(249,115,22,.07);border:1px solid rgba(249,115,22,.2);border-radius:12px;padding:14px 16px;font-size:13px;color:#fdba74;margin-top:14px;line-height:1.5}
+
+.ok-wrap{text-align:center;padding:56px 20px}
+.ok-icon{font-size:64px;margin-bottom:18px;animation:pop .5s ease}
+@keyframes pop{0%{transform:scale(0);opacity:0}70%{transform:scale(1.2)}100%{transform:scale(1);opacity:1}}
+.ok-title{font-size:28px;font-weight:800;margin-bottom:10px}
+.ok-sub{color:#888;font-size:14px;max-width:380px;margin:0 auto 24px;line-height:1.6}
+.ok-box{background:rgba(255,255,255,.04);border-radius:14px;padding:20px;max-width:360px;margin:0 auto 28px;font-size:13px;color:#888;line-height:1.6}
+
+@keyframes spin{to{transform:rotate(360deg)}}
+.sp{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle;margin-right:7px}
+@media(max-width:700px){
+  #s2grid{grid-template-columns:1fr 1fr!important}
+  #s2grid>div:first-child{grid-column:1/-1}
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div style="display:flex;align-items:center">
+    <div class="logo">LBX</div>
+    <div>
+      <div class="brand-name">LBX Printing & Design</div>
+      <div class="brand-sub">Custom Order Portal</div>
+    </div>
+  </div>
+  <div class="step-indicators" id="si"></div>
+</div>
+
+<div class="content">
+
+  <!-- Step 1: Product -->
+  <div class="card active" id="s1">
+    <h2>Choose Your Product</h2>
+    <p class="sub">Select the garment type for your order</p>
+    <div class="grid4" id="pgrid"></div>
+  </div>
+
+  <!-- Step 2: Color + Qty -->
+  <div class="card" id="s2">
+    <h2>Colors & Quantities</h2>
+    <p class="sub">Pick your garment color and enter quantities per size</p>
+    <div style="display:grid;grid-template-columns:220px 1fr 1fr;gap:28px;align-items:start" id="s2grid">
+      <!-- Garment Preview -->
+      <div>
+        <div class="slbl">Preview</div>
+        <div class="garment-preview" id="garment-preview-wrap">
+          <img id="garment-front-img" class="garment-img" src="" alt="" style="display:none" crossorigin="anonymous"/>
+          <div class="garment-placeholder" id="garment-placeholder">👕</div>
+        </div>
+        <div class="view-toggle">
+          <button class="view-btn active" id="vbtn-front" onclick="setView('front')">Front</button>
+          <button class="view-btn" id="vbtn-back" onclick="setView('back')">Back</button>
+        </div>
+        <div style="font-size:11px;color:#555;margin-top:6px;text-align:center" id="prev-lbl"></div>
+      </div>
+      <!-- Color Picker -->
+      <div>
+        <div class="slbl">Garment Color</div>
+        <div class="swatches" id="cpicker"></div>
+        <div class="sw-lbl" id="clbl"></div>
+      </div>
+      <!-- Quantities -->
+      <div>
+        <div class="slbl">Quantities by Size</div>
+        <div id="sqgrid"></div>
+        <div class="total-row">
+          <span style="font-size:13px;color:#888">Total Pieces</span>
+          <span class="total-v" id="totqty">0</span>
+        </div>
+      </div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-s" onclick="go(1)">← Back</button>
+      <button class="btn btn-p" onclick="go(3)">Next: Artwork →</button>
+    </div>
+  </div>
+
+  <!-- Step 3: Artwork -->
+  <div class="card" id="s3">
+    <h2>Artwork Mockup</h2>
+    <p class="sub">Upload your artwork and position it on the garment</p>
+    <div class="grid2">
+      <div>
+        <div class="slbl">Upload Artwork</div>
+        <div class="upload-zone" id="uzone" onclick="document.getElementById('afile').click()">
+          <div id="upholder">
+            <div class="uicon">🎨</div>
+            <div class="utxt">Click or drag & drop artwork</div>
+            <div class="uhint">PNG, JPG — transparent PNGs work best</div>
+          </div>
+          <div id="updone" style="display:none">
+            <div class="uicon">✅</div>
+            <div class="utxt" style="color:#4ade80">Artwork uploaded!</div>
+            <div class="uhint">Click to replace</div>
+          </div>
+        </div>
+        <input type="file" id="afile" accept="image/*" style="display:none" onchange="handleArt(event)"/>
+
+        <div class="slbl">Print Placement</div>
+        <div class="pla-group">
+          <button class="pla-btn active" onclick="setPla('Left Chest',this)">Left Chest</button>
+          <button class="pla-btn" onclick="setPla('Full Front',this)">Full Front</button>
+          <button class="pla-btn" onclick="setPla('Full Back',this)">Full Back</button>
+          <button class="pla-btn" onclick="setPla('Left Sleeve',this)">Left Sleeve</button>
+          <button class="pla-btn" onclick="setPla('Right Sleeve',this)">Right Sleeve</button>
+          <button class="pla-btn" onclick="setPla('Custom',this)">Custom</button>
+        </div>
+
+        <div class="slbl">Print Type</div>
+        <select class="fi" id="ptype" style="margin-bottom:16px">
+          <option>Screen Print</option>
+          <option>Embroidery</option>
+          <option>DTG (Direct to Garment)</option>
+          <option>Heat Transfer</option>
+          <option>Sublimation</option>
+        </select>
+
+        <div class="slbl">Number of Colors</div>
+        <select class="fi" id="ncolors">
+          <option>1 color</option>
+          <option>2 colors</option>
+          <option>3 colors</option>
+          <option>4 colors</option>
+          <option>5+ colors</option>
+          <option>Full Color / CMYK</option>
+        </select>
+
+        <div class="art-ctrl show" id="artctrl" style="margin-top:14px">
+          <button class="btn btn-sm btn-s" onclick="scaleArt(1.15)">＋ Bigger</button>
+          <button class="btn btn-sm btn-s" onclick="scaleArt(0.87)">－ Smaller</button>
+          <button class="btn btn-sm btn-s" onclick="resetArt()">↺ Reset</button>
+        </div>
+      </div>
+
+      <!-- Mockup Preview with real garment photo -->
+      <div>
+        <div class="slbl">Live Preview</div>
+        <div class="mockup-wrap" id="mockup-wrap">
+          <img id="mockup-base-img" class="mockup-base-img" src="" alt="" crossorigin="anonymous"/>
+          <div class="mockup-overlay" id="mockup-overlay">
+            <div class="print-zone" id="print-zone"></div>
+            <div class="art-layer" id="art-layer" style="display:none">
+              <img id="art-img" src="" alt="" draggable="false"/>
+              <div class="resize-handle" id="resize-handle"></div>
+            </div>
+          </div>
+        </div>
+        <div class="mockup-hint">Drag artwork to reposition • Use +/- to resize</div>
+        <div class="view-toggle" style="margin-top:8px">
+          <button class="view-btn active" id="mvbtn-front" onclick="setMockupView('front')">Front</button>
+          <button class="view-btn" id="mvbtn-back" onclick="setMockupView('back')">Back</button>
+        </div>
+      </div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-s" onclick="go(2)">← Back</button>
+      <button class="btn btn-p" onclick="go(4)">Next: Your Info →</button>
+    </div>
+  </div>
+
+  <!-- Step 4: Customer Info -->
+  <div class="card" id="s4">
+    <h2>Your Information</h2>
+    <p class="sub">Tell us how to reach you</p>
+    <div class="grid2">
+      <div class="fg">
+        <label class="fl">First Name *</label>
+        <input class="fi" id="fn" placeholder="Jane" required/>
+      </div>
+      <div class="fg">
+        <label class="fl">Last Name *</label>
+        <input class="fi" id="ln" placeholder="Smith" required/>
+      </div>
+    </div>
+    <div class="fg">
+      <label class="fl">Email *</label>
+      <input class="fi" id="em" type="email" placeholder="jane@example.com" required/>
+    </div>
+    <div class="grid2">
+      <div class="fg">
+        <label class="fl">Phone</label>
+        <input class="fi" id="ph" type="tel" placeholder="(555) 555-5555"/>
+      </div>
+      <div class="fg">
+        <label class="fl">Company / Organization</label>
+        <input class="fi" id="co" placeholder="Acme Co."/>
+      </div>
+    </div>
+    <div class="fg">
+      <label class="fl">Needed By Date</label>
+      <input class="fi" id="dd" type="date"/>
+    </div>
+    <div class="fg">
+      <label class="fl">Additional Notes</label>
+      <textarea class="fi" id="notes" placeholder="Anything else we should know? Special requirements, PMS colors, rush requests…"></textarea>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-s" onclick="go(3)">← Back</button>
+      <button class="btn btn-p" onclick="go(5)">Review Order →</button>
+    </div>
+  </div>
+
+  <!-- Step 5: Review -->
+  <div class="card" id="s5">
+    <h2>Review Your Order</h2>
+    <p class="sub">Everything look good? We'll reach out to confirm pricing and details.</p>
+    <div class="grid2">
+      <div class="sum-card" id="sum-left"></div>
+      <div class="sum-card" id="sum-right"></div>
+    </div>
+    <div class="info-box">
+      🎨 After submitting, our team will review your order and contact you within 1 business day with a quote and any questions.
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-s" onclick="go(4)">← Edit</button>
+      <button class="btn btn-p" id="subbtn" onclick="submitOrder()"><span class="sp" style="display:none" id="subsp"></span>Submit Order</button>
+    </div>
+  </div>
+
+  <!-- Step 6: Success -->
+  <div class="card" id="s6">
+    <div class="ok-wrap">
+      <div class="ok-icon">🎉</div>
+      <div class="ok-title">Order Submitted!</div>
+      <div class="ok-sub">We've received your request and will be in touch shortly with your quote.</div>
+      <div class="ok-box" id="ok-details"></div>
+      <button class="btn btn-p" onclick="location.reload()">Start Another Order</button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ── Product Image Data from S&S Activewear API ──
+// Auto-populated with real product photos per color
+const SS_KEY_MAP = {
+  'tee':        'gildan5000',
+  'bella':      'bella3001',
+  'hoodie':     'gildan18500',
+  'zip':        'gildan18600',
+  'nextlevel':  'nextlevel3600',
+};
+
+// Inline image data (populated below)
+</script>
+<script>
+const SS_IMAGES = {
+  gildan5000: {
+    'Antique Cherry Red': { front: 'https://cdn.ssactivewear.com/Images/Color/33476_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/33476_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/33673_fm.jpg' },
+    'Antique Irish Green': { front: 'https://cdn.ssactivewear.com/Images/Color/33477_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/33477_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/33674_fm.jpg' },
+    'Antique Jade Dome': { front: 'https://cdn.ssactivewear.com/Images/Color/33496_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/33496_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/33675_fm.jpg' },
+    'Antique Orange': { front: 'https://cdn.ssactivewear.com/Images/Color/33499_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/33499_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/33676_fm.jpg' },
+    'Antique Sapphire': { front: 'https://cdn.ssactivewear.com/Images/Color/33483_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/33483_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/33677_fm.jpg' },
+    'Aquatic': { front: 'https://cdn.ssactivewear.com/Images/Color/114510_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/114510_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/35529_fm.jpg' },
+    'Ash': { front: 'https://cdn.ssactivewear.com/Images/Color/16785_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/16785_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/33678_fm.jpg' },
+    'Azalea': { front: 'https://cdn.ssactivewear.com/Images/Color/16786_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/16786_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/33679_fm.jpg' },
+    'Berry': { front: 'https://cdn.ssactivewear.com/Images/Color/33485_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/33485_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/33680_fm.jpg' },
+    'Black': { front: 'https://cdn.ssactivewear.com/Images/Color/16787_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/16787_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/33681_fm.jpg' },
+    'Blackberry': { front: 'https://cdn.ssactivewear.com/Images/Color/33481_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/33481_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/33682_fm.jpg' },
+    'Blue Dusk': { front: 'https://cdn.ssactivewear.com/Images/Color/114522_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/114522_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/35527_fm.jpg' },
+    'Brown Savana': { front: 'https://cdn.ssactivewear.com/Images/Color/33488_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/33488_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/33683_fm.jpg' },
+    'Cardinal': { front: 'https://cdn.ssactivewear.com/Images/Color/16788_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/16788_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/33684_fm.jpg' },
+    'Carolina Blue': { front: 'https://cdn.ssactivewear.com/Images/Color/16789_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/16789_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/33685_fm.jpg' },
+    'Charcoal': { front: 'https://cdn.ssactivewear.com/Images/Color/16790_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/16790_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/33686_fm.jpg' },
+    'Cobalt': { front: 'https://cdn.ssactivewear.com/Images/Color/40523_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/40523_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/33687_fm.jpg' },
+    'Coral Silk': { front: 'https://cdn.ssactivewear.com/Images/Color/33479_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/33479_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/33688_fm.jpg' },
+    'Cornsilk': { front: 'https://cdn.ssactivewear.com/Images/Color/42437_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/42437_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/33689_fm.jpg' },
+    'Daisy': { front: 'https://cdn.ssactivewear.com/Images/Color/16791_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/16791_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/33690_fm.jpg' },
+    'Dark Chocolate': { front: 'https://cdn.ssactivewear.com/Images/Color/30025_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/30025_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/33691_fm.jpg' },
+    'Dark Heather': { front: 'https://cdn.ssactivewear.com/Images/Color/40520_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/40520_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/33692_fm.jpg' },
+    'Dusty Rose': { front: 'https://cdn.ssactivewear.com/Images/Color/114512_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/114512_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/35528_fm.jpg' },
+    'Electric Green': { front: 'https://cdn.ssactivewear.com/Images/Color/37317_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/37317_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/33693_fm.jpg' },
+    'Fan Dark Green': { front: '', back: '', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/49795_fm.jpg' },
+    'Fan Dark Purple': { front: '', back: '', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/49794_fm.jpg' },
+    'Fan Deep Royal': { front: 'https://cdn.ssactivewear.com/Images/Color/137510_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/137510_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/49793_fm.jpg' },
+    'Fan Marine Green': { front: '', back: '', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/49792_fm.jpg' },
+    'Forest Green': { front: 'https://cdn.ssactivewear.com/Images/Color/16793_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/16793_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/33694_fm.jpg' },
+    'Garnet': { front: 'https://cdn.ssactivewear.com/Images/Color/32126_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/32126_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/33695_fm.jpg' },
+    'Gold': { front: 'https://cdn.ssactivewear.com/Images/Color/30026_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/30026_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/33696_fm.jpg' },
+    'Graphite Heather': { front: 'https://cdn.ssactivewear.com/Images/Color/46045_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/46045_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/33697_fm.jpg' },
+    'Gravel': { front: 'https://cdn.ssactivewear.com/Images/Color/33486_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/33486_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/33698_fm.jpg' },
+    'Heather Military Green': { front: 'https://cdn.ssactivewear.com/Images/Color/33475_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/33475_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/33699_fm.jpg' },
+    'Heather Navy': { front: 'https://cdn.ssactivewear.com/Images/Color/68108_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/68108_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/33700_fm.jpg' },
+    'Heather Radiant Orchid': { front: 'https://cdn.ssactivewear.com/Images/Color/52325_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/52325_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/33701_fm.jpg' },
+    'Heather Red': { front: 'https://cdn.ssactivewear.com/Images/Color/33487_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/33487_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/33702_fm.jpg' },
+    'Heather Sapphire': { front: 'https://cdn.ssactivewear.com/Images/Color/33474_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/33474_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/33703_fm.jpg' },
+    'Heliconia': { front: 'https://cdn.ssactivewear.com/Images/Color/32127_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/32127_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/33704_fm.jpg' },
+    'Ice Grey': { front: 'https://cdn.ssactivewear.com/Images/Color/37312_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/37312_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/33705_fm.jpg' },
+    'Indigo Blue': { front: 'https://cdn.ssactivewear.com/Images/Color/16795_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/16795_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/33706_fm.jpg' },
+    'Iris': { front: '', back: '', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/7545_fm.jpg' },
+    'Irish Green': { front: 'https://cdn.ssactivewear.com/Images/Color/30027_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/30027_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/33707_fm.jpg' },
+    'Jade Dome': { front: '', back: '', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/6433_fm.jpg' },
+    'Kiwi': { front: 'https://cdn.ssactivewear.com/Images/Color/30028_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/30028_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/33708_fm.jpg' },
+    'Light Blue': { front: 'https://cdn.ssactivewear.com/Images/Color/16798_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/16798_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/33709_fm.jpg' },
+    'Light Pink': { front: 'https://cdn.ssactivewear.com/Images/Color/30029_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/30029_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/33710_fm.jpg' },
+    'Lilac': { front: 'https://cdn.ssactivewear.com/Images/Color/37313_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/37313_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/33711_fm.jpg' },
+    'Lime': { front: 'https://cdn.ssactivewear.com/Images/Color/30030_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/30030_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/33712_fm.jpg' },
+    'Maroon': { front: 'https://cdn.ssactivewear.com/Images/Color/27238_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/27238_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/33713_fm.jpg' },
+    'Midnight': { front: 'https://cdn.ssactivewear.com/Images/Color/37314_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/37314_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/33714_fm.jpg' },
+    'Military Green': { front: 'https://cdn.ssactivewear.com/Images/Color/30031_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/30031_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/33715_fm.jpg' },
+    'Mint Green': { front: 'https://cdn.ssactivewear.com/Images/Color/40519_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/40519_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/33716_fm.jpg' },
+    'Natural': { front: 'https://cdn.ssactivewear.com/Images/Color/16802_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/16802_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/33717_fm.jpg' },
+    'Navy': { front: 'https://cdn.ssactivewear.com/Images/Color/16803_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/16803_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/33718_fm.jpg' },
+    'Neon Blue': { front: 'https://cdn.ssactivewear.com/Images/Color/42440_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/42440_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/33719_fm.jpg' },
+    'Neon Green': { front: 'https://cdn.ssactivewear.com/Images/Color/42441_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/42441_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/33720_fm.jpg' },
+    'Off White': { front: 'https://cdn.ssactivewear.com/Images/Color/114519_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/114519_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/35526_fm.jpg' },
+    'Old Gold': { front: 'https://cdn.ssactivewear.com/Images/Color/32128_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/32128_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/33721_fm.jpg' },
+    'Orange': { front: 'https://cdn.ssactivewear.com/Images/Color/16804_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/16804_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/33722_fm.jpg' },
+    'Purple': { front: 'https://cdn.ssactivewear.com/Images/Color/30032_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/30032_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/33723_fm.jpg' },
+    'Red': { front: 'https://cdn.ssactivewear.com/Images/Color/27239_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/27239_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/33724_fm.jpg' },
+    'Royal': { front: 'https://cdn.ssactivewear.com/Images/Color/16806_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/16806_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/33725_fm.jpg' },
+    'Russet': { front: 'https://cdn.ssactivewear.com/Images/Color/33482_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/33482_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/33726_fm.jpg' },
+    'Safety Green': { front: 'https://cdn.ssactivewear.com/Images/Color/40521_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/40521_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/33727_fm.jpg' },
+    'Safety Orange': { front: 'https://cdn.ssactivewear.com/Images/Color/40522_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/40522_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/33728_fm.jpg' },
+    'Safety Pink': { front: 'https://cdn.ssactivewear.com/Images/Color/42438_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/42438_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/33729_fm.jpg' },
+    'Sand': { front: 'https://cdn.ssactivewear.com/Images/Color/16807_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/16807_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/33730_fm.jpg' },
+    'Sapphire': { front: 'https://cdn.ssactivewear.com/Images/Color/16808_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/16808_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/33731_fm.jpg' },
+    'Sky': { front: 'https://cdn.ssactivewear.com/Images/Color/16809_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/16809_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/33732_fm.jpg' },
+    'Sport Grey': { front: 'https://cdn.ssactivewear.com/Images/Color/16810_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/16810_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/33733_fm.jpg' },
+    'Sunset': { front: 'https://cdn.ssactivewear.com/Images/Color/37315_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/37315_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/33734_fm.jpg' },
+    'Tangerine': { front: 'https://cdn.ssactivewear.com/Images/Color/16811_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/16811_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/33735_fm.jpg' },
+    'Tennessee Orange': { front: 'https://cdn.ssactivewear.com/Images/Color/32129_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/32129_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/33736_fm.jpg' },
+    'Texas Orange': { front: 'https://cdn.ssactivewear.com/Images/Color/42439_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/42439_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/33737_fm.jpg' },
+    'Tropical Blue': { front: 'https://cdn.ssactivewear.com/Images/Color/37316_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/37316_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/33738_fm.jpg' },
+    'Turf Green': { front: 'https://cdn.ssactivewear.com/Images/Color/33495_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/33495_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/33739_fm.jpg' },
+    'Tweed': { front: 'https://cdn.ssactivewear.com/Images/Color/33480_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/33480_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/33740_fm.jpg' },
+    'Violet': { front: 'https://cdn.ssactivewear.com/Images/Color/16812_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/16812_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/33741_fm.jpg' },
+    'White': { front: 'https://cdn.ssactivewear.com/Images/Color/16813_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/16813_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/33742_fm.jpg' },
+    'Yellow Haze': { front: 'https://cdn.ssactivewear.com/Images/Color/16814_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/16814_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/33743_fm.jpg' },
+  },
+  bella3001: {
+    'Aqua': { front: 'https://cdn.ssactivewear.com/Images/Color/34126_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/34126_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/10193_fm.jpg' },
+    'Army': { front: 'https://cdn.ssactivewear.com/Images/Color/43533_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/43533_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/12725_fm.jpg' },
+    'Ash': { front: 'https://cdn.ssactivewear.com/Images/Color/37018_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/37018_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/10927_fm.jpg' },
+    'Asphalt': { front: 'https://cdn.ssactivewear.com/Images/Color/32566_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/32566_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/6448_fm.jpg' },
+    'Atlantic': { front: 'https://cdn.ssactivewear.com/Images/Color/30661_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/30661_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/23333_fm.jpg' },
+    'Autumn': { front: 'https://cdn.ssactivewear.com/Images/Color/67440_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/67440_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/17573_fm.jpg' },
+    'Baby Blue': { front: 'https://cdn.ssactivewear.com/Images/Color/39901_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/39901_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/11874_fm.jpg' },
+    'Berry': { front: 'https://cdn.ssactivewear.com/Images/Color/32571_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/32571_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/9787_fm.jpg' },
+    'Black': { front: 'https://cdn.ssactivewear.com/Images/Color/30657_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/30657_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/6512_fm.jpg' },
+    'Blue Storm': { front: 'https://cdn.ssactivewear.com/Images/Color/51951_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/51951_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/30987_fm.jpg' },
+    'Brown': { front: 'https://cdn.ssactivewear.com/Images/Color/30658_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/30658_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/8317_fm.jpg' },
+    'Burnt Orange': { front: 'https://cdn.ssactivewear.com/Images/Color/30659_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/30659_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/9045_fm.jpg' },
+    'Canvas Red': { front: 'https://cdn.ssactivewear.com/Images/Color/30660_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/30660_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/7973_fm.jpg' },
+    'Cardinal': { front: 'https://cdn.ssactivewear.com/Images/Color/34123_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/34123_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/7166_fm.jpg' },
+    'Carolina Blue': { front: 'https://cdn.ssactivewear.com/Images/Color/51955_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/51955_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/26040_fm.jpg' },
+    'Charity Pink': { front: 'https://cdn.ssactivewear.com/Images/Color/66025_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/66025_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/16125_fm.jpg' },
+    'Chestnut': { front: 'https://cdn.ssactivewear.com/Images/Color/32573_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/32573_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/23334_fm.jpg' },
+    'Citron': { front: 'https://cdn.ssactivewear.com/Images/Color/91626_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/91626_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/20401_fm.jpg' },
+    'Clay': { front: 'https://cdn.ssactivewear.com/Images/Color/51920_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/51920_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/26044_fm.jpg' },
+    'Cocoa': { front: 'https://cdn.ssactivewear.com/Images/Color/40685_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/40685_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/39059_fm.jpg' },
+    'Columbia Blue': { front: 'https://cdn.ssactivewear.com/Images/Color/39880_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/39880_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/19529_fm.jpg' },
+    'Cool Blue': { front: 'https://cdn.ssactivewear.com/Images/Color/45717_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/45717_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/26045_fm.jpg' },
+    'Coral': { front: 'https://cdn.ssactivewear.com/Images/Color/34509_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/34509_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/10235_fm.jpg' },
+    'Dark Grey': { front: 'https://cdn.ssactivewear.com/Images/Color/43541_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/43541_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/12720_fm.jpg' },
+    'Dark Lavender': { front: 'https://cdn.ssactivewear.com/Images/Color/51906_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/51906_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/17572_fm.jpg' },
+    'Dark Olive': { front: 'https://cdn.ssactivewear.com/Images/Color/37020_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/37020_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/18229_fm.jpg' },
+    'Deep Teal': { front: 'https://cdn.ssactivewear.com/Images/Color/30672_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/30672_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/9258_fm.jpg' },
+    'Dust': { front: 'https://cdn.ssactivewear.com/Images/Color/67443_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/67443_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/17894_fm.jpg' },
+    'Dusty Blue': { front: 'https://cdn.ssactivewear.com/Images/Color/91627_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/91627_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/33252_fm.jpg' },
+    'Electric Blue': { front: 'https://cdn.ssactivewear.com/Images/Color/66027_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/66027_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/26046_fm.jpg' },
+    'Evergreen': { front: 'https://cdn.ssactivewear.com/Images/Color/30662_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/30662_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/6562_fm.jpg' },
+    'Forest': { front: 'https://cdn.ssactivewear.com/Images/Color/45716_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/45716_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/13322_fm.jpg' },
+    'Fuchsia': { front: 'https://cdn.ssactivewear.com/Images/Color/51936_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/51936_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/12726_fm.jpg' },
+    'Gold': { front: 'https://cdn.ssactivewear.com/Images/Color/37019_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/37019_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/10928_fm.jpg' },
+    'Hunter Green': { front: 'https://cdn.ssactivewear.com/Images/Color/39887_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/39887_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/39060_fm.jpg' },
+    'Kelly': { front: 'https://cdn.ssactivewear.com/Images/Color/30663_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/30663_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/8014_fm.jpg' },
+    'Lavender Blue': { front: 'https://cdn.ssactivewear.com/Images/Color/39885_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/39885_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/23335_fm.jpg' },
+    'Lavender Dust': { front: 'https://cdn.ssactivewear.com/Images/Color/51937_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/51937_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/23336_fm.jpg' },
+    'Leaf': { front: 'https://cdn.ssactivewear.com/Images/Color/30750_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/30750_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/5626_fm.jpg' },
+    'Light Blue': { front: 'https://cdn.ssactivewear.com/Images/Color/30664_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/30664_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/7489_fm.jpg' },
+    'Light Violet': { front: 'https://cdn.ssactivewear.com/Images/Color/67442_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/67442_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/30662_fm.jpg' },
+    'Lilac': { front: 'https://cdn.ssactivewear.com/Images/Color/67441_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/67441_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/17574_fm.jpg' },
+    'Maize Yellow': { front: 'https://cdn.ssactivewear.com/Images/Color/30665_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/30665_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/5908_fm.jpg' },
+    'Marine': { front: 'https://cdn.ssactivewear.com/Images/Color/66029_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/66029_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/26041_fm.jpg' },
+    'Maroon': { front: 'https://cdn.ssactivewear.com/Images/Color/30673_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/30673_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/9259_fm.jpg' },
+    'Mauve': { front: 'https://cdn.ssactivewear.com/Images/Color/66024_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/66024_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/16286_fm.jpg' },
+    'Military Green': { front: 'https://cdn.ssactivewear.com/Images/Color/66032_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/66032_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/16127_fm.jpg' },
+    'Mint': { front: 'https://cdn.ssactivewear.com/Images/Color/43529_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/43529_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/12728_fm.jpg' },
+    'Mustard': { front: 'https://cdn.ssactivewear.com/Images/Color/45722_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/45722_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/17575_fm.jpg' },
+    'Natural': { front: 'https://cdn.ssactivewear.com/Images/Color/43540_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/43540_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/12727_fm.jpg' },
+    'Navy': { front: 'https://cdn.ssactivewear.com/Images/Color/30666_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/30666_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/5591_fm.jpg' },
+    'Ocean Blue': { front: 'https://cdn.ssactivewear.com/Images/Color/30667_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/30667_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/5585_fm.jpg' },
+    'Olive': { front: 'https://cdn.ssactivewear.com/Images/Color/30668_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/30668_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/7734_fm.jpg' },
+    'Orange': { front: 'https://cdn.ssactivewear.com/Images/Color/34125_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/34125_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/10194_fm.jpg' },
+    'Orchid': { front: 'https://cdn.ssactivewear.com/Images/Color/91628_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/91628_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/33253_fm.jpg' },
+    'Oxblood Black': { front: 'https://cdn.ssactivewear.com/Images/Color/66031_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/66031_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/16288_fm.jpg' },
+    'Peach': { front: 'https://cdn.ssactivewear.com/Images/Color/45720_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/45720_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/14235_fm.jpg' },
+    'Pebble Brown': { front: 'https://cdn.ssactivewear.com/Images/Color/32569_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/32569_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/9790_fm.jpg' },
+    'Pine': { front: 'https://cdn.ssactivewear.com/Images/Color/45718_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/45718_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/26042_fm.jpg' },
+    'Pink': { front: 'https://cdn.ssactivewear.com/Images/Color/39897_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/39897_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/11871_fm.jpg' },
+    'Pink Gravel': { front: 'https://cdn.ssactivewear.com/Images/Color/39896_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/39896_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/39061_fm.jpg' },
+    'Poppy': { front: 'https://cdn.ssactivewear.com/Images/Color/67444_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/67444_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/19269_fm.jpg' },
+    'Purple Storm': { front: 'https://cdn.ssactivewear.com/Images/Color/66030_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/66030_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/39062_fm.jpg' },
+    'Red': { front: 'https://cdn.ssactivewear.com/Images/Color/32568_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/32568_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/6634_fm.jpg' },
+    'Royal Purple': { front: 'https://cdn.ssactivewear.com/Images/Color/43546_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/43546_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/23337_fm.jpg' },
+    'Rust': { front: 'https://cdn.ssactivewear.com/Images/Color/51897_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/51897_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/14313_fm.jpg' },
+    'Sage': { front: 'https://cdn.ssactivewear.com/Images/Color/43549_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/43549_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/23338_fm.jpg' },
+    'Sand Dune': { front: 'https://cdn.ssactivewear.com/Images/Color/43547_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/43547_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/19270_fm.jpg' },
+    'Silver': { front: 'https://cdn.ssactivewear.com/Images/Color/30655_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/30655_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/9402_fm.jpg' },
+    'Slate': { front: 'https://cdn.ssactivewear.com/Images/Color/66028_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/66028_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/8562_fm.jpg' },
+    'Soft Cream': { front: 'https://cdn.ssactivewear.com/Images/Color/32570_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/32570_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/9791_fm.jpg' },
+    'Soft Pink': { front: 'https://cdn.ssactivewear.com/Images/Color/32567_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/32567_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/9269_fm.jpg' },
+    'Solid Athletic Grey': { front: 'https://cdn.ssactivewear.com/Images/Color/91629_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/91629_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/20399_fm.jpg' },
+    'Spring Green': { front: 'https://cdn.ssactivewear.com/Images/Color/43544_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/43544_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/23339_fm.jpg' },
+    'Steel Blue': { front: 'https://cdn.ssactivewear.com/Images/Color/30669_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/30669_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/8347_fm.jpg' },
+    'Storm': { front: 'https://cdn.ssactivewear.com/Images/Color/66033_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/66033_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/16128_fm.jpg' },
+    'Strobe': { front: 'https://cdn.ssactivewear.com/Images/Color/51934_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/51934_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/23340_fm.jpg' },
+    'Sunset': { front: 'https://cdn.ssactivewear.com/Images/Color/66972_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/66972_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/16289_fm.jpg' },
+    'Synthetic Green': { front: 'https://cdn.ssactivewear.com/Images/Color/91630_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/91630_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/20400_fm.jpg' },
+    'Tan': { front: 'https://cdn.ssactivewear.com/Images/Color/66034_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/66034_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/10184_fm.jpg' },
+    'Teal': { front: 'https://cdn.ssactivewear.com/Images/Color/32572_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/32572_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/9788_fm.jpg' },
+    'Team Navy': { front: 'https://cdn.ssactivewear.com/Images/Color/45721_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/45721_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/20366_fm.jpg' },
+    'Team Purple': { front: 'https://cdn.ssactivewear.com/Images/Color/30654_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/30654_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/9268_fm.jpg' },
+    'Terracotta': { front: 'https://cdn.ssactivewear.com/Images/Color/43548_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/43548_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/23341_fm.jpg' },
+    'Thyme': { front: 'https://cdn.ssactivewear.com/Images/Color/43534_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/43534_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/30665_fm.jpg' },
+    'Toast': { front: 'https://cdn.ssactivewear.com/Images/Color/39888_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/39888_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/23342_fm.jpg' },
+    'True Royal': { front: 'https://cdn.ssactivewear.com/Images/Color/30670_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/30670_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/5844_fm.jpg' },
+    'Turquoise': { front: 'https://cdn.ssactivewear.com/Images/Color/39898_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/39898_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/11872_fm.jpg' },
+    'Vintage Black': { front: 'https://cdn.ssactivewear.com/Images/Color/43536_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/43536_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/12719_fm.jpg' },
+    'Vintage Brown': { front: 'https://cdn.ssactivewear.com/Images/Color/43550_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/43550_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/30664_fm.jpg' },
+    'Vintage Denim': { front: 'https://cdn.ssactivewear.com/Images/Color/66026_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/66026_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/39063_fm.jpg' },
+    'Vintage Navy': { front: 'https://cdn.ssactivewear.com/Images/Color/39886_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/39886_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/26043_fm.jpg' },
+    'Vintage Red': { front: 'https://cdn.ssactivewear.com/Images/Color/43552_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/43552_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/39064_fm.jpg' },
+    'Vintage White': { front: 'https://cdn.ssactivewear.com/Images/Color/40686_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/40686_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/33254_fm.jpg' },
+    'White': { front: 'https://cdn.ssactivewear.com/Images/Color/30671_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/30671_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/7256_fm.jpg' },
+    'Yellow': { front: 'https://cdn.ssactivewear.com/Images/Color/34127_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/34127_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/10195_fm.jpg' },
+  },
+  gildan18500: {
+    'Antique Cherry Red': { front: 'https://cdn.ssactivewear.com/Images/Color/33306_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/33306_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/33507_fm.jpg' },
+    'Antique Sapphire': { front: 'https://cdn.ssactivewear.com/Images/Color/33305_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/33305_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/33508_fm.jpg' },
+    'Ash': { front: 'https://cdn.ssactivewear.com/Images/Color/19727_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/19727_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/33509_fm.jpg' },
+    'Azalea': { front: 'https://cdn.ssactivewear.com/Images/Color/78809_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/78809_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/33510_fm.jpg' },
+    'Black': { front: 'https://cdn.ssactivewear.com/Images/Color/19728_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/19728_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/33511_fm.jpg' },
+    'Cardinal Red': { front: 'https://cdn.ssactivewear.com/Images/Color/37337_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/37337_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/33512_fm.jpg' },
+    'Carolina Blue': { front: 'https://cdn.ssactivewear.com/Images/Color/30057_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/30057_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/33513_fm.jpg' },
+    'Charcoal': { front: 'https://cdn.ssactivewear.com/Images/Color/33308_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/33308_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/33514_fm.jpg' },
+    'Cherry Red': { front: 'https://cdn.ssactivewear.com/Images/Color/19730_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/19730_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/33515_fm.jpg' },
+    'Dark Chocolate': { front: 'https://cdn.ssactivewear.com/Images/Color/30058_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/30058_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/33516_fm.jpg' },
+    'Dark Heather': { front: 'https://cdn.ssactivewear.com/Images/Color/30711_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/30711_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/33517_fm.jpg' },
+    'Fan Charcoal Heather': { front: 'https://cdn.ssactivewear.com/Images/Color/107688_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/107688_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/49799_fm.jpg' },
+    'Fan Dark Green': { front: '', back: '', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/49801_fm.jpg' },
+    'Fan Deep Royal': { front: '', back: '', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/49803_fm.jpg' },
+    'Forest': { front: 'https://cdn.ssactivewear.com/Images/Color/30060_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/30060_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/33518_fm.jpg' },
+    'Garnet': { front: 'https://cdn.ssactivewear.com/Images/Color/38855_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/38855_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/33519_fm.jpg' },
+    'Gold': { front: 'https://cdn.ssactivewear.com/Images/Color/30061_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/30061_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/33520_fm.jpg' },
+    'Graphite Heather': { front: 'https://cdn.ssactivewear.com/Images/Color/52333_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/52333_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/33521_fm.jpg' },
+    'Heather Dark Green': { front: 'https://cdn.ssactivewear.com/Images/Color/66747_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/66747_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/33522_fm.jpg' },
+    'Heather Dark Maroon': { front: 'https://cdn.ssactivewear.com/Images/Color/66740_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/66740_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/33523_fm.jpg' },
+    'Heather Dark Navy': { front: 'https://cdn.ssactivewear.com/Images/Color/66745_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/66745_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/33524_fm.jpg' },
+    'Heather Deep Royal': { front: 'https://cdn.ssactivewear.com/Images/Color/66742_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/66742_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/33525_fm.jpg' },
+    'Heather Scarlet Red': { front: 'https://cdn.ssactivewear.com/Images/Color/66737_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/66737_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/33526_fm.jpg' },
+    'Heliconia': { front: 'https://cdn.ssactivewear.com/Images/Color/30062_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/30062_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/33527_fm.jpg' },
+    'Indigo Blue': { front: 'https://cdn.ssactivewear.com/Images/Color/30063_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/30063_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/33528_fm.jpg' },
+    'Irish Green': { front: 'https://cdn.ssactivewear.com/Images/Color/30064_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/30064_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/33529_fm.jpg' },
+    'Light Blue': { front: 'https://cdn.ssactivewear.com/Images/Color/30065_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/30065_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/33530_fm.jpg' },
+    'Light Pink': { front: 'https://cdn.ssactivewear.com/Images/Color/30066_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/30066_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/33531_fm.jpg' },
+    'Maroon': { front: 'https://cdn.ssactivewear.com/Images/Color/30067_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/30067_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/33532_fm.jpg' },
+    'Military Green': { front: 'https://cdn.ssactivewear.com/Images/Color/33304_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/33304_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/33533_fm.jpg' },
+    'Mint Green': { front: 'https://cdn.ssactivewear.com/Images/Color/78818_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/78818_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/33534_fm.jpg' },
+    'Navy': { front: 'https://cdn.ssactivewear.com/Images/Color/19741_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/19741_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/33535_fm.jpg' },
+    'Neon Blue': { front: '', back: '', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/12589_fm.jpg' },
+    'Old Gold': { front: 'https://cdn.ssactivewear.com/Images/Color/78820_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/78820_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/33536_fm.jpg' },
+    'Orange': { front: 'https://cdn.ssactivewear.com/Images/Color/30068_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/30068_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/33537_fm.jpg' },
+    'Orchid': { front: 'https://cdn.ssactivewear.com/Images/Color/78821_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/78821_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/33538_fm.jpg' },
+    'Purple': { front: 'https://cdn.ssactivewear.com/Images/Color/19744_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/19744_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/33539_fm.jpg' },
+    'Red': { front: 'https://cdn.ssactivewear.com/Images/Color/27674_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/27674_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/33540_fm.jpg' },
+    'Royal': { front: 'https://cdn.ssactivewear.com/Images/Color/30069_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/30069_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/33541_fm.jpg' },
+    'Safety Green': { front: 'https://cdn.ssactivewear.com/Images/Color/38856_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/38856_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/33542_fm.jpg' },
+    'Safety Orange': { front: 'https://cdn.ssactivewear.com/Images/Color/38857_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/38857_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/33543_fm.jpg' },
+    'Safety Pink': { front: 'https://cdn.ssactivewear.com/Images/Color/41715_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/41715_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/33544_fm.jpg' },
+    'Sand': { front: 'https://cdn.ssactivewear.com/Images/Color/19746_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/19746_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/33545_fm.jpg' },
+    'Sapphire': { front: 'https://cdn.ssactivewear.com/Images/Color/46135_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/46135_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/33546_fm.jpg' },
+    'Sport Grey': { front: 'https://cdn.ssactivewear.com/Images/Color/19747_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/19747_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/33547_fm.jpg' },
+    'Violet': { front: 'https://cdn.ssactivewear.com/Images/Color/19749_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/19749_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/33548_fm.jpg' },
+    'White': { front: 'https://cdn.ssactivewear.com/Images/Color/19750_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/19750_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/33549_fm.jpg' },
+  },
+  gildan18600: {
+    'Ash': { front: 'https://cdn.ssactivewear.com/Images/Color/19892_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/19892_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/33509_fm.jpg' },
+    'Black': { front: 'https://cdn.ssactivewear.com/Images/Color/19893_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/19893_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/33511_fm.jpg' },
+    'Cardinal Red': { front: 'https://cdn.ssactivewear.com/Images/Color/37338_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/37338_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/33512_fm.jpg' },
+    'Carolina Blue': { front: 'https://cdn.ssactivewear.com/Images/Color/19894_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/19894_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/33513_fm.jpg' },
+    'Dark Chocolate': { front: 'https://cdn.ssactivewear.com/Images/Color/19895_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/19895_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/33516_fm.jpg' },
+    'Dark Heather': { front: 'https://cdn.ssactivewear.com/Images/Color/41716_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/41716_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/33517_fm.jpg' },
+    'Forest': { front: 'https://cdn.ssactivewear.com/Images/Color/19896_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/19896_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/33518_fm.jpg' },
+    'Graphite Heather': { front: 'https://cdn.ssactivewear.com/Images/Color/52334_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/52334_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/33521_fm.jpg' },
+    'Irish Green': { front: 'https://cdn.ssactivewear.com/Images/Color/19897_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/19897_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/33529_fm.jpg' },
+    'Maroon': { front: 'https://cdn.ssactivewear.com/Images/Color/27707_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/27707_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/33532_fm.jpg' },
+    'Navy': { front: 'https://cdn.ssactivewear.com/Images/Color/19900_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/19900_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/33535_fm.jpg' },
+    'Purple': { front: 'https://cdn.ssactivewear.com/Images/Color/29910_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/29910_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/33539_fm.jpg' },
+    'Red': { front: 'https://cdn.ssactivewear.com/Images/Color/27708_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/27708_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/33540_fm.jpg' },
+    'Royal': { front: 'https://cdn.ssactivewear.com/Images/Color/19902_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/19902_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/33541_fm.jpg' },
+    'Safety Green': { front: 'https://cdn.ssactivewear.com/Images/Color/38858_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/38858_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/33542_fm.jpg' },
+    'Safety Orange': { front: 'https://cdn.ssactivewear.com/Images/Color/38859_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/38859_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/33543_fm.jpg' },
+    'Sport Grey': { front: 'https://cdn.ssactivewear.com/Images/Color/19904_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/19904_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/33547_fm.jpg' },
+    'White': { front: 'https://cdn.ssactivewear.com/Images/Color/19905_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/19905_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/33549_fm.jpg' },
+  },
+  nextlevel3600: {
+    'Antique Gold': { front: 'https://cdn.ssactivewear.com/Images/Color/72026_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/72026_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/34088_fm.jpg' },
+    'Banana Cream': { front: 'https://cdn.ssactivewear.com/Images/Color/40990_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/40990_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/34089_fm.jpg' },
+    'Black': { front: 'https://cdn.ssactivewear.com/Images/Color/40991_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/40991_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/34090_fm.jpg' },
+    'Blue Jean': { front: 'https://cdn.ssactivewear.com/Images/Color/108717_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/108717_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/34091_fm.jpg' },
+    'Bone': { front: 'https://cdn.ssactivewear.com/Images/Color/116031_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/116031_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/35366_fm.jpg' },
+    'Cardinal': { front: 'https://cdn.ssactivewear.com/Images/Color/40992_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/40992_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/34092_fm.jpg' },
+    'Classic Orange': { front: 'https://cdn.ssactivewear.com/Images/Color/55243_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/55243_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/34093_fm.jpg' },
+    'Clay': { front: 'https://cdn.ssactivewear.com/Images/Color/116033_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/116033_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/35367_fm.jpg' },
+    'Cool Blue': { front: 'https://cdn.ssactivewear.com/Images/Color/43904_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/43904_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/34094_fm.jpg' },
+    'Cream': { front: 'https://cdn.ssactivewear.com/Images/Color/40999_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/40999_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/34095_fm.jpg' },
+    'Dark Chocolate': { front: 'https://cdn.ssactivewear.com/Images/Color/40993_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/40993_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/34096_fm.jpg' },
+    'Desert Pink': { front: 'https://cdn.ssactivewear.com/Images/Color/79785_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/79785_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/34097_fm.jpg' },
+    'Forest Green': { front: 'https://cdn.ssactivewear.com/Images/Color/43906_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/43906_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/34098_fm.jpg' },
+    'Gold': { front: 'https://cdn.ssactivewear.com/Images/Color/43907_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/43907_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/34099_fm.jpg' },
+    'Graphite Black': { front: 'https://cdn.ssactivewear.com/Images/Color/89879_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/89879_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/34100_fm.jpg' },
+    'Heather Grey': { front: 'https://cdn.ssactivewear.com/Images/Color/40994_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/40994_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/34101_fm.jpg' },
+    'Heavy Metal': { front: 'https://cdn.ssactivewear.com/Images/Color/40995_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/40995_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/34102_fm.jpg' },
+    'Hot Pink': { front: '', back: '', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/34134_fm.jpg' },
+    'Indigo': { front: 'https://cdn.ssactivewear.com/Images/Color/40996_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/40996_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/34103_fm.jpg' },
+    'Kelly Green': { front: 'https://cdn.ssactivewear.com/Images/Color/40997_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/40997_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/34104_fm.jpg' },
+    'Light Blue': { front: 'https://cdn.ssactivewear.com/Images/Color/40998_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/40998_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/34105_fm.jpg' },
+    'Light Grey': { front: 'https://cdn.ssactivewear.com/Images/Color/41000_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/41000_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/34106_fm.jpg' },
+    'Light Olive': { front: 'https://cdn.ssactivewear.com/Images/Color/41001_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/41001_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/34107_fm.jpg' },
+    'Light Pink': { front: 'https://cdn.ssactivewear.com/Images/Color/43905_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/43905_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/34108_fm.jpg' },
+    'Maroon': { front: 'https://cdn.ssactivewear.com/Images/Color/43908_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/43908_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/34109_fm.jpg' },
+    'Mauve': { front: 'https://cdn.ssactivewear.com/Images/Color/96033_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/96033_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/34110_fm.jpg' },
+    'Midnight Navy': { front: 'https://cdn.ssactivewear.com/Images/Color/41004_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/41004_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/34111_fm.jpg' },
+    'Military Green': { front: 'https://cdn.ssactivewear.com/Images/Color/41002_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/41002_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/34112_fm.jpg' },
+    'Natural': { front: 'https://cdn.ssactivewear.com/Images/Color/41003_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/41003_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/34113_fm.jpg' },
+    'Oatmeal': { front: 'https://cdn.ssactivewear.com/Images/Color/89881_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/89881_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/34114_fm.jpg' },
+    'Oxblood': { front: 'https://cdn.ssactivewear.com/Images/Color/104521_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/104521_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/34115_fm.jpg' },
+    'Peri Blue': { front: 'https://cdn.ssactivewear.com/Images/Color/108718_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/108718_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/34116_fm.jpg' },
+    'Purple Rush': { front: 'https://cdn.ssactivewear.com/Images/Color/41007_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/41007_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/34117_fm.jpg' },
+    'Red': { front: 'https://cdn.ssactivewear.com/Images/Color/41006_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/41006_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/34118_fm.jpg' },
+    'Royal': { front: 'https://cdn.ssactivewear.com/Images/Color/41005_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/41005_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/34119_fm.jpg' },
+    'Royal Pine': { front: 'https://cdn.ssactivewear.com/Images/Color/96035_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/96035_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/34120_fm.jpg' },
+    'Sand': { front: 'https://cdn.ssactivewear.com/Images/Color/43909_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/43909_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/34121_fm.jpg' },
+    'Shiitake': { front: 'https://cdn.ssactivewear.com/Images/Color/116034_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/116034_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/35368_fm.jpg' },
+    'Stonewash Denim': { front: 'https://cdn.ssactivewear.com/Images/Color/96037_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/96037_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/34122_fm.jpg' },
+    'Tahiti Blue': { front: 'https://cdn.ssactivewear.com/Images/Color/41009_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/41009_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/34123_fm.jpg' },
+    'Tan': { front: 'https://cdn.ssactivewear.com/Images/Color/108719_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/108719_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/34124_fm.jpg' },
+    'Teal': { front: 'https://cdn.ssactivewear.com/Images/Color/96032_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/96032_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/34125_fm.jpg' },
+    'Turquoise': { front: 'https://cdn.ssactivewear.com/Images/Color/41008_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/41008_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/34126_fm.jpg' },
+    'Warm Grey': { front: 'https://cdn.ssactivewear.com/Images/Color/41380_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/41380_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/34127_fm.jpg' },
+    'Watermelon': { front: 'https://cdn.ssactivewear.com/Images/Color/108720_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/108720_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/34128_fm.jpg' },
+    'White': { front: 'https://cdn.ssactivewear.com/Images/Color/41010_f_fl.jpg', back: 'https://cdn.ssactivewear.com/Images/Color/41010_b_fl.jpg', swatch: 'https://cdn.ssactivewear.com/Images/ColorSwatch/34129_fm.jpg' },
+  },
+};
+</script>
+<script>
+
+// ── Product Catalog ──
+const PRODUCTS = [
+  {
+    id:'tee', name:'Classic T-Shirt', sup:'Gildan', style:'5000',
+    icon:'👕', supplier:'S&S Activewear', ssKey:'gildan5000',
+    sizes:['S','M','L','XL','2XL','3XL'],
+    defaultColor:'White',
+  },
+  {
+    id:'bella', name:'Premium Tee', sup:'Bella+Canvas', style:'3001',
+    icon:'👕', supplier:'S&S Activewear', ssKey:'bella3001',
+    sizes:['XS','S','M','L','XL','2XL'],
+    defaultColor:'White',
+  },
+  {
+    id:'hoodie', name:'Pullover Hoodie', sup:'Gildan', style:'18500',
+    icon:'🧥', supplier:'S&S Activewear', ssKey:'gildan18500',
+    sizes:['S','M','L','XL','2XL','3XL'],
+    defaultColor:'Black',
+  },
+  {
+    id:'zip', name:'Full-Zip Hoodie', sup:'Gildan', style:'18600',
+    icon:'🧥', supplier:'S&S Activewear', ssKey:'gildan18600',
+    sizes:['S','M','L','XL','2XL','3XL'],
+    defaultColor:'Black',
+  },
+  {
+    id:'nextlevel', name:'Premium Soft Tee', sup:'Next Level', style:'3600',
+    icon:'👕', supplier:'S&S Activewear', ssKey:'nextlevel3600',
+    sizes:['XS','S','M','L','XL','2XL'],
+    defaultColor:'Black',
+  },
+  {
+    id:'hat', name:'Structured Cap', sup:'Various', style:'',
+    icon:'🧢', supplier:'S&S Activewear', ssKey:null,
+    sizes:['One Size'],
+    defaultColor:'Black',
+    fallbackColors:['Black','Navy','White','Red','Royal','Khaki'],
+  },
+];
+
+// ── State ──
+const S = {step:1, product:null, color:null, qty:{}, placement:'Left Chest', artUrl:null, customer:{}, view:'front', mockupView:'front'};
+const STEPS = ['Product','Colors','Artwork','Your Info','Review'];
+
+// Art dragging state
+let artDragging=false, artResizing=false;
+let artDragOX=0, artDragOY=0;
+let artX=0, artY=0, artW=120, artH=120;
+let artStartW=0, artStartH=0, artResizeStartX=0, artResizeStartY=0;
+
+// ── Step Nav ──
+function renderSteps(){
+  document.getElementById('si').innerHTML=STEPS.map((s,i)=>{
+    const n=i+1;
+    const cls=n<S.step?'done':n===S.step?'active':'pending';
+    const icon=n<S.step?'✓':n;
+    return `${i>0?'<div class="sline"></div>':''}<div class="sdot ${cls}" title="${s}">${icon}</div>`;
+  }).join('');
+}
+
+function go(n){
+  if(n===2){
+    if(!S.product){alert('Please select a product first.');return;}
+  }
+  if(n===3){
+    const tot=Object.values(S.qty).reduce((a,b)=>a+(parseInt(b)||0),0);
+    if(!S.color){alert('Please select a color.');return;}
+    if(tot<1){alert('Please enter at least 1 item in quantities.');return;}
+  }
+  if(n===5){
+    const fn=document.getElementById('fn').value.trim();
+    const ln=document.getElementById('ln').value.trim();
+    const em=document.getElementById('em').value.trim();
+    if(!fn||!ln||!em){alert('Please fill in your name and email.');return;}
+    if(!/\S+@\S+\.\S+/.test(em)){alert('Please enter a valid email.');return;}
+    const dd=document.getElementById('dd').value;
+    S.customer={firstName:fn,lastName:ln,email:em,phone:document.getElementById('ph').value.trim(),
+      company:document.getElementById('co').value.trim(),dueDate:dd,notes:document.getElementById('notes').value.trim()};
+    buildReview();
+  }
+  document.querySelectorAll('.card').forEach(c=>c.classList.remove('active'));
+  document.getElementById('s'+n).classList.add('active');
+  S.step=n; renderSteps();
+  window.scrollTo({top:0,behavior:'smooth'});
+  if(n===2) renderCS();
+  if(n===3) initMockup();
+}
+
+// ── Products ──
+function getProductColors(p){
+  if(p.ssKey && SS_IMAGES[p.ssKey]){
+    return Object.keys(SS_IMAGES[p.ssKey]);
+  }
+  return p.fallbackColors || [];
+}
+
+function getProductImageUrl(p, colorName, view='front'){
+  if(p.ssKey && SS_IMAGES[p.ssKey] && SS_IMAGES[p.ssKey][colorName]){
+    return SS_IMAGES[p.ssKey][colorName][view] || SS_IMAGES[p.ssKey][colorName]['front'] || '';
+  }
+  return '';
+}
+
+function renderProducts(){
+  document.getElementById('pgrid').innerHTML=PRODUCTS.map(p=>{
+    const colors = getProductColors(p);
+    const defaultColor = p.defaultColor || (colors.length ? colors[0] : null);
+    const imgUrl = defaultColor ? getProductImageUrl(p, defaultColor) : '';
+    
+    const imgHtml = imgUrl
+      ? `<img class="pcard-img" src="${imgUrl}" alt="${p.name}" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"/>
+         <div class="pcard-img-placeholder" style="display:none">${p.icon}</div>`
+      : `<div class="pcard-img-placeholder">${p.icon}</div>`;
+
+    return `
+    <div class="pcard" onclick="selProd('${p.id}',this)">
+      ${imgHtml}
+      <div class="pcard-body">
+        <div class="pname">${p.name}</div>
+        <div class="pmeta">${p.sup} ${p.style}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function selProd(id,el){
+  S.product=PRODUCTS.find(p=>p.id===id); S.color=null; S.qty={};
+  document.querySelectorAll('.pcard').forEach(c=>c.classList.remove('sel'));
+  el.classList.add('sel');
+  setTimeout(()=>go(2),160);
+}
+
+// ── Colors + View ──
+function setView(v){
+  S.view=v;
+  document.getElementById('vbtn-front').classList.toggle('active',v==='front');
+  document.getElementById('vbtn-back').classList.toggle('active',v==='back');
+  updateGarmentPreview();
+}
+
+function updateGarmentPreview(){
+  if(!S.product || !S.color) return;
+  const url = getProductImageUrl(S.product, S.color, S.view);
+  const img = document.getElementById('garment-front-img');
+  const placeholder = document.getElementById('garment-placeholder');
+  if(url){
+    img.src = url;
+    img.style.display = 'block';
+    placeholder.style.display = 'none';
+  } else {
+    img.style.display = 'none';
+    placeholder.style.display = 'flex';
+    placeholder.textContent = S.product.icon || '👕';
+  }
+  document.getElementById('prev-lbl').textContent = S.color || '';
+}
+
+function renderCS(){
+  if(!S.product) return;
+  const colors = getProductColors(S.product);
+
+  document.getElementById('cpicker').innerHTML = colors.map(colorName => {
+    const ssData = S.product.ssKey && SS_IMAGES[S.product.ssKey] ? SS_IMAGES[S.product.ssKey][colorName] : null;
+    const swatchUrl = ssData ? ssData.swatch : '';
+    const isSelected = S.color === colorName;
+    
+    if(swatchUrl){
+      return `<div class="sw ${isSelected?'sel':''}" style="background-image:url('${swatchUrl}')" 
+        title="${colorName}" onclick="pickColor('${colorName.replace(/'/g,"\\'")}',this)"></div>`;
+    } else {
+      // Fallback for hat colors or missing swatches
+      const fallbackColors = {
+        'Black':'#111','Navy':'#1a237e','White':'#f5f5f5','Red':'#c62828',
+        'Royal':'#1565c0','Khaki':'#c8b560','Forest Green':'#1b5e20','Maroon':'#4a0000'
+      };
+      const bg = fallbackColors[colorName] || '#555';
+      return `<div class="sw ${isSelected?'sel':''}" style="background:${bg}"
+        title="${colorName}" onclick="pickColor('${colorName.replace(/'/g,"\\'")}',this)"></div>`;
+    }
+  }).join('');
+
+  document.getElementById('sqgrid').innerHTML=S.product.sizes.map(sz=>`
+    <div class="size-row">
+      <span class="size-key">${sz}</span>
+      <input class="qty-in" type="number" min="0" placeholder="0"
+        value="${S.qty[sz]||''}" oninput="updQty('${sz}',this.value)"/>
+    </div>`).join('');
+
+  updTotal();
+  if(S.color){
+    document.getElementById('clbl').textContent='Selected: '+S.color;
+    updateGarmentPreview();
+  }
+  // Auto-select default color
+  if(!S.color && colors.length){
+    const def = S.product.defaultColor || colors[0];
+    if(colors.includes(def)){
+      const sw = document.querySelector('.sw');
+      if(sw) pickColor(def, sw);
+    }
+  }
+}
+
+function pickColor(n, el){
+  S.color = n;
+  document.querySelectorAll('.sw').forEach(s=>s.classList.remove('sel'));
+  if(el) el.classList.add('sel');
+  document.getElementById('clbl').textContent='Selected: '+n;
+  updateGarmentPreview();
+  updateMockupImage();
+}
+
+function updQty(s,v){S.qty[s]=parseInt(v)||0; updTotal();}
+function updTotal(){document.getElementById('totqty').textContent=Object.values(S.qty).reduce((a,b)=>a+(parseInt(b)||0),0);}
+
+// ── Mockup with real photo ──
+function setMockupView(v){
+  S.mockupView = v;
+  document.getElementById('mvbtn-front').classList.toggle('active', v==='front');
+  document.getElementById('mvbtn-back').classList.toggle('active', v==='back');
+  updateMockupImage();
+}
+
+function updateMockupImage(){
+  if(!S.product || !S.color) return;
+  const url = getProductImageUrl(S.product, S.color, S.mockupView);
+  const img = document.getElementById('mockup-base-img');
+  if(url){
+    img.src = url;
+    img.style.display = 'block';
+  }
+}
+
+function initMockup(){
+  updateMockupImage();
+  updatePrintZone();
+  setupArtInteraction();
+  if(S.artUrl) placeArt(S.artUrl);
+}
+
+// Print zone zones per placement
+const PLACEMENT_ZONES = {
+  'Left Chest':  {top:'18%', left:'52%', width:'22%', height:'22%'},
+  'Full Front':  {top:'14%', left:'20%', width:'60%', height:'55%'},
+  'Full Back':   {top:'14%', left:'20%', width:'60%', height:'55%'},
+  'Left Sleeve': {top:'28%', left:'8%',  width:'16%', height:'30%'},
+  'Right Sleeve':{top:'28%', left:'76%', width:'16%', height:'30%'},
+  'Custom':      {top:'14%', left:'20%', width:'60%', height:'55%'},
+};
+
+function updatePrintZone(){
+  const zone = document.getElementById('print-zone');
+  const pz = PLACEMENT_ZONES[S.placement] || PLACEMENT_ZONES['Full Front'];
+  zone.style.top = pz.top;
+  zone.style.left = pz.left;
+  zone.style.width = pz.width;
+  zone.style.height = pz.height;
+  zone.classList.add('show');
+}
+
+function setPla(p, el){
+  S.placement = p;
+  document.querySelectorAll('.pla-btn').forEach(b=>b.classList.remove('active'));
+  if(el) el.classList.add('active');
+  updatePrintZone();
+  // Reposition art to print zone
+  if(S.artUrl) repositionArtToZone();
+}
+
+function repositionArtToZone(){
+  const wrap = document.getElementById('mockup-wrap');
+  const rect = wrap.getBoundingClientRect();
+  const wW = wrap.offsetWidth, wH = wrap.offsetHeight;
+  const pz = PLACEMENT_ZONES[S.placement] || PLACEMENT_ZONES['Full Front'];
+  const zoneX = (parseFloat(pz.left)/100)*wW;
+  const zoneY = (parseFloat(pz.top)/100)*wH;
+  const zoneW = (parseFloat(pz.width)/100)*wW;
+  const zoneH = (parseFloat(pz.height)/100)*wH;
+  // Scale art to fit zone
+  const scale = Math.min(zoneW/artW, zoneH/artH, 1);
+  artW = artW * scale;
+  artH = artH * scale;
+  artX = zoneX + (zoneW - artW)/2;
+  artY = zoneY + (zoneH - artH)/2;
+  updateArtLayer();
+}
+
+function handleArt(e){
+  const f = e.target.files[0];
+  if(!f) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    S.artUrl = ev.target.result;
+    document.getElementById('upholder').style.display = 'none';
+    document.getElementById('updone').style.display = 'block';
+    placeArt(ev.target.result);
+  };
+  reader.readAsDataURL(f);
+}
+
+function placeArt(src){
+  const artImg = document.getElementById('art-img');
+  artImg.src = src;
+  const artLayer = document.getElementById('art-layer');
+  artLayer.style.display = 'block';
+  artImg.onload = () => {
+    const wrap = document.getElementById('mockup-wrap');
+    const wW = wrap.offsetWidth || 400;
+    const wH = wrap.offsetHeight || 400;
+    const pz = PLACEMENT_ZONES[S.placement] || PLACEMENT_ZONES['Full Front'];
+    const zoneW = (parseFloat(pz.width)/100)*wW;
+    const zoneH = (parseFloat(pz.height)/100)*wH;
+    const aspectRatio = artImg.naturalWidth / artImg.naturalHeight;
+    // Start art at a reasonable size fitting in zone
+    artH = Math.min(zoneH * 0.85, 140);
+    artW = artH * aspectRatio;
+    if(artW > zoneW * 0.9){ artW = zoneW * 0.9; artH = artW / aspectRatio; }
+    const zoneX = (parseFloat(pz.left)/100)*wW;
+    const zoneY = (parseFloat(pz.top)/100)*wH;
+    artX = zoneX + (zoneW - artW)/2;
+    artY = zoneY + (zoneH - artH)/2;
+    updateArtLayer();
+    document.getElementById('artctrl').classList.add('show');
+  };
+}
+
+function updateArtLayer(){
+  const layer = document.getElementById('art-layer');
+  layer.style.left = artX+'px';
+  layer.style.top = artY+'px';
+  layer.style.width = artW+'px';
+  layer.style.height = artH+'px';
+}
+
+function scaleArt(factor){
+  const cx = artX + artW/2;
+  const cy = artY + artH/2;
+  artW *= factor; artH *= factor;
+  artX = cx - artW/2; artY = cy - artH/2;
+  updateArtLayer();
+}
+
+function resetArt(){
+  if(S.artUrl) repositionArtToZone();
+}
+
+function setupArtInteraction(){
+  const layer = document.getElementById('art-layer');
+  const handle = document.getElementById('resize-handle');
+  const wrap = document.getElementById('mockup-wrap');
+
+  // Drag
+  layer.addEventListener('mousedown', e=>{
+    if(e.target === handle) return;
+    artDragging = true;
+    artDragOX = e.clientX - artX;
+    artDragOY = e.clientY - artY;
+    layer.classList.add('selected');
+    e.preventDefault();
+  });
+  document.addEventListener('mousemove', e=>{
+    if(artDragging){
+      artX = e.clientX - artDragOX;
+      artY = e.clientY - artDragOY;
+      updateArtLayer();
+    }
+    if(artResizing){
+      const dx = e.clientX - artResizeStartX;
+      const dy = e.clientY - artResizeStartY;
+      artW = Math.max(30, artStartW + dx);
+      artH = Math.max(30, artStartH + dy);
+      updateArtLayer();
+    }
+  });
+  document.addEventListener('mouseup', ()=>{artDragging=false; artResizing=false;});
+
+  // Resize
+  handle.addEventListener('mousedown', e=>{
+    artResizing = true;
+    artResizeStartX = e.clientX;
+    artResizeStartY = e.clientY;
+    artStartW = artW; artStartH = artH;
+    e.preventDefault(); e.stopPropagation();
+  });
+
+  // Touch drag
+  layer.addEventListener('touchstart', e=>{
+    if(e.target === handle) return;
+    const t = e.touches[0];
+    artDragging = true;
+    artDragOX = t.clientX - artX;
+    artDragOY = t.clientY - artY;
+    e.preventDefault();
+  }, {passive:false});
+  document.addEventListener('touchmove', e=>{
+    if(artDragging){
+      const t = e.touches[0];
+      artX = t.clientX - artDragOX;
+      artY = t.clientY - artDragOY;
+      updateArtLayer();
+    }
+  }, {passive:false});
+  document.addEventListener('touchend', ()=>{artDragging=false;});
+
+  // Click outside deselects
+  wrap.addEventListener('click', e=>{
+    if(e.target !== layer && !layer.contains(e.target)){
+      layer.classList.remove('selected');
+    }
+  });
+}
+
+// Drag & drop artwork
+const uz = document.getElementById('uzone');
+uz.addEventListener('dragover', e=>{e.preventDefault(); uz.classList.add('over');});
+uz.addEventListener('dragleave', ()=>uz.classList.remove('over'));
+uz.addEventListener('drop', e=>{
+  e.preventDefault(); uz.classList.remove('over');
+  const f = e.dataTransfer.files[0];
+  if(f){
+    const reader = new FileReader();
+    reader.onload = ev => {
+      S.artUrl = ev.target.result;
+      document.getElementById('upholder').style.display='none';
+      document.getElementById('updone').style.display='block';
+      placeArt(ev.target.result);
+    };
+    reader.readAsDataURL(f);
+  }
+});
+
+// ── Review ──
+function buildReview(){
+  const tot = Object.values(S.qty).reduce((a,b)=>a+(parseInt(b)||0),0);
+  const qtyStr = S.product.sizes
+    .filter(s=>S.qty[s]>0)
+    .map(s=>`${s}: ${S.qty[s]}`)
+    .join(', ');
+
+  document.getElementById('sum-left').innerHTML=`
+    <div style="font-weight:700;font-size:15px;margin-bottom:14px;color:#f97316">📦 Order Details</div>
+    <div class="sum-row"><span class="sum-k">Product</span><span class="sum-v">${S.product.name}<span class="s2">${S.product.sup} ${S.product.style}</span></span></div>
+    <div class="sum-row"><span class="sum-k">Color</span><span class="sum-v">${S.color||'—'}</span></div>
+    <div class="sum-row"><span class="sum-k">Quantities</span><span class="sum-v"><div class="chips">${S.product.sizes.filter(s=>S.qty[s]>0).map(s=>`<span class="chip">${s}: ${S.qty[s]}</span>`).join('')}</div><span class="s2">Total: ${tot} pcs</span></span></div>
+    <div class="sum-row"><span class="sum-k">Placement</span><span class="sum-v">${S.placement}</span></div>
+    <div class="sum-row"><span class="sum-k">Print Type</span><span class="sum-v">${document.getElementById('ptype').value}</span></div>
+    <div class="sum-row"><span class="sum-k">Colors</span><span class="sum-v">${document.getElementById('ncolors').value}</span></div>`;
+
+  document.getElementById('sum-right').innerHTML=`
+    <div style="font-weight:700;font-size:15px;margin-bottom:14px;color:#f97316">👤 Contact Info</div>
+    <div class="sum-row"><span class="sum-k">Name</span><span class="sum-v">${S.customer.firstName} ${S.customer.lastName}</span></div>
+    <div class="sum-row"><span class="sum-k">Email</span><span class="sum-v">${S.customer.email}</span></div>
+    ${S.customer.phone?`<div class="sum-row"><span class="sum-k">Phone</span><span class="sum-v">${S.customer.phone}</span></div>`:''}
+    ${S.customer.company?`<div class="sum-row"><span class="sum-k">Company</span><span class="sum-v">${S.customer.company}</span></div>`:''}
+    ${S.customer.dueDate?`<div class="sum-row"><span class="sum-k">Needed By</span><span class="sum-v">${S.customer.dueDate}</span></div>`:''}
+    ${S.customer.notes?`<div class="sum-row"><span class="sum-k">Notes</span><span class="sum-v" style="max-width:200px;word-break:break-word">${S.customer.notes}</span></div>`:''}`;
+}
+
+// ── Submit ──
+async function submitOrder(){
+  const btn = document.getElementById('subbtn');
+  const sp = document.getElementById('subsp');
+  btn.disabled = true;
+  sp.style.display = 'inline-block';
+
+  const tot = Object.values(S.qty).reduce((a,b)=>a+(parseInt(b)||0),0);
+  const payload = {
+    status: 'Pending',
+    product_name: S.product.name,
+    product_supplier: S.product.sup,
+    product_style: S.product.style,
+    garment_color: S.color,
+    quantities: JSON.stringify(S.qty),
+    total_qty: tot,
+    placement: S.placement,
+    print_type: document.getElementById('ptype').value,
+    print_colors: document.getElementById('ncolors').value,
+    customer_first_name: S.customer.firstName,
+    customer_last_name: S.customer.lastName,
+    customer_email: S.customer.email,
+    customer_phone: S.customer.phone||'',
+    customer_company: S.customer.company||'',
+    due_date: S.customer.dueDate||null,
+    notes: S.customer.notes||'',
+    mockup_url: S.artUrl?'[artwork uploaded]':'',
+  };
+
+  try {
+    const res = await fetch('https://api.base44.com/api/apps/69b379d07fc1c9e2a98e71ad/entities/Order', {
+      method:'POST',
+      headers:{'Content-Type':'application/json','x-user-email':S.customer.email},
+      body:JSON.stringify(payload)
+    });
+    if(!res.ok) throw new Error('Server error');
+    document.querySelectorAll('.card').forEach(c=>c.classList.remove('active'));
+    document.getElementById('s6').classList.add('active');
+    document.getElementById('ok-details').innerHTML=`
+      <strong>${S.customer.firstName} ${S.customer.lastName}</strong><br>
+      ${S.product.name} · ${S.color} · ${tot} pieces<br>
+      Confirmation sent to ${S.customer.email}`;
+    S.step=6; renderSteps();
+    window.scrollTo({top:0,behavior:'smooth'});
+  } catch(err){
+    alert('Something went wrong submitting your order. Please try again or contact us directly.');
+    btn.disabled = false;
+    sp.style.display = 'none';
+  }
+}
+
+// ── Init ──
+renderSteps();
+renderProducts();
+</script>
+</body>
+</html>
