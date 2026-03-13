@@ -1205,7 +1205,7 @@ async function submitOrder(){
   };
 
   try {
-    const res = await fetch('https://lbx-order-proxy.WORKERS_SUBDOMAIN.workers.dev', {
+    const res = await fetch('https://lbx-order-proxy.lbxprints.workers.dev', {
       method:'POST',
       headers:{'Content-Type':'application/json'},
       body:JSON.stringify(payload)
