@@ -114,6 +114,65 @@
   .success-icon{font-size:3.5rem;margin-bottom:16px}
   .success-box h2{font-size:1.6rem;margin-bottom:10px}
   .success-box p{color:var(--gray4);font-size:.95rem;max-width:420px;margin:0 auto 28px;line-height:1.6}
+
+  /* ── Artwork Upload ── */
+  .art-warning{background:#fff3cd;border:1.5px solid #ffc107;border-radius:var(--radius);padding:14px 16px;font-size:.84rem;color:#7a4f00;margin-bottom:20px;line-height:1.6}
+  .art-warning strong{display:block;margin-bottom:4px;font-size:.9rem}
+  .drop-zone{border:2px dashed var(--gray2);border-radius:var(--radius);padding:36px 20px;text-align:center;cursor:pointer;transition:all .2s;background:var(--white);position:relative}
+  .drop-zone:hover,.drop-zone.drag-over{border-color:var(--accent);background:#fff5f6}
+  .drop-zone input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+  .drop-zone-icon{font-size:2rem;margin-bottom:8px}
+  .drop-zone-label{font-size:.9rem;font-weight:600;color:var(--black)}
+  .drop-zone-sub{font-size:.78rem;color:var(--gray3);margin-top:4px}
+  .art-files{display:flex;flex-direction:column;gap:10px;margin-top:16px}
+  .art-file{display:flex;align-items:center;gap:12px;background:var(--white);border:1.5px solid var(--gray2);border-radius:var(--radius);padding:10px 12px}
+  .art-file-thumb{width:52px;height:52px;object-fit:contain;border-radius:6px;background:var(--gray1);flex-shrink:0;border:1px solid var(--gray2)}
+  .art-file-thumb.non-image{display:flex;align-items:center;justify-content:center;font-size:1.4rem}
+  .art-file-info{flex:1;min-width:0}
+  .art-file-name{font-size:.84rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .art-file-meta{font-size:.75rem;color:var(--gray3);margin-top:2px}
+  .art-file-remove{background:none;border:none;cursor:pointer;color:var(--gray3);font-size:1.1rem;padding:4px;flex-shrink:0}
+  .art-file-remove:hover{color:var(--accent)}
+  .upload-progress{height:3px;background:var(--gray2);border-radius:2px;margin-top:6px;overflow:hidden}
+  .upload-progress-bar{height:100%;background:var(--accent);width:0%;transition:width .3s}
+  .art-status{font-size:.75rem;color:var(--gray3);margin-top:2px}
+  .art-status.done{color:#2a7a2a}
+  .art-status.error{color:var(--accent)}
+
+  /* ── Mockup Generator ── */
+  .mockup-wrap{display:flex;gap:20px;flex-wrap:wrap;margin-top:20px}
+  .mockup-canvas-wrap{position:relative;flex-shrink:0}
+  .mockup-bg{width:320px;height:320px;object-fit:contain;display:block;border-radius:var(--radius);border:1.5px solid var(--gray2);background:var(--gray1);user-select:none}
+  .mockup-layer{position:absolute;cursor:move;user-select:none;touch-action:none}
+  .mockup-layer img{display:block;pointer-events:none}
+  .mockup-layer.selected{outline:2px dashed var(--accent);outline-offset:2px}
+  .resize-handle{position:absolute;bottom:-6px;right:-6px;width:14px;height:14px;background:var(--accent);border-radius:3px;cursor:se-resize}
+  .mockup-controls{flex:1;min-width:220px}
+  .mockup-controls h3{font-size:.95rem;font-weight:700;margin-bottom:12px}
+  .layer-list{display:flex;flex-direction:column;gap:8px;margin-bottom:16px}
+  .layer-item{display:flex;align-items:center;gap:10px;padding:8px 10px;border:1.5px solid var(--gray2);border-radius:var(--radius);cursor:pointer;font-size:.82rem;font-weight:500;background:var(--white)}
+  .layer-item.active{border-color:var(--accent);background:#fff5f6}
+  .layer-thumb{width:32px;height:32px;object-fit:contain;border-radius:4px;background:var(--gray1)}
+  .layer-name{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .layer-delete{background:none;border:none;color:var(--gray3);cursor:pointer;font-size:.9rem;padding:2px 4px}
+  .layer-delete:hover{color:var(--accent)}
+  .ctrl-row{display:flex;gap:8px;align-items:center;margin-bottom:10px;font-size:.82rem}
+  .ctrl-row label{color:var(--gray4);min-width:60px;font-weight:500}
+  .ctrl-row input[type=range]{flex:1;accent-color:var(--accent)}
+  .ctrl-val{min-width:36px;text-align:right;font-size:.78rem;color:var(--gray4)}
+  .placement-tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px}
+  .ptab{padding:5px 12px;border-radius:20px;border:1.5px solid var(--gray2);background:var(--white);font-size:.78rem;font-weight:500;cursor:pointer}
+  .ptab.active{background:var(--black);color:var(--white);border-color:var(--black)}
+  .mockup-hint{font-size:.75rem;color:var(--gray3);margin-top:10px;line-height:1.5}
+
+  /* ── Modal ── */
+  .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:999;display:flex;align-items:center;justify-content:center;padding:20px}
+  .modal-box{background:var(--white);border-radius:12px;padding:28px;max-width:480px;width:100%;box-shadow:0 8px 40px rgba(0,0,0,.2)}
+  .modal-box h3{font-size:1.05rem;font-weight:700;margin-bottom:14px;display:flex;align-items:center;gap:8px}
+  .modal-box ul{padding-left:20px;margin:10px 0 16px;font-size:.87rem;line-height:1.8;color:var(--gray4)}
+  .modal-box p{font-size:.87rem;color:var(--gray4);line-height:1.6;margin-bottom:16px}
+  .modal-btn-row{display:flex;justify-content:flex-end;gap:10px}
+
 </style>
 </head>
 <body>
@@ -125,10 +184,11 @@
 
 <div class="steps">
   <div class="step active" id="step1"><span class="step-num">1</span>Select Product</div>
-  <div class="step" id="step2"><span class="step-num">2</span>Color & Quantity</div>
+  <div class="step" id="step2"><span class="step-num">2</span>Color &amp; Quantity</div>
   <div class="step" id="step3"><span class="step-num">3</span>Print Details</div>
-  <div class="step" id="step4"><span class="step-num">4</span>Your Info</div>
-  <div class="step" id="step5"><span class="step-num">5</span>Review & Submit</div>
+  <div class="step" id="step4"><span class="step-num">4</span>Artwork &amp; Mockup</div>
+  <div class="step" id="step5"><span class="step-num">5</span>Your Info</div>
+  <div class="step" id="step6"><span class="step-num">6</span>Review &amp; Submit</div>
 </div>
 
 <main>
@@ -238,12 +298,67 @@
   </div>
   <div class="btn-row">
     <button class="btn btn-secondary" onclick="goTo(2)">← Back</button>
-    <button class="btn btn-primary" onclick="goTo(4)">Next: Your Info →</button>
+    <button class="btn btn-primary" onclick="goTo(5)">Next: Your Info →</button>
   </div>
 </div>
 
-<!-- STEP 4 -->
+<!-- STEP 4: ARTWORK & MOCKUP -->
 <div class="section" id="sec4">
+  <h2>Artwork &amp; Mockup</h2>
+  <p class="subtitle">Upload your design files and position them on a garment preview</p>
+
+  <!-- Upload zone -->
+  <div class="art-warning">
+    <strong>📋 Artwork Requirements</strong>
+    For best results, please upload files in <strong>.AI, .PSD,</strong> or <strong>.EPS</strong> format, or a high-resolution <strong>PNG / JPEG at 300 DPI at printed size</strong>.<br>
+    ⚠️ If your artwork does not meet quality standards, an <strong>artwork redraw fee may be required</strong>.
+  </div>
+
+  <div class="drop-zone" id="dropZone">
+    <input type="file" id="artFileInput" multiple accept=".ai,.psd,.eps,.pdf,.png,.jpg,.jpeg,.svg,.tif,.tiff">
+    <div class="drop-zone-icon">📎</div>
+    <div class="drop-zone-label">Drop files here or click to browse</div>
+    <div class="drop-zone-sub">.AI · .PSD · .EPS · .PDF · PNG · JPEG · SVG · TIFF</div>
+  </div>
+  <div class="art-files" id="artFileList"></div>
+
+  <!-- Mockup generator -->
+  <div id="mockupSection" style="display:none;margin-top:28px">
+    <h3 style="font-size:1rem;font-weight:700;margin-bottom:6px">Mockup Preview <span style="font-size:.78rem;font-weight:400;color:var(--gray3)">(optional — drag &amp; resize artwork on the garment)</span></h3>
+    <div class="placement-tabs" id="mockupPlacementTabs"></div>
+    <div class="mockup-wrap">
+      <div class="mockup-canvas-wrap" id="mockupCanvasWrap">
+        <img id="mockupBg" class="mockup-bg" src="" alt="Garment">
+        <!-- layers injected here -->
+      </div>
+      <div class="mockup-controls">
+        <h3>Layers</h3>
+        <div class="layer-list" id="layerList"></div>
+        <div id="layerControls" style="display:none">
+          <div class="ctrl-row">
+            <label>Size</label>
+            <input type="range" id="ctrlSize" min="20" max="280" value="120" oninput="resizeSelected(this.value)">
+            <span class="ctrl-val" id="ctrlSizeVal">120px</span>
+          </div>
+          <div class="ctrl-row">
+            <label>Opacity</label>
+            <input type="range" id="ctrlOpacity" min="10" max="100" value="100" oninput="opacitySelected(this.value)">
+            <span class="ctrl-val" id="ctrlOpacityVal">100%</span>
+          </div>
+        </div>
+        <p class="mockup-hint">Click a layer to select it, then drag to reposition or use the handles to resize. The mockup is for reference only.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="btn-row" style="margin-top:24px">
+    <button class="btn btn-secondary" onclick="goTo(3)">← Back</button>
+    <button class="btn btn-primary" onclick="goTo(5)">Next: Your Info →</button>
+  </div>
+</div>
+
+<!-- STEP 4 (now 5): YOUR INFO -->
+<div class="section" id="sec5">
   <h2>Your Information</h2>
   <p class="subtitle">We'll use this to build your quote in our system</p>
   <div class="form-grid">
@@ -275,18 +390,18 @@
 </div>
 
 <!-- STEP 5 -->
-<div class="section" id="sec5">
+<div class="section" id="sec6">
   <h2>Review Your Order</h2>
   <p class="subtitle">Double-check everything before submitting</p>
   <div class="summary-card" id="summaryCard"></div>
   <div class="btn-row">
-    <button class="btn btn-secondary" onclick="goTo(4)">← Edit Info</button>
+    <button class="btn btn-secondary" onclick="goTo(5)">← Edit Info</button>
     <button class="btn btn-primary" id="submitBtn" onclick="submitOrder()">✓ Submit Order Request</button>
   </div>
 </div>
 
 <!-- SUCCESS -->
-<div class="section" id="sec6">
+<div class="section" id="sec7">
   <div class="success-box">
     <div class="success-icon">🎉</div>
     <h2>Order Request Submitted!</h2>
@@ -522,7 +637,7 @@ async function submitOrder() {
       headers:{'Content-Type':'application/json'},
       body:JSON.stringify(payload)
     });
-    if(r.ok){goTo(6);}
+    if(r.ok){goTo(7);}
     else{throw new Error(await r.text());}
   } catch(e) {
     console.error(e);
@@ -532,6 +647,407 @@ async function submitOrder() {
 }
 
 renderGrid();
+
+
+// ══════════════════════════════════════════════════════
+// ARTWORK UPLOAD + MOCKUP
+// ══════════════════════════════════════════════════════
+
+let uploadedFiles = [];    // { file, name, url, objectUrl, isImage, uploading, error }
+let mockupLayers = [];     // { id, url, objectUrl, name, x, y, w, dragging, resizing }
+let selectedLayer = null;
+let mockupPlacement = null;
+
+const GARMENT_VIEWS = {
+  'Left Chest':  null,
+  'Full Front':  null,
+  'Full Back':   null,
+  'LC + Full Back': null,
+  'Sleeve':      null,
+  'Hat Front':   null,
+};
+
+// ── Warning modal ─────────────────────────────────────
+function showArtworkWarning(files, cb) {
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.innerHTML = `
+    <div class="modal-box">
+      <h3>⚠️ Artwork Quality Notice</h3>
+      <p>For the best print results, please submit artwork in one of these formats:</p>
+      <ul>
+        <li><strong>.AI / .PSD / .EPS</strong> — vector or layered files (preferred)</li>
+        <li><strong>High-res PNG or JPEG</strong> — at least 300 DPI at the actual printed size</li>
+        <li><strong>.PDF</strong> — print-quality, not screen-export</li>
+      </ul>
+      <p>⚠️ <strong>If your artwork doesn't meet quality standards, an artwork redraw fee may be required</strong> before production can begin.</p>
+      <div class="modal-btn-row">
+        <button class="btn btn-secondary" id="modalCancel">Cancel</button>
+        <button class="btn btn-primary" id="modalOk">I Understand — Upload</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+  overlay.querySelector('#modalCancel').onclick = () => { overlay.remove(); };
+  overlay.querySelector('#modalOk').onclick = () => { overlay.remove(); cb(files); };
+  overlay.onclick = (e) => { if(e.target===overlay) overlay.remove(); };
+}
+
+// ── File handling ─────────────────────────────────────
+const dropZone = document.getElementById('dropZone');
+const artInput = document.getElementById('artFileInput');
+
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+dropZone.addEventListener('drop', e => {
+  e.preventDefault(); dropZone.classList.remove('drag-over');
+  const files = [...e.dataTransfer.files];
+  if (files.length) showArtworkWarning(files, processArtFiles);
+});
+artInput.addEventListener('change', e => {
+  const files = [...e.target.files];
+  if (files.length) showArtworkWarning(files, processArtFiles);
+  artInput.value = '';
+});
+
+function processArtFiles(files) {
+  files.forEach(file => {
+    const isImage = file.type.startsWith('image/');
+    const entry = {
+      id: Date.now() + Math.random(),
+      file,
+      name: file.name,
+      url: null,
+      objectUrl: isImage ? URL.createObjectURL(file) : null,
+      isImage,
+      uploading: true,
+      error: null,
+    };
+    uploadedFiles.push(entry);
+    renderArtFiles();
+    uploadFile(entry);
+  });
+}
+
+async function uploadFile(entry) {
+  try {
+    const formData = new FormData();
+    formData.append('file', entry.file);
+    const r = await fetch('https://app.base44.com/api/apps/69b379d07fc1c9e2a98e71ad/storage/upload', {
+      method: 'POST',
+      body: formData,
+    });
+    if (!r.ok) throw new Error('Upload failed: ' + r.status);
+    const data = await r.json();
+    entry.url = data.file_url || data.url || data.fileUrl;
+    entry.uploading = false;
+    // Add as mockup layer if it's an image
+    if (entry.isImage && entry.url) {
+      addMockupLayer(entry);
+    }
+  } catch(e) {
+    entry.uploading = false;
+    entry.error = 'Upload failed — please try again';
+  }
+  renderArtFiles();
+  updateMockupSection();
+}
+
+function renderArtFiles() {
+  const container = document.getElementById('artFileList');
+  if (!uploadedFiles.length) { container.innerHTML = ''; return; }
+  container.innerHTML = uploadedFiles.map((f, i) => {
+    const ext = f.name.split('.').pop().toUpperCase();
+    const thumb = f.isImage
+      ? `<img class="art-file-thumb" src="${f.objectUrl}" alt="">`
+      : `<div class="art-file-thumb non-image">${extIcon(ext)}</div>`;
+    const size = (f.file.size / 1024).toFixed(0) + ' KB';
+    let status = '';
+    if (f.uploading) status = `<div class="upload-progress"><div class="upload-progress-bar" style="width:60%;animation:pulse 1s infinite"></div></div><div class="art-status">Uploading...</div>`;
+    else if (f.error) status = `<div class="art-status error">${f.error}</div>`;
+    else status = `<div class="art-status done">✓ Uploaded</div>`;
+    return `<div class="art-file">
+      ${thumb}
+      <div class="art-file-info">
+        <div class="art-file-name">${f.name}</div>
+        <div class="art-file-meta">${ext} · ${size}</div>
+        ${status}
+      </div>
+      <button class="art-file-remove" onclick="removeArtFile(${i})" title="Remove">✕</button>
+    </div>`;
+  }).join('');
+}
+
+function extIcon(ext) {
+  const map = {AI:'🎨', PSD:'🎨', EPS:'🎨', PDF:'📄', SVG:'🖼️', TIFF:'🖼️', TIF:'🖼️'};
+  return map[ext] || '📎';
+}
+
+function removeArtFile(i) {
+  const f = uploadedFiles[i];
+  if (f.objectUrl) URL.revokeObjectURL(f.objectUrl);
+  // Remove corresponding mockup layer
+  mockupLayers = mockupLayers.filter(l => l.fileId !== f.id);
+  uploadedFiles.splice(i, 1);
+  renderArtFiles();
+  renderMockupLayers();
+  updateMockupSection();
+}
+
+// ── Mockup ────────────────────────────────────────────
+function updateMockupSection() {
+  const hasImages = uploadedFiles.some(f => f.isImage && f.url && !f.error);
+  document.getElementById('mockupSection').style.display = hasImages ? 'block' : 'none';
+  if (hasImages) {
+    renderMockupPlacementTabs();
+    renderMockupBg();
+    renderMockupLayers();
+  }
+}
+
+function renderMockupPlacementTabs() {
+  const placements = ['Front', 'Back', 'Left Chest', 'Sleeve', 'Hat'];
+  mockupPlacement = mockupPlacement || 'Front';
+  document.getElementById('mockupPlacementTabs').innerHTML = placements.map(p =>
+    `<button class="ptab${mockupPlacement===p?' active':''}" onclick="setMockupPlacement('${p}')">${p}</button>`
+  ).join('');
+}
+function setMockupPlacement(p) {
+  mockupPlacement = p;
+  renderMockupPlacementTabs();
+  renderMockupBg();
+}
+
+function renderMockupBg() {
+  const product = CATALOG[state.selectedStyle];
+  const color = state.selectedColor;
+  let imgUrl = '';
+  if (product && color && product.colors[color]) {
+    imgUrl = product.colors[color].img || product.img || '';
+  } else if (product) {
+    imgUrl = product.img || '';
+  }
+  const bg = document.getElementById('mockupBg');
+  if (imgUrl) {
+    bg.src = imgUrl;
+    bg.onerror = () => bg.src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="320" height="320"><rect fill="%23f4f4f4" width="320" height="320"/><text x="160" y="165" text-anchor="middle" fill="%23bbb" font-size="14">No Preview</text></svg>';
+  } else {
+    bg.src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="320" height="320"><rect fill="%23f4f4f4" width="320" height="320"/><text x="160" y="165" text-anchor="middle" fill="%23bbb" font-size="14">Garment Preview</text></svg>';
+  }
+}
+
+function addMockupLayer(fileEntry) {
+  const layer = {
+    id: fileEntry.id,
+    fileId: fileEntry.id,
+    url: fileEntry.url,
+    objectUrl: fileEntry.objectUrl,
+    name: fileEntry.name,
+    x: 100, y: 80,
+    w: 120,
+    opacity: 1,
+  };
+  mockupLayers.push(layer);
+  renderMockupLayers();
+}
+
+function renderMockupLayers() {
+  const wrap = document.getElementById('mockupCanvasWrap');
+  // Remove existing layer divs
+  wrap.querySelectorAll('.mockup-layer').forEach(el => el.remove());
+
+  mockupLayers.forEach(layer => {
+    const div = document.createElement('div');
+    div.className = 'mockup-layer' + (selectedLayer===layer.id?' selected':'');
+    div.style.cssText = `left:${layer.x}px;top:${layer.y}px;width:${layer.w}px;`;
+    div.dataset.id = layer.id;
+    div.innerHTML = `<img src="${layer.objectUrl||layer.url}" style="width:100%;opacity:${layer.opacity};display:block;pointer-events:none" draggable="false">
+      <div class="resize-handle" data-resize="${layer.id}"></div>`;
+    div.addEventListener('mousedown', e => startDrag(e, layer));
+    div.addEventListener('touchstart', e => startDragTouch(e, layer), {passive:false});
+    div.querySelector('.resize-handle').addEventListener('mousedown', e => { e.stopPropagation(); startResize(e, layer); });
+    div.querySelector('.resize-handle').addEventListener('touchstart', e => { e.stopPropagation(); startResizeTouch(e, layer); }, {passive:false});
+    wrap.appendChild(div);
+    // click to select
+    div.addEventListener('click', () => selectLayer(layer.id));
+  });
+
+  // Layer list panel
+  document.getElementById('layerList').innerHTML = mockupLayers.length
+    ? mockupLayers.map(l => `
+      <div class="layer-item${selectedLayer===l.id?' active':''}" onclick="selectLayer('${l.id}')">
+        <img class="layer-thumb" src="${l.objectUrl||l.url}" alt="">
+        <span class="layer-name">${l.name}</span>
+        <button class="layer-delete" onclick="event.stopPropagation();deleteLayer('${l.id}')">✕</button>
+      </div>`).join('')
+    : '<p style="font-size:.82rem;color:var(--gray3)">No image layers yet.</p>';
+
+  document.getElementById('layerControls').style.display = selectedLayer ? 'block' : 'none';
+  if (selectedLayer) {
+    const l = mockupLayers.find(x => x.id === selectedLayer);
+    if (l) {
+      document.getElementById('ctrlSize').value = l.w;
+      document.getElementById('ctrlSizeVal').textContent = l.w + 'px';
+      document.getElementById('ctrlOpacity').value = Math.round(l.opacity * 100);
+      document.getElementById('ctrlOpacityVal').textContent = Math.round(l.opacity * 100) + '%';
+    }
+  }
+}
+
+function selectLayer(id) {
+  selectedLayer = id;
+  renderMockupLayers();
+}
+function deleteLayer(id) {
+  mockupLayers = mockupLayers.filter(l => l.id != id);
+  if (selectedLayer == id) selectedLayer = null;
+  renderMockupLayers();
+}
+function resizeSelected(val) {
+  const l = mockupLayers.find(x => x.id === selectedLayer); if(!l) return;
+  l.w = parseInt(val);
+  document.getElementById('ctrlSizeVal').textContent = val + 'px';
+  renderMockupLayers();
+}
+function opacitySelected(val) {
+  const l = mockupLayers.find(x => x.id === selectedLayer); if(!l) return;
+  l.opacity = val / 100;
+  document.getElementById('ctrlOpacityVal').textContent = val + '%';
+  renderMockupLayers();
+}
+
+// ── Drag ─────────────────────────────────────────────
+let _drag = null;
+function startDrag(e, layer) {
+  if (e.target.dataset.resize) return;
+  e.preventDefault();
+  selectLayer(layer.id);
+  const wrap = document.getElementById('mockupCanvasWrap').getBoundingClientRect();
+  _drag = { layer, startX: e.clientX - layer.x, startY: e.clientY - layer.y, wrap };
+  document.addEventListener('mousemove', onDrag);
+  document.addEventListener('mouseup', stopDrag);
+}
+function onDrag(e) {
+  if (!_drag) return;
+  const l = _drag.layer;
+  const wrap = document.getElementById('mockupCanvasWrap').getBoundingClientRect();
+  l.x = Math.max(0, Math.min(e.clientX - _drag.startX, wrap.width - l.w));
+  l.y = Math.max(0, Math.min(e.clientY - _drag.startY, wrap.height - 20));
+  const el = document.querySelector(`.mockup-layer[data-id="${l.id}"]`);
+  if (el) { el.style.left = l.x + 'px'; el.style.top = l.y + 'px'; }
+}
+function stopDrag() { _drag = null; document.removeEventListener('mousemove', onDrag); document.removeEventListener('mouseup', stopDrag); }
+
+// Touch drag
+function startDragTouch(e, layer) {
+  if (e.target.dataset.resize) return;
+  e.preventDefault();
+  selectLayer(layer.id);
+  const t = e.touches[0];
+  _drag = { layer, startX: t.clientX - layer.x, startY: t.clientY - layer.y };
+  document.addEventListener('touchmove', onDragTouch, {passive:false});
+  document.addEventListener('touchend', stopDragTouch);
+}
+function onDragTouch(e) {
+  e.preventDefault();
+  if (!_drag) return;
+  const t = e.touches[0], l = _drag.layer;
+  const wrap = document.getElementById('mockupCanvasWrap').getBoundingClientRect();
+  l.x = Math.max(0, Math.min(t.clientX - _drag.startX, wrap.width - l.w));
+  l.y = Math.max(0, Math.min(t.clientY - _drag.startY, wrap.height - 20));
+  const el = document.querySelector(`.mockup-layer[data-id="${l.id}"]`);
+  if (el) { el.style.left = l.x + 'px'; el.style.top = l.y + 'px'; }
+}
+function stopDragTouch() { _drag = null; document.removeEventListener('touchmove', onDragTouch); document.removeEventListener('touchend', stopDragTouch); }
+
+// ── Resize ────────────────────────────────────────────
+let _resize = null;
+function startResize(e, layer) {
+  e.preventDefault();
+  _resize = { layer, startX: e.clientX, startW: layer.w };
+  document.addEventListener('mousemove', onResize);
+  document.addEventListener('mouseup', stopResize);
+}
+function onResize(e) {
+  if (!_resize) return;
+  const l = _resize.layer;
+  l.w = Math.max(30, _resize.startW + (e.clientX - _resize.startX));
+  const el = document.querySelector(`.mockup-layer[data-id="${l.id}"]`);
+  if (el) { el.style.width = l.w + 'px'; document.getElementById('ctrlSize').value = l.w; document.getElementById('ctrlSizeVal').textContent = Math.round(l.w) + 'px'; }
+}
+function stopResize() { if(_resize){ const l=_resize.layer; l.w=Math.round(l.w); renderMockupLayers(); } _resize=null; document.removeEventListener('mousemove',onResize); document.removeEventListener('mouseup',stopResize); }
+
+// Touch resize
+function startResizeTouch(e, layer) {
+  e.preventDefault();
+  const t = e.touches[0];
+  _resize = { layer, startX: t.clientX, startW: layer.w };
+  document.addEventListener('touchmove', onResizeTouch, {passive:false});
+  document.addEventListener('touchend', stopResizeTouch);
+}
+function onResizeTouch(e) {
+  e.preventDefault();
+  if(!_resize) return;
+  const t=e.touches[0], l=_resize.layer;
+  l.w = Math.max(30, _resize.startW + (t.clientX - _resize.startX));
+  const el = document.querySelector(`.mockup-layer[data-id="${l.id}"]`);
+  if(el){ el.style.width=l.w+'px'; document.getElementById('ctrlSize').value=l.w; document.getElementById('ctrlSizeVal').textContent=Math.round(l.w)+'px'; }
+}
+function stopResizeTouch(){ if(_resize){const l=_resize.layer;l.w=Math.round(l.w);renderMockupLayers();} _resize=null; document.removeEventListener('touchmove',onResizeTouch); document.removeEventListener('touchend',stopResizeTouch); }
+
+// ── Include artwork URLs in submit payload ────────────────────────────────────
+// Patch submitOrder to also send artwork_urls
+const _origSubmit = submitOrder;
+submitOrder = async function() {
+  // swap in patched version — see below
+  await _patchedSubmit();
+};
+async function _patchedSubmit() {
+  const btn=document.getElementById('submitBtn');
+  btn.disabled=true; btn.textContent='Submitting...';
+  const p=CATALOG[state.selectedStyle];
+  const total=Object.values(state.quantities).reduce((a,b)=>a+b,0);
+  const artworkUrls = uploadedFiles.filter(f=>f.url&&!f.error).map(f=>f.url);
+  const payload={
+    status:'Pending',
+    product_name:p.title,
+    product_supplier:p.supplier,
+    product_style:state.selectedStyle,
+    garment_color:state.selectedColor,
+    quantities:state.quantities,
+    total_qty:total,
+    placement:state.placement,
+    print_type:state.printType,
+    print_colors:state.printColors,
+    customer_first_name:state.firstName,
+    customer_last_name:state.lastName,
+    customer_email:state.email,
+    customer_phone:state.phone||'',
+    customer_company:state.company||'',
+    due_date:state.dueDate||null,
+    notes:state.notes||'',
+    mockup_url: artworkUrls[0] || '',
+    artwork_urls: artworkUrls,
+  };
+  try {
+    const r=await fetch('https://app.base44.com/api/apps/69b379d07fc1c9e2a98e71ad/entities/Order',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify(payload)
+    });
+    if(r.ok){goTo(7);}
+    else{throw new Error(await r.text());}
+  } catch(e) {
+    console.error(e);
+    btn.disabled=false; btn.textContent='✓ Submit Order Request';
+    alert('Something went wrong. Please try again or email us at Quotes@lbxprints.com');
+  }
+}
+
+// pulse animation for upload bar
+const styleEl = document.createElement('style');
+styleEl.textContent = '@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}';
+document.head.appendChild(styleEl);
+
 </script>
 </body>
 </html>
