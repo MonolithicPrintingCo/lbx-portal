@@ -115,6 +115,12 @@
   .success-box h2{font-size:1.6rem;margin-bottom:10px}
   .success-box p{color:var(--gray4);font-size:.95rem;max-width:420px;margin:0 auto 28px;line-height:1.6}
 
+  /* ── Mockup Mode Toggle ── */
+  .mockup-mode-toggle{display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap}
+  .mode-btn{flex:1;min-width:180px;padding:14px 16px;border:2px solid var(--gray2);border-radius:var(--radius);background:var(--white);font-size:.9rem;font-weight:600;cursor:pointer;transition:all .2s;color:var(--gray3);text-align:center}
+  .mode-btn:hover{border-color:var(--accent);color:var(--accent)}
+  .mode-btn.active{border-color:var(--accent);background:#fff0f1;color:var(--accent)}
+
   /* ── Artwork Upload ── */
   .art-warning{background:#fff3cd;border:1.5px solid #ffc107;border-radius:var(--radius);padding:14px 16px;font-size:.84rem;color:#7a4f00;margin-bottom:20px;line-height:1.6}
   .art-warning strong{display:block;margin-bottom:4px;font-size:.9rem}
@@ -305,9 +311,19 @@
 <!-- STEP 4: ARTWORK & MOCKUP -->
 <div class="section" id="sec4">
   <h2>Artwork &amp; Mockup</h2>
-  <p class="subtitle">Upload your design files and position them on a garment preview</p>
+  <p class="subtitle">Upload your artwork files and optionally create or provide a mockup</p>
 
-  <!-- Upload zone -->
+  <!-- Mode toggle -->
+  <div class="mockup-mode-toggle" id="mockupModeToggle">
+    <button class="mode-btn active" id="modeBtnCreate" onclick="setMockupMode('create')">
+      🎨 I need a mockup created
+    </button>
+    <button class="mode-btn" id="modeBtnSkip" onclick="setMockupMode('upload')">
+      ✅ I already have a mockup
+    </button>
+  </div>
+
+  <!-- ARTWORK UPLOAD (always shown) -->
   <div class="art-warning">
     <strong>📋 Artwork Requirements</strong>
     For best results, please upload files in <strong>.AI, .PSD,</strong> or <strong>.EPS</strong> format, or a high-resolution <strong>PNG / JPEG at 300 DPI at printed size</strong>.<br>
@@ -317,38 +333,53 @@
   <div class="drop-zone" id="dropZone">
     <input type="file" id="artFileInput" multiple accept=".ai,.psd,.eps,.pdf,.png,.jpg,.jpeg,.svg,.tif,.tiff">
     <div class="drop-zone-icon">📎</div>
-    <div class="drop-zone-label">Drop files here or click to browse</div>
+    <div class="drop-zone-label">Drop artwork files here or click to browse</div>
     <div class="drop-zone-sub">.AI · .PSD · .EPS · .PDF · PNG · JPEG · SVG · TIFF</div>
   </div>
   <div class="art-files" id="artFileList"></div>
 
-  <!-- Mockup generator -->
-  <div id="mockupSection" style="display:none;margin-top:28px">
-    <h3 style="font-size:1rem;font-weight:700;margin-bottom:6px">Mockup Preview <span style="font-size:.78rem;font-weight:400;color:var(--gray3)">(optional — drag &amp; resize artwork on the garment)</span></h3>
-    <div class="placement-tabs" id="mockupPlacementTabs"></div>
-    <div class="mockup-wrap">
-      <div class="mockup-canvas-wrap" id="mockupCanvasWrap">
-        <img id="mockupBg" class="mockup-bg" src="" alt="Garment">
-        <!-- layers injected here -->
-      </div>
-      <div class="mockup-controls">
-        <h3>Layers</h3>
-        <div class="layer-list" id="layerList"></div>
-        <div id="layerControls" style="display:none">
-          <div class="ctrl-row">
-            <label>Size</label>
-            <input type="range" id="ctrlSize" min="20" max="280" value="120" oninput="resizeSelected(this.value)">
-            <span class="ctrl-val" id="ctrlSizeVal">120px</span>
-          </div>
-          <div class="ctrl-row">
-            <label>Opacity</label>
-            <input type="range" id="ctrlOpacity" min="10" max="100" value="100" oninput="opacitySelected(this.value)">
-            <span class="ctrl-val" id="ctrlOpacityVal">100%</span>
-          </div>
+  <!-- MODE A: Mockup creator -->
+  <div id="mockupCreatorSection" style="margin-top:28px">
+    <div id="mockupSection" style="display:none">
+      <h3 style="font-size:1rem;font-weight:700;margin-bottom:6px">Mockup Preview <span style="font-size:.78rem;font-weight:400;color:var(--gray3)">(optional — drag &amp; resize artwork on the garment)</span></h3>
+      <div class="placement-tabs" id="mockupPlacementTabs"></div>
+      <div class="mockup-wrap">
+        <div class="mockup-canvas-wrap" id="mockupCanvasWrap">
+          <img id="mockupBg" class="mockup-bg" src="" alt="Garment">
+          <!-- layers injected here -->
         </div>
-        <p class="mockup-hint">Click a layer to select it, then drag to reposition or use the handles to resize. The mockup is for reference only.</p>
+        <div class="mockup-controls">
+          <h3>Layers</h3>
+          <div class="layer-list" id="layerList"></div>
+          <div id="layerControls" style="display:none">
+            <div class="ctrl-row">
+              <label>Size</label>
+              <input type="range" id="ctrlSize" min="20" max="280" value="120" oninput="resizeSelected(this.value)">
+              <span class="ctrl-val" id="ctrlSizeVal">120px</span>
+            </div>
+            <div class="ctrl-row">
+              <label>Opacity</label>
+              <input type="range" id="ctrlOpacity" min="10" max="100" value="100" oninput="opacitySelected(this.value)">
+              <span class="ctrl-val" id="ctrlOpacityVal">100%</span>
+            </div>
+          </div>
+          <p class="mockup-hint">Click a layer to select it, then drag to reposition or use the handles to resize. The mockup is for reference only.</p>
+        </div>
       </div>
     </div>
+  </div>
+
+  <!-- MODE B: Upload existing mockup -->
+  <div id="mockupUploadSection" style="display:none;margin-top:28px">
+    <h3 style="font-size:1rem;font-weight:700;margin-bottom:8px">Upload Your Mockup</h3>
+    <p style="font-size:.85rem;color:var(--gray3);margin-bottom:12px">Upload your existing mockup images below. PNG, JPEG, or PDF accepted.</p>
+    <div class="drop-zone" id="mockupDropZone">
+      <input type="file" id="mockupFileInput" multiple accept=".png,.jpg,.jpeg,.pdf,.ai,.psd">
+      <div class="drop-zone-icon">🖼️</div>
+      <div class="drop-zone-label">Drop mockup files here or click to browse</div>
+      <div class="drop-zone-sub">PNG · JPEG · PDF</div>
+    </div>
+    <div class="art-files" id="mockupFileList"></div>
   </div>
 
   <div class="btn-row" style="margin-top:24px">
@@ -632,11 +663,12 @@ async function submitOrder() {
     customer_company:state.company||'',
     due_date:state.dueDate||null,
     notes:state.notes||'',
+    mockup_mode: mockupMode,
   };
   try {
     const r=await fetch('https://app.base44.com/api/apps/69b379d07fc1c9e2a98e71ad/entities/Order',{
       method:'POST',
-      headers:{'Content-Type':'application/json'},
+      headers:{'Content-Type':'application/json','Authorization':'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJjN2Q2M2IyNi02MGY2LTQwOGItYmVjMi0zZWQ5NGZmODNiMjgiLCJjbGllbnRfaWQiOiJjN2Q2M2IyNi02MGY2LTQwOGItYmVjMi0zZWQ5NGZmODNiMjgiLCJhcHBfaWQiOiI2OWIzNzlkMDdmYzFjOWUyYTk4ZTcxYWQiLCJhdWQiOiJiYXNlNDRfYXBpIiwic2NvcGUiOiJhcHAuYWNjZXNzIiwiZXhwIjoxNzczNDI5NDQwLCJpYXQiOjE3NzM0MjU4NDB9.IxwHLabZT-kDyFACegtCyBsl3DHGdGIhaCRNK2XdRdQ'},
       body:JSON.stringify(payload)
     });
     if(r.ok){goTo(7);}
@@ -1010,8 +1042,9 @@ async function _patchedSubmit() {
   const p=CATALOG[state.selectedStyle];
   const total=Object.values(state.quantities).reduce((a,b)=>a+b,0);
   // Use filenames for the order record (data URLs are too large for entity storage)
-  // The local data URLs are used only for the mockup preview canvas
   const artworkUrls = uploadedFiles.filter(f=>!f.error).map(f=>f.name);
+  const mockupFileNames = uploadedMockupFiles.filter(f=>!f.error).map(f=>'[mockup] ' + f.name);
+  const allArtworkNames = [...artworkUrls, ...mockupFileNames];
   const payload={
     status:'Pending',
     product_name:p.title,
@@ -1030,13 +1063,14 @@ async function _patchedSubmit() {
     customer_company:state.company||'',
     due_date:state.dueDate||null,
     notes:state.notes||'',
+    mockup_mode: mockupMode,
     mockup_url: '',
-    artwork_urls: artworkUrls,
+    artwork_urls: allArtworkNames,
   };
   try {
     const r=await fetch('https://app.base44.com/api/apps/69b379d07fc1c9e2a98e71ad/entities/Order',{
       method:'POST',
-      headers:{'Content-Type':'application/json'},
+      headers:{'Content-Type':'application/json','Authorization':'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJjN2Q2M2IyNi02MGY2LTQwOGItYmVjMi0zZWQ5NGZmODNiMjgiLCJjbGllbnRfaWQiOiJjN2Q2M2IyNi02MGY2LTQwOGItYmVjMi0zZWQ5NGZmODNiMjgiLCJhcHBfaWQiOiI2OWIzNzlkMDdmYzFjOWUyYTk4ZTcxYWQiLCJhdWQiOiJiYXNlNDRfYXBpIiwic2NvcGUiOiJhcHAuYWNjZXNzIiwiZXhwIjoxNzczNDI5NDQwLCJpYXQiOjE3NzM0MjU4NDB9.IxwHLabZT-kDyFACegtCyBsl3DHGdGIhaCRNK2XdRdQ'},
       body:JSON.stringify(payload)
     });
     if(r.ok){goTo(7);}
@@ -1046,6 +1080,89 @@ async function _patchedSubmit() {
     btn.disabled=false; btn.textContent='✓ Submit Order Request';
     alert('Something went wrong. Please try again or email us at Quotes@lbxprints.com');
   }
+}
+
+// ── Mockup mode toggle ────────────────────────────────────────────────────
+let mockupMode = 'create'; // 'create' | 'upload'
+let uploadedMockupFiles = []; // { file, name, url, isImage, error }
+
+function setMockupMode(mode) {
+  mockupMode = mode;
+  document.getElementById('modeBtnCreate').classList.toggle('active', mode === 'create');
+  document.getElementById('modeBtnSkip').classList.toggle('active', mode === 'upload');
+  document.getElementById('mockupCreatorSection').style.display = mode === 'create' ? '' : 'none';
+  document.getElementById('mockupUploadSection').style.display = mode === 'upload' ? '' : 'none';
+}
+
+// Mockup file drop zone
+const mockupDropZone = document.getElementById('mockupDropZone');
+const mockupFileInput = document.getElementById('mockupFileInput');
+
+mockupDropZone.addEventListener('dragover', e => { e.preventDefault(); mockupDropZone.classList.add('drag-over'); });
+mockupDropZone.addEventListener('dragleave', () => mockupDropZone.classList.remove('drag-over'));
+mockupDropZone.addEventListener('drop', e => {
+  e.preventDefault(); mockupDropZone.classList.remove('drag-over');
+  processMockupFiles([...e.dataTransfer.files]);
+});
+mockupFileInput.addEventListener('change', e => {
+  processMockupFiles([...e.target.files]);
+  e.target.value = '';
+});
+
+function processMockupFiles(files) {
+  files.forEach(file => {
+    const isImage = file.type.startsWith('image/');
+    const entry = { file, name: file.name, url: null, isImage, error: null, uploading: true };
+    uploadedMockupFiles.push(entry);
+    readMockupFile(entry);
+  });
+  renderMockupFiles();
+}
+
+async function readMockupFile(entry) {
+  try {
+    await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = e => { entry.url = e.target.result; entry.uploading = false; resolve(); };
+      reader.onerror = () => reject();
+      reader.readAsDataURL(entry.file);
+    });
+  } catch(e) {
+    entry.uploading = false;
+    entry.error = 'Could not read file';
+  }
+  renderMockupFiles();
+}
+
+function removeMockupFile(i) {
+  uploadedMockupFiles.splice(i, 1);
+  renderMockupFiles();
+}
+
+function renderMockupFiles() {
+  const container = document.getElementById('mockupFileList');
+  if (!uploadedMockupFiles.length) { container.innerHTML = ''; return; }
+  container.innerHTML = uploadedMockupFiles.map((f, i) => {
+    const ext = f.name.split('.').pop().toUpperCase();
+    const thumb = f.isImage && f.url
+      ? `<img class="art-file-thumb" src="${f.url}" alt="">`
+      : `<div class="art-file-thumb non-image">${extIcon(ext)}</div>`;
+    const size = (f.file.size / 1024).toFixed(0) + ' KB';
+    let status = f.uploading
+      ? `<div class="art-status">Reading...</div>`
+      : f.error
+        ? `<div class="art-status error">${f.error}</div>`
+        : `<div class="art-status done">✓ Ready</div>`;
+    return `<div class="art-file">
+      ${thumb}
+      <div class="art-file-info">
+        <div class="art-file-name">${f.name}</div>
+        <div class="art-file-meta">${ext} · ${size}</div>
+        ${status}
+      </div>
+      <button class="art-file-remove" onclick="removeMockupFile(${i})" title="Remove">✕</button>
+    </div>`;
+  }).join('');
 }
 
 // pulse animation for upload bar
