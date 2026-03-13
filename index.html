@@ -141,8 +141,8 @@
   .loc-tab{padding:5px 12px;border:1.5px solid var(--gray2);border-radius:20px;background:var(--white);font-size:.8rem;font-weight:600;cursor:pointer;transition:all .2s;color:var(--gray3)}
   .loc-tab:hover{border-color:var(--accent);color:var(--accent)}
   .loc-tab.active{border-color:var(--accent);background:var(--accent);color:#fff}
-  .add-loc-btn{padding:5px 10px;border:1.5px dashed var(--gray2);border-radius:20px;background:none;font-size:.8rem;cursor:pointer;color:var(--gray3);transition:all .2s}
-  .add-loc-btn:hover{border-color:var(--accent);color:var(--accent)}
+  .add-loc-btn{padding:7px 16px;border:2px solid var(--accent);border-radius:20px;background:var(--accent);font-size:.85rem;font-weight:600;cursor:pointer;color:#fff;transition:all .2s;display:flex;align-items:center;gap:5px}
+  .add-loc-btn:hover{background:var(--accent-dark,#c45c00);border-color:var(--accent-dark,#c45c00);color:#fff;transform:scale(1.03)}
   .loc-panel{border:1.5px solid var(--gray2);border-radius:var(--radius);padding:14px;margin-top:4px}
   /* Review mockup grid */
   .review-garments{display:flex;flex-direction:column;gap:20px}
@@ -304,17 +304,7 @@
       <div class="option-card" data-field="printType" data-val="Heat Transfer"><div class="option-icon">♨️</div>Heat Transfer</div>
     </div>
   </div>
-  <div class="placement-group">
-    <label>Placement</label>
-    <div class="option-grid">
-      <div class="option-card selected" data-field="placement" data-val="Left Chest"><div class="option-icon">👕</div>Left Chest</div>
-      <div class="option-card" data-field="placement" data-val="Full Front"><div class="option-icon">👕</div>Full Front</div>
-      <div class="option-card" data-field="placement" data-val="Full Back"><div class="option-icon">👕</div>Full Back</div>
-      <div class="option-card" data-field="placement" data-val="LC + Full Back"><div class="option-icon">👕</div>LC + Back</div>
-      <div class="option-card" data-field="placement" data-val="Sleeve"><div class="option-icon">👕</div>Sleeve</div>
-      <div class="option-card" data-field="placement" data-val="Hat Front"><div class="option-icon">🧢</div>Hat Front</div>
-    </div>
-  </div>
+  
   <div class="placement-group">
     <label>Number of Colors / Stitches</label>
     <div class="option-grid">
@@ -894,7 +884,7 @@ function renderGarmentList() {
         <div style="font-size:.8rem;font-weight:700;color:var(--gray4);margin-bottom:6px;text-transform:uppercase;letter-spacing:.04em">Print Locations</div>
         <div class="loc-tabs">
           ${locTabs}
-          <button class="add-loc-btn" onclick="showAddLocationMenu('${g.id}')">+ Add Location</button>
+          <button class="add-loc-btn" onclick="showAddLocationMenu('${g.id}')">＋ Add Print Location</button>
         </div>
 
         <!-- Active location panel -->
