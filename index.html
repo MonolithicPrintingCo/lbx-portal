@@ -731,24 +731,25 @@ function processArtFiles(files) {
 }
 
 async function uploadFile(entry) {
+  // Store file locally as a data URL (no external upload needed for static portal)
   try {
-    const formData = new FormData();
-    formData.append('file', entry.file);
-    const r = await fetch('https://app.base44.com/api/apps/69b379d07fc1c9e2a98e71ad/storage/upload', {
-      method: 'POST',
-      body: formData,
+    await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = e => {
+        entry.url = e.target.result;   // data: URL — usable as image src & stored in order
+        entry.uploading = false;
+        resolve();
+      };
+      reader.onerror = () => reject(new Error('Could not read file'));
+      reader.readAsDataURL(entry.file);
     });
-    if (!r.ok) throw new Error('Upload failed: ' + r.status);
-    const data = await r.json();
-    entry.url = data.file_url || data.url || data.fileUrl;
-    entry.uploading = false;
     // Add as mockup layer if it's an image
     if (entry.isImage && entry.url) {
       addMockupLayer(entry);
     }
   } catch(e) {
     entry.uploading = false;
-    entry.error = 'Upload failed — please try again';
+    entry.error = 'Could not read file — please try again';
   }
   renderArtFiles();
   updateMockupSection();
@@ -1008,7 +1009,9 @@ async function _patchedSubmit() {
   btn.disabled=true; btn.textContent='Submitting...';
   const p=CATALOG[state.selectedStyle];
   const total=Object.values(state.quantities).reduce((a,b)=>a+b,0);
-  const artworkUrls = uploadedFiles.filter(f=>f.url&&!f.error).map(f=>f.url);
+  // Use filenames for the order record (data URLs are too large for entity storage)
+  // The local data URLs are used only for the mockup preview canvas
+  const artworkUrls = uploadedFiles.filter(f=>!f.error).map(f=>f.name);
   const payload={
     status:'Pending',
     product_name:p.title,
@@ -1027,7 +1030,7 @@ async function _patchedSubmit() {
     customer_company:state.company||'',
     due_date:state.dueDate||null,
     notes:state.notes||'',
-    mockup_url: artworkUrls[0] || '',
+    mockup_url: '',
     artwork_urls: artworkUrls,
   };
   try {
