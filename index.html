@@ -121,6 +121,39 @@
   .mode-btn:hover{border-color:var(--accent);color:var(--accent)}
   .mode-btn.active{border-color:var(--accent);background:#fff0f1;color:var(--accent)}
 
+  /* ── Multi-Garment ── */
+  .garment-list{display:flex;flex-direction:column;gap:16px;margin-bottom:20px}
+  .garment-card{background:var(--white);border:2px solid var(--gray2);border-radius:var(--radius);overflow:hidden;transition:border-color .2s}
+  .garment-card.active-garment{border-color:var(--accent)}
+  .garment-card-header{display:flex;align-items:center;gap:10px;padding:12px 14px;cursor:pointer;background:var(--gray1);border-bottom:1px solid var(--gray2)}
+  .garment-card-header:hover{background:#f0f0f0}
+  .garment-card-num{width:26px;height:26px;border-radius:50%;background:var(--accent);color:#fff;font-size:.8rem;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+  .garment-card-title{flex:1;font-weight:600;font-size:.9rem}
+  .garment-card-subtitle{font-size:.78rem;color:var(--gray3)}
+  .garment-card-body{padding:14px}
+  .garment-card-body.collapsed{display:none}
+  .add-garment-btn{display:flex;align-items:center;gap:8px;padding:12px 16px;border:2px dashed var(--gray2);border-radius:var(--radius);background:none;cursor:pointer;font-size:.88rem;font-weight:600;color:var(--gray3);width:100%;transition:all .2s}
+  .add-garment-btn:hover{border-color:var(--accent);color:var(--accent)}
+  .remove-garment-btn{background:none;border:none;cursor:pointer;color:var(--gray3);font-size:1rem;padding:4px 6px;border-radius:4px}
+  .remove-garment-btn:hover{color:#e53935;background:#fff0f0}
+  /* Location tabs inside garment */
+  .loc-tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;align-items:center}
+  .loc-tab{padding:5px 12px;border:1.5px solid var(--gray2);border-radius:20px;background:var(--white);font-size:.8rem;font-weight:600;cursor:pointer;transition:all .2s;color:var(--gray3)}
+  .loc-tab:hover{border-color:var(--accent);color:var(--accent)}
+  .loc-tab.active{border-color:var(--accent);background:var(--accent);color:#fff}
+  .add-loc-btn{padding:5px 10px;border:1.5px dashed var(--gray2);border-radius:20px;background:none;font-size:.8rem;cursor:pointer;color:var(--gray3);transition:all .2s}
+  .add-loc-btn:hover{border-color:var(--accent);color:var(--accent)}
+  .loc-panel{border:1.5px solid var(--gray2);border-radius:var(--radius);padding:14px;margin-top:4px}
+  /* Review mockup grid */
+  .review-garments{display:flex;flex-direction:column;gap:20px}
+  .review-garment{background:var(--white);border:1.5px solid var(--gray2);border-radius:var(--radius);padding:14px}
+  .review-garment h4{font-size:.9rem;font-weight:700;margin-bottom:10px;color:var(--black)}
+  .review-mockup-grid{display:flex;gap:10px;flex-wrap:wrap}
+  .review-mockup-item{text-align:center}
+  .review-mockup-img{width:160px;height:160px;object-fit:contain;border:1.5px solid var(--gray2);border-radius:var(--radius);background:var(--gray1);display:block}
+  .review-mockup-label{font-size:.75rem;color:var(--gray3);margin-top:4px}
+  .review-uploaded-mockup{width:160px;height:160px;object-fit:contain;border:1.5px solid var(--gray2);border-radius:var(--radius);background:var(--gray1)}
+
   /* ── Artwork Upload ── */
   .art-warning{background:#fff3cd;border:1.5px solid #ffc107;border-radius:var(--radius);padding:14px 16px;font-size:.84rem;color:#7a4f00;margin-bottom:20px;line-height:1.6}
   .art-warning strong{display:block;margin-bottom:4px;font-size:.9rem}
@@ -180,6 +213,7 @@
   .modal-btn-row{display:flex;justify-content:flex-end;gap:10px}
 
 </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 </head>
 <body>
 
@@ -192,7 +226,7 @@
   <div class="step active" id="step1"><span class="step-num">1</span>Select Product</div>
   <div class="step" id="step2"><span class="step-num">2</span>Color &amp; Quantity</div>
   <div class="step" id="step3"><span class="step-num">3</span>Print Details</div>
-  <div class="step" id="step4"><span class="step-num">4</span>Artwork &amp; Mockup</div>
+  <div class="step" id="step4"><span class="step-num">4</span>Garments &amp; Art</div>
   <div class="step" id="step5"><span class="step-num">5</span>Your Info</div>
   <div class="step" id="step6"><span class="step-num">6</span>Review &amp; Submit</div>
 </div>
@@ -310,77 +344,14 @@
 
 <!-- STEP 4: ARTWORK & MOCKUP -->
 <div class="section" id="sec4">
-  <h2>Artwork &amp; Mockup</h2>
-  <p class="subtitle">Upload your artwork files and optionally create or provide a mockup</p>
+  <h2>Garments &amp; Artwork</h2>
+  <p class="subtitle">Add one or more garments, then upload artwork and build mockups for each print location</p>
 
-  <!-- Mode toggle -->
-  <div class="mockup-mode-toggle" id="mockupModeToggle">
-    <button class="mode-btn active" id="modeBtnCreate" onclick="setMockupMode('create')">
-      🎨 I need a mockup created
-    </button>
-    <button class="mode-btn" id="modeBtnSkip" onclick="setMockupMode('upload')">
-      ✅ I already have a mockup
-    </button>
-  </div>
+  <div class="garment-list" id="garmentList"></div>
 
-  <!-- ARTWORK UPLOAD (always shown) -->
-  <div class="art-warning">
-    <strong>📋 Artwork Requirements</strong>
-    For best results, please upload files in <strong>.AI, .PSD,</strong> or <strong>.EPS</strong> format, or a high-resolution <strong>PNG / JPEG at 300 DPI at printed size</strong>.<br>
-    ⚠️ If your artwork does not meet quality standards, an <strong>artwork redraw fee may be required</strong>.
-  </div>
-
-  <div class="drop-zone" id="dropZone">
-    <input type="file" id="artFileInput" multiple accept=".ai,.psd,.eps,.pdf,.png,.jpg,.jpeg,.svg,.tif,.tiff">
-    <div class="drop-zone-icon">📎</div>
-    <div class="drop-zone-label">Drop artwork files here or click to browse</div>
-    <div class="drop-zone-sub">.AI · .PSD · .EPS · .PDF · PNG · JPEG · SVG · TIFF</div>
-  </div>
-  <div class="art-files" id="artFileList"></div>
-
-  <!-- MODE A: Mockup creator -->
-  <div id="mockupCreatorSection" style="margin-top:28px">
-    <div id="mockupSection" style="display:none">
-      <h3 style="font-size:1rem;font-weight:700;margin-bottom:6px">Mockup Preview <span style="font-size:.78rem;font-weight:400;color:var(--gray3)">(optional — drag &amp; resize artwork on the garment)</span></h3>
-      <div class="placement-tabs" id="mockupPlacementTabs"></div>
-      <div class="mockup-wrap">
-        <div class="mockup-canvas-wrap" id="mockupCanvasWrap">
-          <img id="mockupBg" class="mockup-bg" src="" alt="Garment">
-          <!-- layers injected here -->
-        </div>
-        <div class="mockup-controls">
-          <h3>Layers</h3>
-          <div class="layer-list" id="layerList"></div>
-          <div id="layerControls" style="display:none">
-            <div class="ctrl-row">
-              <label>Size</label>
-              <input type="range" id="ctrlSize" min="20" max="280" value="120" oninput="resizeSelected(this.value)">
-              <span class="ctrl-val" id="ctrlSizeVal">120px</span>
-            </div>
-            <div class="ctrl-row">
-              <label>Opacity</label>
-              <input type="range" id="ctrlOpacity" min="10" max="100" value="100" oninput="opacitySelected(this.value)">
-              <span class="ctrl-val" id="ctrlOpacityVal">100%</span>
-            </div>
-          </div>
-          <p class="mockup-hint">Click a layer to select it, then drag to reposition or use the handles to resize. The mockup is for reference only.</p>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- MODE B: Upload existing mockup -->
-  <div id="mockupUploadSection" style="display:none;margin-top:28px">
-    <h3 style="font-size:1rem;font-weight:700;margin-bottom:8px">Upload Your Mockup</h3>
-    <p style="font-size:.85rem;color:var(--gray3);margin-bottom:12px">Upload your existing mockup images below. PNG, JPEG, or PDF accepted.</p>
-    <div class="drop-zone" id="mockupDropZone">
-      <input type="file" id="mockupFileInput" multiple accept=".png,.jpg,.jpeg,.pdf,.ai,.psd">
-      <div class="drop-zone-icon">🖼️</div>
-      <div class="drop-zone-label">Drop mockup files here or click to browse</div>
-      <div class="drop-zone-sub">PNG · JPEG · PDF</div>
-    </div>
-    <div class="art-files" id="mockupFileList"></div>
-  </div>
+  <button class="add-garment-btn" onclick="addGarment()">
+    <span style="font-size:1.2rem">+</span> Add Another Garment Style
+  </button>
 
   <div class="btn-row" style="margin-top:24px">
     <button class="btn btn-secondary" onclick="goTo(3)">← Back</button>
@@ -388,6 +359,7 @@
   </div>
 </div>
 
+<!-- STEP 4 (now 5): YOUR INFO -->
 <!-- STEP 4 (now 5): YOUR INFO -->
 <div class="section" id="sec5">
   <h2>Your Information</h2>
@@ -425,7 +397,8 @@
   <h2>Review Your Order</h2>
   <p class="subtitle">Double-check everything before submitting</p>
   <div class="summary-card" id="summaryCard"></div>
-  <div class="btn-row">
+  <div id="reviewMockupsSection" style="margin-top:20px"></div>
+  <div class="btn-row" style="margin-top:20px">
     <button class="btn btn-secondary" onclick="goTo(5)">← Edit Info</button>
     <button class="btn btn-primary" id="submitBtn" onclick="submitOrder()">✓ Submit Order Request</button>
   </div>
@@ -487,8 +460,8 @@ function goTo(n) {
     if (s) { s.classList.toggle('active',i===n); s.classList.toggle('done',i<n); }
   }
   if (n===2) renderStep2();
-  if (n===4) { renderMockupBg(); }
-  if (n===6) renderSummary();
+  if (n===4) { initGarments(); }
+  if (n===6) { renderSummary(); buildReviewMockups(); }
   window.scrollTo(0,0);
 }
 
@@ -619,17 +592,30 @@ function validateAndReview() {
 
 // ─── Step 6 summary ────────────────────────────────────────────────────────
 function renderSummary() {
-  const p=CATALOG[state.selectedStyle];
-  state.dueDate=document.getElementById('dueDate').value;
-  state.notes=document.getElementById('orderNotes').value;
-  const total=Object.values(state.quantities).reduce((a,b)=>a+b,0);
-  const sizeStr=Object.entries(state.quantities).map(([s,q])=>`${s}×${q}`).join(', ');
-  document.getElementById('summaryCard').innerHTML=`
-    <div class="summary-row"><span class="label">Product</span><span class="value">${p.brand} ${state.selectedStyle} — ${p.title}</span></div>
-    <div class="summary-row"><span class="label">Supplier</span><span class="value">${p.supplier}</span></div>
-    <div class="summary-row"><span class="label">Color</span><span class="value">${state.selectedColor}</span></div>
+  state.dueDate = document.getElementById('dueDate').value;
+  state.notes = document.getElementById('orderNotes').value;
+  const total = Object.values(state.quantities).reduce((a,b)=>a+b,0);
+  const sizeStr = Object.entries(state.quantities).map(([s,q])=>`${s}×${q}`).join(', ');
+
+  // Garment rows
+  const garmentRows = garments.map((g,i) => {
+    const prod = CATALOG[g.style]||{};
+    const locs = g.locations.map(l => {
+      const artCount = l.artFiles.filter(f=>!f.error).length;
+      const mockCount = l.mockupFiles.filter(f=>!f.error).length;
+      const note = artCount ? ` (${artCount} artwork file${artCount>1?'s':''})` : mockCount ? ` (${mockCount} mockup)` : '';
+      return `${l.name}${note}`;
+    }).join(', ');
+    return `<div class="summary-row">
+      <span class="label">Garment ${i+1}</span>
+      <span class="value">${prod.brand||''} ${prod.title||g.style} · ${g.color}<br><span style="font-size:.8rem;color:var(--gray3)">${locs}</span></span>
+    </div>`;
+  }).join('');
+
+  document.getElementById('summaryCard').innerHTML = `
+    ${garmentRows}
     <div class="summary-row"><span class="label">Sizes / Qty</span><span class="value">${sizeStr} (${total} pcs)</span></div>
-    <div class="summary-row"><span class="label">Decoration</span><span class="value">${state.printType} · ${state.placement} · ${state.printColors}</span></div>
+    <div class="summary-row"><span class="label">Decoration</span><span class="value">${state.printType} · ${state.printColors}</span></div>
     ${state.dueDate?`<div class="summary-row"><span class="label">Need By</span><span class="value">${state.dueDate}</span></div>`:''}
     ${state.notes?`<div class="summary-row"><span class="label">Notes</span><span class="value">${state.notes}</span></div>`:''}
     <div class="summary-row" style="margin-top:8px"><span class="label">Name</span><span class="value">${state.firstName} ${state.lastName}</span></div>
@@ -645,26 +631,41 @@ async function submitOrder() {
   btn.disabled=true; btn.textContent='Submitting...';
   const p=CATALOG[state.selectedStyle];
   const total=Object.values(state.quantities).reduce((a,b)=>a+b,0);
+
+  // Build garment summary for notes
+  const garmentSummary = garments.map((g,i) => {
+    const prod = CATALOG[g.style] || {};
+    const locs = g.locations.map(l => l.name + (l.artFiles.length ? ` (${l.artFiles.length} file${l.artFiles.length>1?'s':''})` : '')).join(', ');
+    return `Garment ${i+1}: ${prod.title||g.style} / ${g.color} — ${locs}`;
+  }).join('\n');
+
   const payload={
     status:'Pending',
-    product_name:p.title,
-    product_supplier:p.supplier,
-    product_style:state.selectedStyle,
-    garment_color:state.selectedColor,
-    quantities:state.quantities,
-    total_qty:total,
-    placement:state.placement,
-    print_type:state.printType,
-    print_colors:state.printColors,
-    customer_first_name:state.firstName,
-    customer_last_name:state.lastName,
-    customer_email:state.email,
-    customer_phone:state.phone||'',
-    customer_company:state.company||'',
-    due_date:state.dueDate||null,
-    notes:state.notes||'',
-    mockup_mode: mockupMode,
+    product_name: garments.map(g=>(CATALOG[g.style]||{}).title||g.style).join(', '),
+    product_supplier: garments.map(g=>(CATALOG[g.style]||{}).supplier||'').filter(Boolean).join(', '),
+    product_style: garments.map(g=>g.style).join(', '),
+    garment_color: garments.map(g=>g.color).join(', '),
+    quantities: state.quantities,
+    total_qty: total,
+    placement: garments.flatMap(g=>g.locations.map(l=>l.name)).filter((v,i,a)=>a.indexOf(v)===i).join(', '),
+    print_type: state.printType,
+    print_colors: state.printColors,
+    customer_first_name: state.firstName,
+    customer_last_name: state.lastName,
+    customer_email: state.email,
+    customer_phone: state.phone||'',
+    customer_company: state.company||'',
+    due_date: state.dueDate||null,
+    notes: (state.notes||'') + (garmentSummary ? '\n\n--- Garments ---\n' + garmentSummary : ''),
+    mockup_url: '',
+    artwork_urls: garments.flatMap(g =>
+      g.locations.flatMap(l => [
+        ...l.artFiles.filter(f=>!f.error).map(f=>`[G${garments.indexOf(g)+1} ${l.name}] ${f.name}`),
+        ...l.mockupFiles.filter(f=>!f.error).map(f=>`[mockup G${garments.indexOf(g)+1} ${l.name}] ${f.name}`),
+      ])
+    ),
   };
+
   try {
     const r=await fetch('https://app.base44.com/api/apps/69b379d07fc1c9e2a98e71ad/entities/Order',{
       method:'POST',
@@ -680,495 +681,677 @@ async function submitOrder() {
   }
 }
 
-renderGrid();
-
-
 // ══════════════════════════════════════════════════════
-// ARTWORK UPLOAD + MOCKUP
+// MULTI-GARMENT + MULTI-LOCATION SYSTEM
 // ══════════════════════════════════════════════════════
 
-let uploadedFiles = [];    // { file, name, url, objectUrl, isImage, uploading, error }
-let mockupLayers = [];     // { id, url, objectUrl, name, x, y, w, dragging, resizing }
-let selectedLayer = null;
-let mockupPlacement = null;
+// Data model:
+// garments = [{ id, style, color, mode('create'|'upload'), activeLocIdx,
+//               locations: [{ id, name, artFiles:[], mockupFiles:[], layers:[], selectedLayer }] }]
 
-const GARMENT_VIEWS = {
-  'Left Chest':  null,
-  'Full Front':  null,
-  'Full Back':   null,
-  'LC + Full Back': null,
-  'Sleeve':      null,
-  'Hat Front':   null,
-};
+let garments = [];
+let _uid = 0;
+function uid() { return ++_uid + '_' + Date.now(); }
 
-// ── Warning modal ─────────────────────────────────────
-function showArtworkWarning(files, cb) {
-  const overlay = document.createElement('div');
-  overlay.className = 'modal-overlay';
-  overlay.innerHTML = `
-    <div class="modal-box">
-      <h3>⚠️ Artwork Quality Notice</h3>
-      <p>For the best print results, please submit artwork in one of these formats:</p>
-      <ul>
-        <li><strong>.AI / .PSD / .EPS</strong> — vector or layered files (preferred)</li>
-        <li><strong>High-res PNG or JPEG</strong> — at least 300 DPI at the actual printed size</li>
-        <li><strong>.PDF</strong> — print-quality, not screen-export</li>
-      </ul>
-      <p>⚠️ <strong>If your artwork doesn't meet quality standards, an artwork redraw fee may be required</strong> before production can begin.</p>
-      <div class="modal-btn-row">
-        <button class="btn btn-secondary" id="modalCancel">Cancel</button>
-        <button class="btn btn-primary" id="modalOk">I Understand — Upload</button>
-      </div>
-    </div>`;
-  document.body.appendChild(overlay);
-  overlay.querySelector('#modalCancel').onclick = () => { overlay.remove(); };
-  overlay.querySelector('#modalOk').onclick = () => { overlay.remove(); cb(files); };
-  overlay.onclick = (e) => { if(e.target===overlay) overlay.remove(); };
-}
+const LOCATIONS = ['Front', 'Back', 'Left Chest', 'Right Chest', 'Sleeve', 'Hat Front', 'Hat Back', 'Hem', 'Custom'];
 
-// ── File handling ─────────────────────────────────────
-const dropZone = document.getElementById('dropZone');
-const artInput = document.getElementById('artFileInput');
-
-dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
-dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
-dropZone.addEventListener('drop', e => {
-  e.preventDefault(); dropZone.classList.remove('drag-over');
-  const files = [...e.dataTransfer.files];
-  if (files.length) showArtworkWarning(files, processArtFiles);
-});
-artInput.addEventListener('change', e => {
-  const files = [...e.target.files];
-  if (files.length) showArtworkWarning(files, processArtFiles);
-  artInput.value = '';
-});
-
-function processArtFiles(files) {
-  files.forEach(file => {
-    const isImage = file.type.startsWith('image/');
-    const entry = {
-      id: Date.now() + Math.random(),
-      file,
-      name: file.name,
-      url: null,
-      objectUrl: isImage ? URL.createObjectURL(file) : null,
-      isImage,
-      uploading: true,
-      error: null,
-    };
-    uploadedFiles.push(entry);
-    renderArtFiles();
-    uploadFile(entry);
-  });
-}
-
-async function uploadFile(entry) {
-  // Store file locally as a data URL (no external upload needed for static portal)
-  try {
-    await new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = e => {
-        entry.url = e.target.result;   // data: URL — usable as image src & stored in order
-        entry.uploading = false;
-        resolve();
-      };
-      reader.onerror = () => reject(new Error('Could not read file'));
-      reader.readAsDataURL(entry.file);
-    });
-    // Add as mockup layer if it's an image
-    if (entry.isImage && entry.url) {
-      addMockupLayer(entry);
+function initGarments() {
+  // Only initialize once — preserve work if user navigates back/forward
+  if (garments.length === 0) {
+    addGarment(state.selectedStyle, state.selectedColor);
+  } else {
+    // Update the first garment's style/color if user changed them in earlier steps
+    if (garments[0].style !== state.selectedStyle || garments[0].color !== state.selectedColor) {
+      garments[0].style = state.selectedStyle;
+      garments[0].color = state.selectedColor;
     }
-  } catch(e) {
-    entry.uploading = false;
-    entry.error = 'Could not read file — please try again';
+    renderGarmentList();
   }
-  renderArtFiles();
-  updateMockupSection();
 }
 
-function renderArtFiles() {
-  const container = document.getElementById('artFileList');
-  if (!uploadedFiles.length) { container.innerHTML = ''; return; }
-  container.innerHTML = uploadedFiles.map((f, i) => {
-    const ext = f.name.split('.').pop().toUpperCase();
-    const thumb = f.isImage
-      ? `<img class="art-file-thumb" src="${f.objectUrl}" alt="">`
-      : `<div class="art-file-thumb non-image">${extIcon(ext)}</div>`;
-    const size = (f.file.size / 1024).toFixed(0) + ' KB';
-    let status = '';
-    if (f.uploading) status = `<div class="upload-progress"><div class="upload-progress-bar" style="width:60%;animation:pulse 1s infinite"></div></div><div class="art-status">Uploading...</div>`;
-    else if (f.error) status = `<div class="art-status error">${f.error}</div>`;
-    else status = `<div class="art-status done">✓ Uploaded</div>`;
-    return `<div class="art-file">
-      ${thumb}
-      <div class="art-file-info">
-        <div class="art-file-name">${f.name}</div>
-        <div class="art-file-meta">${ext} · ${size}</div>
-        ${status}
+function addGarment(style, color) {
+  const g = {
+    id: uid(),
+    style: style || state.selectedStyle,
+    color: color || state.selectedColor,
+    mode: 'create',
+    collapsed: garments.length > 0,
+    activeLocIdx: 0,
+    locations: [],
+  };
+  addLocation(g, 'Front');
+  garments.push(g);
+  renderGarmentList();
+}
+
+function removeGarment(gid) {
+  if (garments.length === 1) return; // keep at least one
+  garments = garments.filter(g => g.id !== gid);
+  renderGarmentList();
+}
+
+function addLocation(g, name) {
+  const loc = {
+    id: uid(),
+    name: name || 'Front',
+    artFiles: [],   // { id, file, name, url, objectUrl, isImage, uploading, error }
+    mockupFiles: [], // { id, file, name, url, isImage, error }
+    layers: [],     // { id, fileId, url, objectUrl, name, x, y, w, opacity }
+    selectedLayer: null,
+  };
+  g.locations.push(loc);
+  return loc;
+}
+
+function removeLocation(g, locId) {
+  if (g.locations.length === 1) return;
+  g.locations = g.locations.filter(l => l.id !== locId);
+  if (g.activeLocIdx >= g.locations.length) g.activeLocIdx = g.locations.length - 1;
+  renderGarmentList();
+}
+
+function setActiveLocation(gid, idx) {
+  const g = garments.find(x => x.id === gid);
+  if (!g) return;
+  g.activeLocIdx = idx;
+  renderGarmentList();
+}
+
+function toggleGarment(gid) {
+  const g = garments.find(x => x.id === gid);
+  if (!g) return;
+  g.collapsed = !g.collapsed;
+  renderGarmentList();
+}
+
+function setGarmentMode(gid, mode) {
+  const g = garments.find(x => x.id === gid);
+  if (!g) return;
+  g.mode = mode;
+  renderGarmentList();
+}
+
+// ── Render everything ──────────────────────────────────────────────────────
+function renderGarmentList() {
+  const container = document.getElementById('garmentList');
+  if (!container) return;
+  container.innerHTML = garments.map((g, gi) => {
+    const prod = CATALOG[g.style] || {};
+    const colorInfo = prod.colors?.[g.color] || {};
+    const subtitle = [prod.title || g.style, g.color].filter(Boolean).join(' · ');
+    const locNames = g.locations.map(l => l.name).join(', ');
+    const loc = g.locations[g.activeLocIdx] || g.locations[0];
+
+    // Style selector
+    const styleOptions = Object.keys(CATALOG).map(k =>
+      `<option value="${k}" ${k===g.style?'selected':''}>${CATALOG[k].brand} ${CATALOG[k].title} (${k})</option>`
+    ).join('');
+    const colorOptions = Object.keys(prod.colors||{}).map(c =>
+      `<option value="${c}" ${c===g.color?'selected':''}>${c}</option>`
+    ).join('');
+
+    // Location tabs
+    const locTabs = g.locations.map((l, li) => `
+      <button class="loc-tab ${li===g.activeLocIdx?'active':''}"
+        onclick="setActiveLocation('${g.id}', ${li})">${l.name}
+        ${g.locations.length>1 ? `<span onclick="event.stopPropagation();removeLocationById('${g.id}','${l.id}')" style="margin-left:4px;opacity:.6;font-size:.85em">✕</span>` : ''}
+      </button>`).join('');
+
+    // Art files list for active location
+    const artHtml = renderArtFilesHtml(loc.artFiles, g.id, loc.id);
+
+    // Mockup creator vs upload toggle
+    const modeBtns = `
+      <div class="mockup-mode-toggle" style="margin-top:16px;margin-bottom:0">
+        <button class="mode-btn ${g.mode==='create'?'active':''}" onclick="setGarmentMode('${g.id}','create')">🎨 Create mockup</button>
+        <button class="mode-btn ${g.mode==='upload'?'active':''}" onclick="setGarmentMode('${g.id}','upload')">✅ I have a mockup</button>
+      </div>`;
+
+    // Mockup creator (canvas)
+    const mockupCanvasHtml = g.mode==='create' ? `
+      <div id="mockupWrap_${g.id}_${loc.id}" style="margin-top:14px;display:${loc.artFiles.some(f=>f.isImage&&f.url&&!f.error)?'block':'none'}">
+        <div style="font-size:.88rem;font-weight:700;margin-bottom:8px;color:var(--gray4)">Mockup Preview</div>
+        <div class="mockup-wrap">
+          <div class="mockup-canvas-wrap" id="canvas_${g.id}_${loc.id}" style="position:relative">
+            <img id="bg_${g.id}_${loc.id}" class="mockup-bg" src="${getGarmentImg(g)}" alt="Garment">
+          </div>
+          <div class="mockup-controls">
+            <h3>Layers</h3>
+            <div id="layerList_${g.id}_${loc.id}"></div>
+            <div id="layerCtrl_${g.id}_${loc.id}" style="display:none">
+              <div class="ctrl-row">
+                <label>Size</label>
+                <input type="range" min="20" max="280" value="${loc.selectedLayer ? (loc.layers.find(l=>l.id===loc.selectedLayer)||{w:120}).w : 120}"
+                  oninput="resizeSelectedLayer('${g.id}','${loc.id}',this.value)" id="ctrlSize_${g.id}_${loc.id}">
+                <span class="ctrl-val" id="ctrlSizeVal_${g.id}_${loc.id}">${loc.selectedLayer ? (loc.layers.find(l=>l.id===loc.selectedLayer)||{w:120}).w : 120}px</span>
+              </div>
+              <div class="ctrl-row">
+                <label>Opacity</label>
+                <input type="range" min="10" max="100" value="${loc.selectedLayer ? Math.round(((loc.layers.find(l=>l.id===loc.selectedLayer)||{opacity:1}).opacity||1)*100) : 100}"
+                  oninput="opacitySelectedLayer('${g.id}','${loc.id}',this.value)" id="ctrlOpacity_${g.id}_${loc.id}">
+                <span class="ctrl-val" id="ctrlOpacityVal_${g.id}_${loc.id}">${loc.selectedLayer ? Math.round(((loc.layers.find(l=>l.id===loc.selectedLayer)||{opacity:1}).opacity||1)*100) : 100}%</span>
+              </div>
+            </div>
+            <p class="mockup-hint">Drag to reposition, resize handle to scale.</p>
+          </div>
+        </div>
+      </div>` : '';
+
+    // Mockup upload section
+    const mockupUploadHtml = g.mode==='upload' ? `
+      <div style="margin-top:14px">
+        <div style="font-size:.88rem;font-weight:700;margin-bottom:8px;color:var(--gray4)">Upload Mockup for ${loc.name}</div>
+        <div class="drop-zone" id="mDrop_${g.id}_${loc.id}" onclick="document.getElementById('mInput_${g.id}_${loc.id}').click()">
+          <input type="file" id="mInput_${g.id}_${loc.id}" multiple accept=".png,.jpg,.jpeg,.pdf" style="display:none"
+            onchange="handleMockupFileInput(event,'${g.id}','${loc.id}')">
+          <div class="drop-zone-icon">🖼️</div>
+          <div class="drop-zone-label">Drop mockup images here or click to browse</div>
+          <div class="drop-zone-sub">PNG · JPEG · PDF</div>
+        </div>
+        ${renderMockupFilesHtml(loc.mockupFiles, g.id, loc.id)}
+      </div>` : '';
+
+    return `
+    <div class="garment-card ${!g.collapsed?'active-garment':''}" id="gcard_${g.id}">
+      <div class="garment-card-header" onclick="toggleGarment('${g.id}')">
+        <div class="garment-card-num">${gi+1}</div>
+        <div style="flex:1">
+          <div class="garment-card-title">${subtitle || 'Garment ' + (gi+1)}</div>
+          <div class="garment-card-subtitle">${locNames}</div>
+        </div>
+        ${garments.length>1 ? `<button class="remove-garment-btn" onclick="event.stopPropagation();removeGarment('${g.id}')" title="Remove garment">✕</button>` : ''}
+        <span style="font-size:.85rem;color:var(--gray3);margin-left:6px">${g.collapsed?'▼':'▲'}</span>
       </div>
-      <button class="art-file-remove" onclick="removeArtFile(${i})" title="Remove">✕</button>
+      <div class="garment-card-body ${g.collapsed?'collapsed':''}">
+        <!-- Product & color selectors -->
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px">
+          <div style="flex:1;min-width:160px">
+            <label style="font-size:.8rem;font-weight:600;display:block;margin-bottom:4px;color:var(--gray4)">Style</label>
+            <select style="width:100%;padding:8px 10px;border:1.5px solid var(--gray2);border-radius:8px;font-size:.85rem"
+              onchange="setGarmentStyle('${g.id}',this.value)">${styleOptions}</select>
+          </div>
+          <div style="flex:1;min-width:140px">
+            <label style="font-size:.8rem;font-weight:600;display:block;margin-bottom:4px;color:var(--gray4)">Color</label>
+            <select style="width:100%;padding:8px 10px;border:1.5px solid var(--gray2);border-radius:8px;font-size:.85rem"
+              onchange="setGarmentColor('${g.id}',this.value)">${colorOptions}</select>
+          </div>
+        </div>
+
+        <!-- Location tabs -->
+        <div style="font-size:.8rem;font-weight:700;color:var(--gray4);margin-bottom:6px;text-transform:uppercase;letter-spacing:.04em">Print Locations</div>
+        <div class="loc-tabs">
+          ${locTabs}
+          <button class="add-loc-btn" onclick="showAddLocationMenu('${g.id}')">+ Add Location</button>
+        </div>
+
+        <!-- Active location panel -->
+        <div class="loc-panel">
+          <div class="art-warning" style="margin-bottom:10px">
+            <strong>📋 Artwork for ${loc.name}</strong>
+            Upload .AI, .PSD, .EPS or high-res PNG/JPEG (300 DPI). Artwork redraw fees may apply if quality is insufficient.
+          </div>
+          <div class="drop-zone" id="drop_${g.id}_${loc.id}" onclick="document.getElementById('input_${g.id}_${loc.id}').click()">
+            <input type="file" id="input_${g.id}_${loc.id}" multiple
+              accept=".ai,.psd,.eps,.pdf,.png,.jpg,.jpeg,.svg,.tif,.tiff" style="display:none"
+              onchange="handleArtFileInput(event,'${g.id}','${loc.id}')">
+            <div class="drop-zone-icon">📎</div>
+            <div class="drop-zone-label">Drop artwork files here or click to browse</div>
+            <div class="drop-zone-sub">.AI · .PSD · .EPS · .PDF · PNG · JPEG</div>
+          </div>
+          ${artHtml}
+          ${modeBtns}
+          ${mockupCanvasHtml}
+          ${mockupUploadHtml}
+        </div>
+      </div>
     </div>`;
   }).join('');
-}
 
-function extIcon(ext) {
-  const map = {AI:'🎨', PSD:'🎨', EPS:'🎨', PDF:'📄', SVG:'🖼️', TIFF:'🖼️', TIF:'🖼️'};
-  return map[ext] || '📎';
-}
-
-function removeArtFile(i) {
-  const f = uploadedFiles[i];
-  if (f.objectUrl) URL.revokeObjectURL(f.objectUrl);
-  // Remove corresponding mockup layer
-  mockupLayers = mockupLayers.filter(l => l.fileId !== f.id);
-  uploadedFiles.splice(i, 1);
-  renderArtFiles();
-  renderMockupLayers();
-  updateMockupSection();
-}
-
-// ── Mockup ────────────────────────────────────────────
-function updateMockupSection() {
-  const hasImages = uploadedFiles.some(f => f.isImage && f.url && !f.error);
-  document.getElementById('mockupSection').style.display = hasImages ? 'block' : 'none';
-  if (hasImages) {
-    renderMockupPlacementTabs();
-    renderMockupBg();
-    renderMockupLayers();
-  }
-}
-
-function renderMockupPlacementTabs() {
-  const placements = ['Front', 'Back', 'Left Chest', 'Sleeve', 'Hat'];
-  mockupPlacement = mockupPlacement || 'Front';
-  document.getElementById('mockupPlacementTabs').innerHTML = placements.map(p =>
-    `<button class="ptab${mockupPlacement===p?' active':''}" onclick="setMockupPlacement('${p}')">${p}</button>`
-  ).join('');
-}
-function setMockupPlacement(p) {
-  mockupPlacement = p;
-  renderMockupPlacementTabs();
-  renderMockupBg();
-}
-
-function renderMockupBg() {
-  const product = CATALOG[state.selectedStyle];
-  const color = state.selectedColor;
-  let imgUrl = '';
-  if (product && color && product.colors[color]) {
-    imgUrl = product.colors[color].img || product.img || '';
-  } else if (product) {
-    imgUrl = product.img || '';
-  }
-  const bg = document.getElementById('mockupBg');
-  if (imgUrl) {
-    bg.src = imgUrl;
-    bg.onerror = () => bg.src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="320" height="320"><rect fill="%23f4f4f4" width="320" height="320"/><text x="160" y="165" text-anchor="middle" fill="%23bbb" font-size="14">No Preview</text></svg>';
-  } else {
-    bg.src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="320" height="320"><rect fill="%23f4f4f4" width="320" height="320"/><text x="160" y="165" text-anchor="middle" fill="%23bbb" font-size="14">Garment Preview</text></svg>';
-  }
-}
-
-function addMockupLayer(fileEntry) {
-  const layer = {
-    id: fileEntry.id,
-    fileId: fileEntry.id,
-    url: fileEntry.url,
-    objectUrl: fileEntry.objectUrl,
-    name: fileEntry.name,
-    x: 100, y: 80,
-    w: 120,
-    opacity: 1,
-  };
-  mockupLayers.push(layer);
-  renderMockupLayers();
-}
-
-function renderMockupLayers() {
-  const wrap = document.getElementById('mockupCanvasWrap');
-  // Remove existing layer divs
-  wrap.querySelectorAll('.mockup-layer').forEach(el => el.remove());
-
-  mockupLayers.forEach(layer => {
-    const div = document.createElement('div');
-    div.className = 'mockup-layer' + (selectedLayer===layer.id?' selected':'');
-    div.style.cssText = `left:${layer.x}px;top:${layer.y}px;width:${layer.w}px;`;
-    div.dataset.id = layer.id;
-    div.innerHTML = `<img src="${layer.objectUrl||layer.url}" style="width:100%;opacity:${layer.opacity};display:block;pointer-events:none" draggable="false">
-      <div class="resize-handle" data-resize="${layer.id}"></div>`;
-    div.addEventListener('mousedown', e => startDrag(e, layer));
-    div.addEventListener('touchstart', e => startDragTouch(e, layer), {passive:false});
-    div.querySelector('.resize-handle').addEventListener('mousedown', e => { e.stopPropagation(); startResize(e, layer); });
-    div.querySelector('.resize-handle').addEventListener('touchstart', e => { e.stopPropagation(); startResizeTouch(e, layer); }, {passive:false});
-    wrap.appendChild(div);
-    // click to select
-    div.addEventListener('click', () => selectLayer(layer.id));
-  });
-
-  // Layer list panel
-  document.getElementById('layerList').innerHTML = mockupLayers.length
-    ? mockupLayers.map(l => `
-      <div class="layer-item${selectedLayer===l.id?' active':''}" onclick="selectLayer('${l.id}')">
-        <img class="layer-thumb" src="${l.objectUrl||l.url}" alt="">
-        <span class="layer-name">${l.name}</span>
-        <button class="layer-delete" onclick="event.stopPropagation();deleteLayer('${l.id}')">✕</button>
-      </div>`).join('')
-    : '<p style="font-size:.82rem;color:var(--gray3)">No image layers yet.</p>';
-
-  document.getElementById('layerControls').style.display = selectedLayer ? 'block' : 'none';
-  if (selectedLayer) {
-    const l = mockupLayers.find(x => x.id === selectedLayer);
-    if (l) {
-      document.getElementById('ctrlSize').value = l.w;
-      document.getElementById('ctrlSizeVal').textContent = l.w + 'px';
-      document.getElementById('ctrlOpacity').value = Math.round(l.opacity * 100);
-      document.getElementById('ctrlOpacityVal').textContent = Math.round(l.opacity * 100) + '%';
-    }
-  }
-}
-
-function selectLayer(id) {
-  selectedLayer = id;
-  renderMockupLayers();
-}
-function deleteLayer(id) {
-  mockupLayers = mockupLayers.filter(l => l.id != id);
-  if (selectedLayer == id) selectedLayer = null;
-  renderMockupLayers();
-}
-function resizeSelected(val) {
-  const l = mockupLayers.find(x => x.id === selectedLayer); if(!l) return;
-  l.w = parseInt(val);
-  document.getElementById('ctrlSizeVal').textContent = val + 'px';
-  renderMockupLayers();
-}
-function opacitySelected(val) {
-  const l = mockupLayers.find(x => x.id === selectedLayer); if(!l) return;
-  l.opacity = val / 100;
-  document.getElementById('ctrlOpacityVal').textContent = val + '%';
-  renderMockupLayers();
-}
-
-// ── Drag ─────────────────────────────────────────────
-let _drag = null;
-function startDrag(e, layer) {
-  if (e.target.dataset.resize) return;
-  e.preventDefault();
-  selectLayer(layer.id);
-  const wrap = document.getElementById('mockupCanvasWrap').getBoundingClientRect();
-  _drag = { layer, startX: e.clientX - layer.x, startY: e.clientY - layer.y, wrap };
-  document.addEventListener('mousemove', onDrag);
-  document.addEventListener('mouseup', stopDrag);
-}
-function onDrag(e) {
-  if (!_drag) return;
-  const l = _drag.layer;
-  const wrap = document.getElementById('mockupCanvasWrap').getBoundingClientRect();
-  l.x = Math.max(0, Math.min(e.clientX - _drag.startX, wrap.width - l.w));
-  l.y = Math.max(0, Math.min(e.clientY - _drag.startY, wrap.height - 20));
-  const el = document.querySelector(`.mockup-layer[data-id="${l.id}"]`);
-  if (el) { el.style.left = l.x + 'px'; el.style.top = l.y + 'px'; }
-}
-function stopDrag() { _drag = null; document.removeEventListener('mousemove', onDrag); document.removeEventListener('mouseup', stopDrag); }
-
-// Touch drag
-function startDragTouch(e, layer) {
-  if (e.target.dataset.resize) return;
-  e.preventDefault();
-  selectLayer(layer.id);
-  const t = e.touches[0];
-  _drag = { layer, startX: t.clientX - layer.x, startY: t.clientY - layer.y };
-  document.addEventListener('touchmove', onDragTouch, {passive:false});
-  document.addEventListener('touchend', stopDragTouch);
-}
-function onDragTouch(e) {
-  e.preventDefault();
-  if (!_drag) return;
-  const t = e.touches[0], l = _drag.layer;
-  const wrap = document.getElementById('mockupCanvasWrap').getBoundingClientRect();
-  l.x = Math.max(0, Math.min(t.clientX - _drag.startX, wrap.width - l.w));
-  l.y = Math.max(0, Math.min(t.clientY - _drag.startY, wrap.height - 20));
-  const el = document.querySelector(`.mockup-layer[data-id="${l.id}"]`);
-  if (el) { el.style.left = l.x + 'px'; el.style.top = l.y + 'px'; }
-}
-function stopDragTouch() { _drag = null; document.removeEventListener('touchmove', onDragTouch); document.removeEventListener('touchend', stopDragTouch); }
-
-// ── Resize ────────────────────────────────────────────
-let _resize = null;
-function startResize(e, layer) {
-  e.preventDefault();
-  _resize = { layer, startX: e.clientX, startW: layer.w };
-  document.addEventListener('mousemove', onResize);
-  document.addEventListener('mouseup', stopResize);
-}
-function onResize(e) {
-  if (!_resize) return;
-  const l = _resize.layer;
-  l.w = Math.max(30, _resize.startW + (e.clientX - _resize.startX));
-  const el = document.querySelector(`.mockup-layer[data-id="${l.id}"]`);
-  if (el) { el.style.width = l.w + 'px'; document.getElementById('ctrlSize').value = l.w; document.getElementById('ctrlSizeVal').textContent = Math.round(l.w) + 'px'; }
-}
-function stopResize() { if(_resize){ const l=_resize.layer; l.w=Math.round(l.w); renderMockupLayers(); } _resize=null; document.removeEventListener('mousemove',onResize); document.removeEventListener('mouseup',stopResize); }
-
-// Touch resize
-function startResizeTouch(e, layer) {
-  e.preventDefault();
-  const t = e.touches[0];
-  _resize = { layer, startX: t.clientX, startW: layer.w };
-  document.addEventListener('touchmove', onResizeTouch, {passive:false});
-  document.addEventListener('touchend', stopResizeTouch);
-}
-function onResizeTouch(e) {
-  e.preventDefault();
-  if(!_resize) return;
-  const t=e.touches[0], l=_resize.layer;
-  l.w = Math.max(30, _resize.startW + (t.clientX - _resize.startX));
-  const el = document.querySelector(`.mockup-layer[data-id="${l.id}"]`);
-  if(el){ el.style.width=l.w+'px'; document.getElementById('ctrlSize').value=l.w; document.getElementById('ctrlSizeVal').textContent=Math.round(l.w)+'px'; }
-}
-function stopResizeTouch(){ if(_resize){const l=_resize.layer;l.w=Math.round(l.w);renderMockupLayers();} _resize=null; document.removeEventListener('touchmove',onResizeTouch); document.removeEventListener('touchend',stopResizeTouch); }
-
-// ── Include artwork URLs in submit payload ────────────────────────────────────
-// Patch submitOrder to also send artwork_urls
-const _origSubmit = submitOrder;
-submitOrder = async function() {
-  // swap in patched version — see below
-  await _patchedSubmit();
-};
-async function _patchedSubmit() {
-  const btn=document.getElementById('submitBtn');
-  btn.disabled=true; btn.textContent='Submitting...';
-  const p=CATALOG[state.selectedStyle];
-  const total=Object.values(state.quantities).reduce((a,b)=>a+b,0);
-  // Use filenames for the order record (data URLs are too large for entity storage)
-  const artworkUrls = uploadedFiles.filter(f=>!f.error).map(f=>f.name);
-  const mockupFileNames = uploadedMockupFiles.filter(f=>!f.error).map(f=>'[mockup] ' + f.name);
-  const allArtworkNames = [...artworkUrls, ...mockupFileNames];
-  const payload={
-    status:'Pending',
-    product_name:p.title,
-    product_supplier:p.supplier,
-    product_style:state.selectedStyle,
-    garment_color:state.selectedColor,
-    quantities:state.quantities,
-    total_qty:total,
-    placement:state.placement,
-    print_type:state.printType,
-    print_colors:state.printColors,
-    customer_first_name:state.firstName,
-    customer_last_name:state.lastName,
-    customer_email:state.email,
-    customer_phone:state.phone||'',
-    customer_company:state.company||'',
-    due_date:state.dueDate||null,
-    notes:state.notes||'',
-    mockup_mode: mockupMode,
-    mockup_url: '',
-    artwork_urls: allArtworkNames,
-  };
-  try {
-    const r=await fetch('https://app.base44.com/api/apps/69b379d07fc1c9e2a98e71ad/entities/Order',{
-      method:'POST',
-      headers:{'Content-Type':'application/json','Authorization':'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJjN2Q2M2IyNi02MGY2LTQwOGItYmVjMi0zZWQ5NGZmODNiMjgiLCJjbGllbnRfaWQiOiJjN2Q2M2IyNi02MGY2LTQwOGItYmVjMi0zZWQ5NGZmODNiMjgiLCJhcHBfaWQiOiI2OWIzNzlkMDdmYzFjOWUyYTk4ZTcxYWQiLCJhdWQiOiJiYXNlNDRfYXBpIiwic2NvcGUiOiJhcHAuYWNjZXNzIiwiZXhwIjoxNzczNDI5NDQwLCJpYXQiOjE3NzM0MjU4NDB9.IxwHLabZT-kDyFACegtCyBsl3DHGdGIhaCRNK2XdRdQ'},
-      body:JSON.stringify(payload)
+  // Re-attach drag-drop to all drop zones and render layers
+  setTimeout(() => {
+    garments.forEach(g => {
+      const loc = g.locations[g.activeLocIdx] || g.locations[0];
+      const dropEl = document.getElementById(`drop_${g.id}_${loc.id}`);
+      if (dropEl) {
+        dropEl.addEventListener('dragover', e=>{e.preventDefault();dropEl.classList.add('drag-over');});
+        dropEl.addEventListener('dragleave', ()=>dropEl.classList.remove('drag-over'));
+        dropEl.addEventListener('drop', e=>{
+          e.preventDefault();dropEl.classList.remove('drag-over');
+          const files=[...e.dataTransfer.files];
+          if(files.length) showArtworkWarning(files, fs=>processArtFiles(fs,g.id,loc.id));
+        });
+      }
+      const mDrop = document.getElementById(`mDrop_${g.id}_${loc.id}`);
+      if (mDrop) {
+        mDrop.addEventListener('dragover', e=>{e.preventDefault();mDrop.classList.add('drag-over');});
+        mDrop.addEventListener('dragleave', ()=>mDrop.classList.remove('drag-over'));
+        mDrop.addEventListener('drop', e=>{
+          e.preventDefault();mDrop.classList.remove('drag-over');
+          processMockupFiles([...e.dataTransfer.files],g.id,loc.id);
+        });
+      }
+      renderLayersForGarment(g, loc);
     });
-    if(r.ok){goTo(7);}
-    else{throw new Error(await r.text());}
-  } catch(e) {
-    console.error(e);
-    btn.disabled=false; btn.textContent='✓ Submit Order Request';
-    alert('Something went wrong. Please try again or email us at Quotes@lbxprints.com');
-  }
+  }, 0);
 }
 
-// ── Mockup mode toggle ────────────────────────────────────────────────────
-let mockupMode = 'create'; // 'create' | 'upload'
-let uploadedMockupFiles = []; // { file, name, url, isImage, error }
-
-function setMockupMode(mode) {
-  mockupMode = mode;
-  document.getElementById('modeBtnCreate').classList.toggle('active', mode === 'create');
-  document.getElementById('modeBtnSkip').classList.toggle('active', mode === 'upload');
-  document.getElementById('mockupCreatorSection').style.display = mode === 'create' ? '' : 'none';
-  document.getElementById('mockupUploadSection').style.display = mode === 'upload' ? '' : 'none';
+function renderArtFilesHtml(artFiles, gid, locId) {
+  if (!artFiles.length) return '';
+  return '<div style="display:flex;flex-direction:column;gap:8px;margin-top:10px">' +
+    artFiles.map((f, i) => {
+      const ext = f.name.split('.').pop().toUpperCase();
+      const thumb = f.isImage && f.objectUrl
+        ? `<img class="art-file-thumb" src="${f.objectUrl}" alt="">`
+        : `<div class="art-file-thumb non-image">${extIcon(ext)}</div>`;
+      const size = f.file ? (f.file.size/1024).toFixed(0)+' KB' : '';
+      const status = f.uploading
+        ? `<div class="art-status">Reading...</div>`
+        : f.error
+          ? `<div class="art-status error">${f.error}</div>`
+          : `<div class="art-status done">✓ Ready</div>`;
+      return `<div class="art-file">
+        ${thumb}
+        <div class="art-file-info">
+          <div class="art-file-name">${f.name}</div>
+          <div class="art-file-meta">${ext}${size?' · '+size:''}</div>
+          ${status}
+        </div>
+        <button class="art-file-remove" onclick="removeArtFileFromLoc('${gid}','${locId}',${i})" title="Remove">✕</button>
+      </div>`;
+    }).join('') + '</div>';
 }
 
-// Mockup file drop zone
-const mockupDropZone = document.getElementById('mockupDropZone');
-const mockupFileInput = document.getElementById('mockupFileInput');
+function renderMockupFilesHtml(files, gid, locId) {
+  if (!files.length) return '';
+  return '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:10px">' +
+    files.map((f, i) => {
+      const thumb = f.isImage && f.url
+        ? `<img style="width:80px;height:80px;object-fit:contain;border:1px solid var(--gray2);border-radius:6px;background:var(--gray1)" src="${f.url}" alt="">`
+        : `<div style="width:80px;height:80px;display:flex;align-items:center;justify-content:center;border:1px solid var(--gray2);border-radius:6px;font-size:1.5rem">📄</div>`;
+      return `<div style="position:relative">
+        ${thumb}
+        <button onclick="removeMockupFileFromLoc('${gid}','${locId}',${i})"
+          style="position:absolute;top:-4px;right:-4px;background:var(--accent);border:none;color:#fff;width:18px;height:18px;border-radius:50%;cursor:pointer;font-size:.7rem;display:flex;align-items:center;justify-content:center">✕</button>
+        <div style="font-size:.68rem;color:var(--gray3);text-align:center;width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${f.name}</div>
+      </div>`;
+    }).join('') + '</div>';
+}
 
-mockupDropZone.addEventListener('dragover', e => { e.preventDefault(); mockupDropZone.classList.add('drag-over'); });
-mockupDropZone.addEventListener('dragleave', () => mockupDropZone.classList.remove('drag-over'));
-mockupDropZone.addEventListener('drop', e => {
-  e.preventDefault(); mockupDropZone.classList.remove('drag-over');
-  processMockupFiles([...e.dataTransfer.files]);
-});
-mockupFileInput.addEventListener('change', e => {
-  processMockupFiles([...e.target.files]);
+function getGarmentImg(g) {
+  const prod = CATALOG[g.style];
+  if (!prod) return '';
+  const colorData = prod.colors?.[g.color];
+  return colorData?.img || prod.img || '';
+}
+
+function setGarmentStyle(gid, style) {
+  const g = garments.find(x=>x.id===gid);
+  if (!g) return;
+  g.style = style;
+  const colors = Object.keys(CATALOG[style]?.colors || {});
+  g.color = colors[0] || '';
+  renderGarmentList();
+}
+
+function setGarmentColor(gid, color) {
+  const g = garments.find(x=>x.id===gid);
+  if (g) { g.color = color; renderGarmentList(); }
+}
+
+// ── Add location menu ─────────────────────────────────────────────────────
+function showAddLocationMenu(gid) {
+  const existing = garments.find(x=>x.id===gid)?.locations.map(l=>l.name) || [];
+  const available = LOCATIONS.filter(l => !existing.includes(l));
+  const menu = document.createElement('div');
+  menu.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#fff;border:1.5px solid var(--gray2);border-radius:var(--radius);padding:16px;z-index:9999;min-width:200px;box-shadow:0 8px 32px rgba(0,0,0,.12)';
+  menu.innerHTML = `<div style="font-weight:700;margin-bottom:10px;font-size:.9rem">Add Print Location</div>
+    ${available.map(l=>`<button onclick="addLocationToGarment('${gid}','${l}');this.closest('[style]').remove()"
+      style="display:block;width:100%;text-align:left;padding:8px 10px;border:none;background:none;cursor:pointer;font-size:.88rem;border-radius:6px;hover:background:#f4f4f4"
+      onmouseover="this.style.background='#f4f4f4'" onmouseout="this.style.background='none'">${l}</button>`).join('')}
+    <button onclick="this.closest('[style]').remove()" style="margin-top:8px;width:100%;padding:6px;border:1.5px solid var(--gray2);border-radius:6px;background:none;cursor:pointer;font-size:.8rem;color:var(--gray3)">Cancel</button>`;
+  document.body.appendChild(menu);
+  menu.onclick = e => e.stopPropagation();
+  setTimeout(() => document.addEventListener('click', function h(){menu.remove();document.removeEventListener('click',h);}, {once:true}), 10);
+}
+
+function addLocationToGarment(gid, name) {
+  const g = garments.find(x=>x.id===gid);
+  if (!g) return;
+  addLocation(g, name);
+  g.activeLocIdx = g.locations.length - 1;
+  renderGarmentList();
+}
+
+function removeLocationById(gid, locId) {
+  const g = garments.find(x=>x.id===gid);
+  if (!g || g.locations.length===1) return;
+  g.locations = g.locations.filter(l=>l.id!==locId);
+  if (g.activeLocIdx >= g.locations.length) g.activeLocIdx = g.locations.length-1;
+  renderGarmentList();
+}
+
+// ── Art file handling per-location ────────────────────────────────────────
+function handleArtFileInput(e, gid, locId) {
+  const files = [...e.target.files];
   e.target.value = '';
-});
+  if (files.length) showArtworkWarning(files, fs => processArtFiles(fs, gid, locId));
+}
+function handleMockupFileInput(e, gid, locId) {
+  const files = [...e.target.files];
+  e.target.value = '';
+  processMockupFiles(files, gid, locId);
+}
 
-function processMockupFiles(files) {
+function processArtFiles(files, gid, locId) {
+  const g = garments.find(x=>x.id===gid); if(!g) return;
+  const loc = g.locations.find(l=>l.id===locId); if(!loc) return;
   files.forEach(file => {
     const isImage = file.type.startsWith('image/');
-    const entry = { file, name: file.name, url: null, isImage, error: null, uploading: true };
-    uploadedMockupFiles.push(entry);
-    readMockupFile(entry);
+    const entry = { id:uid(), file, name:file.name, url:null, objectUrl:isImage?URL.createObjectURL(file):null, isImage, uploading:true, error:null };
+    loc.artFiles.push(entry);
+    readArtFile(entry, gid, locId);
   });
-  renderMockupFiles();
+  renderGarmentList();
 }
 
-async function readMockupFile(entry) {
+async function readArtFile(entry, gid, locId) {
   try {
-    await new Promise((resolve, reject) => {
+    await new Promise((res,rej) => {
       const reader = new FileReader();
-      reader.onload = e => { entry.url = e.target.result; entry.uploading = false; resolve(); };
-      reader.onerror = () => reject();
+      reader.onload = e => { entry.url = e.target.result; entry.uploading = false; res(); };
+      reader.onerror = rej;
       reader.readAsDataURL(entry.file);
     });
-  } catch(e) {
+    // Auto-add image as mockup layer
+    if (entry.isImage && entry.url) {
+      const g = garments.find(x=>x.id===gid);
+      const loc = g?.locations.find(l=>l.id===locId);
+      if (loc) { addLayerToLoc(loc, entry); }
+    }
+  } catch {
     entry.uploading = false;
     entry.error = 'Could not read file';
   }
-  renderMockupFiles();
+  renderGarmentList();
 }
 
-function removeMockupFile(i) {
-  uploadedMockupFiles.splice(i, 1);
-  renderMockupFiles();
+function removeArtFileFromLoc(gid, locId, idx) {
+  const g = garments.find(x=>x.id===gid); if(!g) return;
+  const loc = g.locations.find(l=>l.id===locId); if(!loc) return;
+  const f = loc.artFiles[idx];
+  if (f?.objectUrl) URL.revokeObjectURL(f.objectUrl);
+  loc.layers = loc.layers.filter(l=>l.fileId!==f?.id);
+  loc.artFiles.splice(idx,1);
+  renderGarmentList();
 }
 
-function renderMockupFiles() {
-  const container = document.getElementById('mockupFileList');
-  if (!uploadedMockupFiles.length) { container.innerHTML = ''; return; }
-  container.innerHTML = uploadedMockupFiles.map((f, i) => {
-    const ext = f.name.split('.').pop().toUpperCase();
-    const thumb = f.isImage && f.url
-      ? `<img class="art-file-thumb" src="${f.url}" alt="">`
-      : `<div class="art-file-thumb non-image">${extIcon(ext)}</div>`;
-    const size = (f.file.size / 1024).toFixed(0) + ' KB';
-    let status = f.uploading
-      ? `<div class="art-status">Reading...</div>`
-      : f.error
-        ? `<div class="art-status error">${f.error}</div>`
-        : `<div class="art-status done">✓ Ready</div>`;
-    return `<div class="art-file">
-      ${thumb}
-      <div class="art-file-info">
-        <div class="art-file-name">${f.name}</div>
-        <div class="art-file-meta">${ext} · ${size}</div>
-        ${status}
-      </div>
-      <button class="art-file-remove" onclick="removeMockupFile(${i})" title="Remove">✕</button>
-    </div>`;
-  }).join('');
+function processMockupFiles(files, gid, locId) {
+  const g = garments.find(x=>x.id===gid); if(!g) return;
+  const loc = g.locations.find(l=>l.id===locId); if(!loc) return;
+  files.forEach(file => {
+    const isImage = file.type.startsWith('image/');
+    const entry = { id:uid(), file, name:file.name, url:null, isImage, error:null, uploading:true };
+    loc.mockupFiles.push(entry);
+    readMockupFile(entry, gid, locId);
+  });
+  renderGarmentList();
 }
 
-// pulse animation for upload bar
+async function readMockupFile(entry, gid, locId) {
+  try {
+    await new Promise((res,rej) => {
+      const reader = new FileReader();
+      reader.onload = e => { entry.url = e.target.result; entry.uploading = false; res(); };
+      reader.onerror = rej;
+      reader.readAsDataURL(entry.file);
+    });
+  } catch { entry.uploading = false; entry.error = 'Could not read file'; }
+  renderGarmentList();
+}
+
+function removeMockupFileFromLoc(gid, locId, idx) {
+  const g = garments.find(x=>x.id===gid); if(!g) return;
+  const loc = g.locations.find(l=>l.id===locId); if(!loc) return;
+  loc.mockupFiles.splice(idx,1);
+  renderGarmentList();
+}
+
+// ── Layer system ──────────────────────────────────────────────────────────
+function addLayerToLoc(loc, fileEntry) {
+  loc.layers.push({
+    id: uid(), fileId: fileEntry.id,
+    url: fileEntry.url, objectUrl: fileEntry.objectUrl,
+    name: fileEntry.name, x:100, y:80, w:120, opacity:1
+  });
+}
+
+function renderLayersForGarment(g, loc) {
+  const wrap = document.getElementById(`canvas_${g.id}_${loc.id}`);
+  if (!wrap) return;
+  wrap.querySelectorAll('.mockup-layer').forEach(el=>el.remove());
+  loc.layers.forEach(layer => {
+    const div = document.createElement('div');
+    div.className = 'mockup-layer' + (loc.selectedLayer===layer.id?' selected':'');
+    div.style.cssText = `left:${layer.x}px;top:${layer.y}px;width:${layer.w}px;position:absolute;cursor:move;user-select:none;touch-action:none`;
+    div.dataset.id = layer.id;
+    div.innerHTML = `<img src="${layer.objectUrl||layer.url}" style="width:100%;opacity:${layer.opacity};display:block;pointer-events:none" draggable="false">
+      <div class="resize-handle" style="position:absolute;bottom:-4px;right:-4px;width:12px;height:12px;background:var(--accent);border-radius:50%;cursor:se-resize;border:2px solid #fff" data-resize="${layer.id}"></div>`;
+    div.addEventListener('click', () => selectLayerInLoc(g, loc, layer.id));
+    div.addEventListener('mousedown', e => { if(!e.target.dataset.resize) startDragLayer(e, g, loc, layer); });
+    div.addEventListener('touchstart', e => { if(!e.target.dataset.resize) startDragLayerTouch(e, g, loc, layer); }, {passive:false});
+    div.querySelector('[data-resize]').addEventListener('mousedown', e=>{e.stopPropagation();startResizeLayer(e,g,loc,layer);});
+    div.querySelector('[data-resize]').addEventListener('touchstart', e=>{e.stopPropagation();startResizeLayerTouch(e,g,loc,layer);},{passive:false});
+    wrap.appendChild(div);
+  });
+  // Layer list
+  const listEl = document.getElementById(`layerList_${g.id}_${loc.id}`);
+  if (listEl) {
+    listEl.innerHTML = loc.layers.length
+      ? loc.layers.map(l=>`
+          <div class="layer-item${loc.selectedLayer===l.id?' active':''}" onclick="selectLayerInLoc_byId('${g.id}','${loc.id}','${l.id}')">
+            <img class="layer-thumb" src="${l.objectUrl||l.url}" alt="">
+            <span class="layer-name">${l.name}</span>
+            <button class="layer-delete" onclick="event.stopPropagation();deleteLayerFromLoc('${g.id}','${loc.id}','${l.id}')">✕</button>
+          </div>`).join('')
+      : '<p style="font-size:.82rem;color:var(--gray3)">Upload an image to add layers.</p>';
+  }
+  const ctrlEl = document.getElementById(`layerCtrl_${g.id}_${loc.id}`);
+  if (ctrlEl) ctrlEl.style.display = loc.selectedLayer ? 'block' : 'none';
+  const mockupWrap = document.getElementById(`mockupWrap_${g.id}_${loc.id}`);
+  if (mockupWrap) mockupWrap.style.display = loc.artFiles.some(f=>f.isImage&&f.url&&!f.error) ? 'block' : 'none';
+}
+
+function selectLayerInLoc(g, loc, id) { loc.selectedLayer=id; renderLayersForGarment(g,loc); }
+function selectLayerInLoc_byId(gid, locId, lid) {
+  const g=garments.find(x=>x.id===gid); const loc=g?.locations.find(l=>l.id===locId);
+  if(g&&loc){loc.selectedLayer=lid;renderLayersForGarment(g,loc);}
+}
+function deleteLayerFromLoc(gid, locId, lid) {
+  const g=garments.find(x=>x.id===gid); const loc=g?.locations.find(l=>l.id===locId);
+  if(!g||!loc) return;
+  loc.layers=loc.layers.filter(l=>l.id!==lid);
+  if(loc.selectedLayer===lid) loc.selectedLayer=null;
+  renderLayersForGarment(g,loc);
+}
+function resizeSelectedLayer(gid,locId,val) {
+  const g=garments.find(x=>x.id===gid);const loc=g?.locations.find(l=>l.id===locId);
+  if(!loc) return;
+  const l=loc.layers.find(x=>x.id===loc.selectedLayer); if(!l) return;
+  l.w=parseInt(val);
+  document.getElementById(`ctrlSizeVal_${gid}_${locId}`).textContent=val+'px';
+  renderLayersForGarment(g,loc);
+}
+function opacitySelectedLayer(gid,locId,val) {
+  const g=garments.find(x=>x.id===gid);const loc=g?.locations.find(l=>l.id===locId);
+  if(!loc) return;
+  const l=loc.layers.find(x=>x.id===loc.selectedLayer); if(!l) return;
+  l.opacity=val/100;
+  document.getElementById(`ctrlOpacityVal_${gid}_${locId}`).textContent=val+'%';
+  renderLayersForGarment(g,loc);
+}
+
+// ── Drag / resize for per-garment layers ──────────────────────────────────
+let _drag=null, _resize=null;
+function startDragLayer(e,g,loc,layer){
+  e.preventDefault(); selectLayerInLoc(g,loc,layer.id);
+  _drag={g,loc,layer,startX:e.clientX-layer.x,startY:e.clientY-layer.y};
+  document.addEventListener('mousemove',onDragLayer);
+  document.addEventListener('mouseup',stopDragLayer);
+}
+function onDragLayer(e){
+  if(!_drag) return;
+  const {g,loc,layer}=_drag;
+  const wrap=document.getElementById(`canvas_${g.id}_${loc.id}`);
+  if(!wrap) return;
+  const r=wrap.getBoundingClientRect();
+  layer.x=Math.max(0,Math.min(e.clientX-_drag.startX,r.width-layer.w));
+  layer.y=Math.max(0,Math.min(e.clientY-_drag.startY,r.height-20));
+  const el=wrap.querySelector(`.mockup-layer[data-id="${layer.id}"]`);
+  if(el){el.style.left=layer.x+'px';el.style.top=layer.y+'px';}
+}
+function stopDragLayer(){_drag=null;document.removeEventListener('mousemove',onDragLayer);document.removeEventListener('mouseup',stopDragLayer);}
+function startDragLayerTouch(e,g,loc,layer){
+  e.preventDefault();selectLayerInLoc(g,loc,layer.id);
+  const t=e.touches[0];
+  _drag={g,loc,layer,startX:t.clientX-layer.x,startY:t.clientY-layer.y};
+  document.addEventListener('touchmove',onDragLayerTouch,{passive:false});
+  document.addEventListener('touchend',stopDragLayerTouch);
+}
+function onDragLayerTouch(e){
+  e.preventDefault();if(!_drag)return;
+  const t=e.touches[0],{g,loc,layer}=_drag;
+  const wrap=document.getElementById(`canvas_${g.id}_${loc.id}`);if(!wrap)return;
+  const r=wrap.getBoundingClientRect();
+  layer.x=Math.max(0,Math.min(t.clientX-_drag.startX,r.width-layer.w));
+  layer.y=Math.max(0,Math.min(t.clientY-_drag.startY,r.height-20));
+  const el=wrap.querySelector(`.mockup-layer[data-id="${layer.id}"]`);
+  if(el){el.style.left=layer.x+'px';el.style.top=layer.y+'px';}
+}
+function stopDragLayerTouch(){_drag=null;document.removeEventListener('touchmove',onDragLayerTouch);document.removeEventListener('touchend',stopDragLayerTouch);}
+function startResizeLayer(e,g,loc,layer){
+  e.preventDefault();
+  _resize={g,loc,layer,startX:e.clientX,startW:layer.w};
+  document.addEventListener('mousemove',onResizeLayer);
+  document.addEventListener('mouseup',stopResizeLayer);
+}
+function onResizeLayer(e){
+  if(!_resize)return;
+  const{g,loc,layer}=_resize;
+  layer.w=Math.max(30,_resize.startW+(e.clientX-_resize.startX));
+  const el=document.getElementById(`canvas_${g.id}_${loc.id}`)?.querySelector(`.mockup-layer[data-id="${layer.id}"]`);
+  if(el){el.style.width=layer.w+'px';const sv=document.getElementById(`ctrlSize_${g.id}_${loc.id}`);const svv=document.getElementById(`ctrlSizeVal_${g.id}_${loc.id}`);if(sv)sv.value=layer.w;if(svv)svv.textContent=Math.round(layer.w)+'px';}
+}
+function stopResizeLayer(){if(_resize){_resize.layer.w=Math.round(_resize.layer.w);renderLayersForGarment(_resize.g,_resize.loc);}_resize=null;document.removeEventListener('mousemove',onResizeLayer);document.removeEventListener('mouseup',stopResizeLayer);}
+function startResizeLayerTouch(e,g,loc,layer){
+  e.preventDefault();
+  const t=e.touches[0];
+  _resize={g,loc,layer,startX:t.clientX,startW:layer.w};
+  document.addEventListener('touchmove',onResizeLayerTouch,{passive:false});
+  document.addEventListener('touchend',stopResizeLayerTouch);
+}
+function onResizeLayerTouch(e){
+  e.preventDefault();if(!_resize)return;
+  const t=e.touches[0],{g,loc,layer}=_resize;
+  layer.w=Math.max(30,_resize.startW+(t.clientX-_resize.startX));
+  const el=document.getElementById(`canvas_${g.id}_${loc.id}`)?.querySelector(`.mockup-layer[data-id="${layer.id}"]`);
+  if(el){el.style.width=layer.w+'px';}
+}
+function stopResizeLayerTouch(){if(_resize){_resize.layer.w=Math.round(_resize.layer.w);renderLayersForGarment(_resize.g,_resize.loc);}_resize=null;document.removeEventListener('touchmove',onResizeLayerTouch);document.removeEventListener('touchend',stopResizeLayerTouch);}
+
+// ── Artwork quality warning modal ─────────────────────────────────────────
+function showArtworkWarning(files, cb) {
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.innerHTML = `<div class="modal-box">
+    <h3>⚠️ Artwork Quality Notice</h3>
+    <p>For the best print results, please submit artwork in one of these formats:</p>
+    <ul>
+      <li><strong>.AI / .PSD / .EPS</strong> — vector or layered files (preferred)</li>
+      <li><strong>High-res PNG or JPEG</strong> — at least 300 DPI at the actual printed size</li>
+      <li><strong>.PDF</strong> — print-quality, not screen-export</li>
+    </ul>
+    <p>⚠️ <strong>If your artwork doesn't meet quality standards, an artwork redraw fee may be required.</strong></p>
+    <div class="modal-btn-row">
+      <button class="btn btn-secondary" id="modalCancel">Cancel</button>
+      <button class="btn btn-primary" id="modalOk">I Understand — Upload</button>
+    </div>
+  </div>`;
+  document.body.appendChild(overlay);
+  overlay.querySelector('#modalCancel').onclick = () => overlay.remove();
+  overlay.querySelector('#modalOk').onclick = () => { overlay.remove(); cb(files); };
+  overlay.onclick = e => { if(e.target===overlay) overlay.remove(); };
+}
+
+function extIcon(ext) {
+  const map={AI:'🎨',PSD:'🎨',EPS:'🎨',PDF:'📄',SVG:'🖼️',TIFF:'🖼️',TIF:'🖼️'};
+  return map[ext]||'📎';
+}
+
+// ── Review screen — capture mockup snapshots ──────────────────────────────
+async function buildReviewMockups() {
+  const section = document.getElementById('reviewMockupsSection');
+  if (!section) return;
+  section.innerHTML = '<div style="font-size:.88rem;color:var(--gray3);margin-bottom:8px">Generating mockup previews…</div>';
+
+  let html = '<div class="review-garments">';
+  for (let gi=0; gi<garments.length; gi++) {
+    const g = garments[gi];
+    const prod = CATALOG[g.style]||{};
+    html += `<div class="review-garment"><h4>Garment ${gi+1}: ${prod.title||g.style} — ${g.color}</h4><div class="review-mockup-grid">`;
+
+    for (const loc of g.locations) {
+      let imgHtml = '';
+      if (g.mode==='upload' && loc.mockupFiles.some(f=>f.url&&f.isImage)) {
+        // Show uploaded mockup images
+        loc.mockupFiles.filter(f=>f.url&&f.isImage).forEach(f=>{
+          imgHtml += `<div class="review-mockup-item">
+            <img class="review-mockup-img" src="${f.url}" alt="${loc.name}">
+            <div class="review-mockup-label">${loc.name}</div>
+          </div>`;
+        });
+      } else if (g.mode==='create' && loc.artFiles.some(f=>f.isImage&&f.url)) {
+        // Try canvas capture
+        const canvasEl = document.getElementById(`canvas_${g.id}_${loc.id}`);
+        if (canvasEl && typeof html2canvas !== 'undefined') {
+          try {
+            const canvas = await html2canvas(canvasEl, {useCORS:true, allowTaint:true, scale:1, logging:false});
+            imgHtml += `<div class="review-mockup-item">
+              <img class="review-mockup-img" src="${canvas.toDataURL()}" alt="${loc.name}">
+              <div class="review-mockup-label">${loc.name}</div>
+            </div>`;
+          } catch(err) {
+            // Fallback: show garment image
+            imgHtml += `<div class="review-mockup-item">
+              <img class="review-mockup-img" src="${getGarmentImg(g)}" alt="${loc.name}">
+              <div class="review-mockup-label">${loc.name} (no preview)</div>
+            </div>`;
+          }
+        } else {
+          // Fallback garment image
+          imgHtml += `<div class="review-mockup-item">
+            <img class="review-mockup-img" src="${getGarmentImg(g)}" alt="${loc.name}">
+            <div class="review-mockup-label">${loc.name}</div>
+          </div>`;
+        }
+      } else {
+        imgHtml += `<div class="review-mockup-item">
+          <img class="review-mockup-img" src="${getGarmentImg(g)}" alt="${loc.name}" onerror="this.style.display='none'">
+          <div class="review-mockup-label">${loc.name} — no artwork</div>
+        </div>`;
+      }
+      html += imgHtml;
+    }
+    html += '</div></div>';
+  }
+  html += '</div>';
+  section.innerHTML = html;
+}
+
+// pulse animation
 const styleEl = document.createElement('style');
 styleEl.textContent = '@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}';
 document.head.appendChild(styleEl);
+
 
 </script>
 </body>
