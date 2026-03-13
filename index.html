@@ -2019,6 +2019,8 @@ function renderReviewQtySection(style) {
     <div class="review-qty-total">${total} pcs total &nbsp;·&nbsp; <a href="#" style="color:#1a6fde;font-size:.72rem;font-weight:600" onclick="event.preventDefault();openReviewQtyEditor('${style}')">✏️ Edit quantities</a></div>`;
 }
 
+// Initialize on load
+document.addEventListener('DOMContentLoaded', initCatalog);
 </script>
 
 <!-- Lightbox -->
