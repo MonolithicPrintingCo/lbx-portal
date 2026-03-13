@@ -298,7 +298,7 @@
   </div>
   <div class="btn-row">
     <button class="btn btn-secondary" onclick="goTo(2)">← Back</button>
-    <button class="btn btn-primary" onclick="goTo(5)">Next: Your Info →</button>
+    <button class="btn btn-primary" onclick="goTo(4)">Next: Artwork &amp; Mockup →</button>
   </div>
 </div>
 
@@ -449,13 +449,15 @@ function fmt(p) { return p>0 ? '$'+p.toFixed(2) : 'Call'; }
 
 // ─── navigation ────────────────────────────────────────────────────────────
 function goTo(n) {
-  for (let i=1;i<=6;i++) {
-    document.getElementById('sec'+i).classList.toggle('active', i===n);
+  for (let i=1;i<=7;i++) {
+    const sec = document.getElementById('sec'+i);
+    if (sec) sec.classList.toggle('active', i===n);
     const s = document.getElementById('step'+i);
     if (s) { s.classList.toggle('active',i===n); s.classList.toggle('done',i<n); }
   }
   if (n===2) renderStep2();
-  if (n===5) renderSummary();
+  if (n===4) { renderMockupBg(); }
+  if (n===6) renderSummary();
   window.scrollTo(0,0);
 }
 
@@ -581,10 +583,10 @@ function validateAndReview() {
   state.company=(document.getElementById('custCompany').value||'').trim();
   if(!state.firstName||!state.lastName){alert('Please enter your full name.');return;}
   if(!state.email||!/\S+@\S+\.\S+/.test(state.email)){alert('Please enter a valid email.');return;}
-  goTo(5);
+  goTo(6);
 }
 
-// ─── Step 5 summary ────────────────────────────────────────────────────────
+// ─── Step 6 summary ────────────────────────────────────────────────────────
 function renderSummary() {
   const p=CATALOG[state.selectedStyle];
   state.dueDate=document.getElementById('dueDate').value;
