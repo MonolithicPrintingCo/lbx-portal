@@ -424,9 +424,17 @@
 <div class="section" id="sec6">
   <h2>Review Your Order</h2>
   <p class="subtitle">Double-check everything before submitting</p>
-  <div class="summary-card" id="summaryCard"></div>
-  <div id="reviewMockupsSection" style="margin-top:20px"></div>
-  <div class="btn-row" style="margin-top:20px;flex-wrap:wrap;gap:10px">
+
+  <!-- Per-garment cards with mockups + sizes -->
+  <div id="reviewMockupsSection"></div>
+
+  <!-- Order-level summary (customer info, decoration, totals) -->
+  <div style="margin-top:20px">
+    <div style="font-size:.8rem;font-weight:700;color:var(--gray3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Order Details</div>
+    <div class="summary-card" id="summaryCard"></div>
+  </div>
+
+  <div class="btn-row" style="margin-top:24px;flex-wrap:wrap;gap:10px">
     <button class="btn btn-secondary" onclick="goTo(5)">← Edit Info</button>
     <button class="btn btn-secondary" onclick="addAnotherGarment()" style="background:#f0f7ff;color:#1a6fde;border-color:#1a6fde">＋ Add Another Garment / Design</button>
     <button class="btn btn-primary" id="submitBtn" onclick="submitOrder()">✓ Submit Order Request</button>
@@ -1494,72 +1502,97 @@ async function buildReviewMockups() {
   section.innerHTML = '<div style="font-size:.82rem;color:var(--gray3);padding:8px 0">Generating previews…</div>';
   await new Promise(r => setTimeout(r, 50));
 
-  const EDITOR_SIZE = 700; // must match .mockup-bg width/height
-  const THUMB_SIZE  = 200; // output thumbnail canvas size
-
+  const EDITOR_SIZE = 700;
+  const THUMB_SIZE  = 150;
   const wrapper = document.createElement('div');
   wrapper.className = 'review-garments';
 
   for (let gi = 0; gi < garments.length; gi++) {
-    const g = garments[gi];
+    const g    = garments[gi];
     const prod = CATALOG[g.style] || {};
-    const garmentDiv = document.createElement('div');
-    garmentDiv.className = 'review-garment';
-    garmentDiv.innerHTML = `<h4>Garment ${gi+1}: ${prod.title||g.style} — ${g.color}</h4>`;
-    const grid = document.createElement('div');
-    grid.className = 'review-mockup-grid';
+
+    // ── Build mockup thumbnails ──────────────────────────────────────────────
+    const thumbsEl = document.createElement('div');
+    thumbsEl.className = 'review-garment-mockups';
 
     for (const loc of g.locations) {
       const item = document.createElement('div');
       item.className = 'review-mockup-item';
 
       if (g.mode === 'upload' && loc.mockupFiles.some(f => f.url && f.isImage)) {
-        // Show uploaded mockup image
         const f = loc.mockupFiles.find(f => f.url && f.isImage);
-        item.innerHTML = `<img class="review-mockup-img" src="${f.url}"><div class="review-mockup-label">${loc.name}</div>`;
+        item.innerHTML = `<img class="review-mockup-img" src="${f.url}" onclick="openLightboxAt([{name:'${loc.name}',img:'${f.url}'}],0)">
+          <div class="review-mockup-label">${loc.name}</div>`;
       } else {
-        // Composite thumbnail: garment bg + artwork layers scaled to THUMB_SIZE
-        const scale = THUMB_SIZE / EDITOR_SIZE;
+        const scale  = THUMB_SIZE / EDITOR_SIZE;
         const canvas = document.createElement('canvas');
         canvas.width = THUMB_SIZE; canvas.height = THUMB_SIZE;
         const ctx = canvas.getContext('2d');
-
-        // 1. Draw garment background image
         const view   = loc._bgView || getViewForLocation(loc.name);
         const bgUrl  = getGarmentImg(g, view);
         if (bgUrl) {
-          try {
-            const bgImg = await loadImageFromUrl(bgUrl);
-            ctx.drawImage(bgImg, 0, 0, THUMB_SIZE, THUMB_SIZE);
-          } catch(e) { /* no bg */ }
+          try { const bi = await loadImageFromUrl(bgUrl); ctx.drawImage(bi,0,0,THUMB_SIZE,THUMB_SIZE); } catch(e){}
         }
-
-        // 2. Draw artwork layers on top
         for (const layer of loc.layers) {
           if (!layer.url && !layer.objectUrl) continue;
           try {
-            const layerImg = await loadImageFromUrl(layer.objectUrl || layer.url);
-            const aspect = layerImg.naturalHeight / layerImg.naturalWidth;
-            const dw = layer.w * scale;
-            const dh = dw * aspect;
-            ctx.save();
-            ctx.globalAlpha = layer.opacity || 1;
-            ctx.drawImage(layerImg, layer.x * scale, layer.y * scale, dw, dh);
+            const li = await loadImageFromUrl(layer.objectUrl || layer.url);
+            const dw = layer.w * scale, dh = dw * (li.naturalHeight/li.naturalWidth);
+            ctx.save(); ctx.globalAlpha = layer.opacity||1;
+            ctx.drawImage(li, layer.x*scale, layer.y*scale, dw, dh);
             ctx.restore();
-          } catch(e) { /* skip */ }
+          } catch(e){}
         }
-
         const dataUrl = canvas.toDataURL('image/png');
         item.innerHTML = `
-          <div style="position:relative;width:${THUMB_SIZE}px;height:${THUMB_SIZE}px;border:1.5px solid var(--gray2);border-radius:var(--radius);overflow:hidden;background:var(--gray1);cursor:zoom-in" onclick="openLightboxAt([{name:'${loc.name}',img:'${dataUrl}'}],0)">
-            <img src="${dataUrl}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:contain">
-          </div>
+          <img class="review-mockup-img" src="${dataUrl}" onclick="openLightboxAt([{name:'${loc.name}',img:'${dataUrl}'}],0)">
           <div class="review-mockup-label">${loc.name}</div>`;
       }
-      grid.appendChild(item);
+      thumbsEl.appendChild(item);
     }
-    garmentDiv.appendChild(grid);
-    wrapper.appendChild(garmentDiv);
+
+    // ── Build details column ─────────────────────────────────────────────────
+    const sizes  = Object.entries(state.quantities).filter(([,q])=>q>0);
+    const qtyChips = sizes.map(([sz,q])=>
+      `<div class="review-qty-chip">${sz}<span>×${q}</span></div>`).join('');
+    const locChips = g.locations.map(l => {
+      const art = l.artFiles.filter(f=>!f.error).length;
+      return `<div class="review-loc-chip">${l.name}${art?` · ${art} file${art>1?'s':''}`:''}</div>`;
+    }).join('');
+
+    const detailsEl = document.createElement('div');
+    detailsEl.className = 'review-garment-details';
+    detailsEl.innerHTML = `
+      <div class="review-detail-section">
+        <div class="review-detail-label">Sizes &amp; Quantities</div>
+        <div class="review-qty-grid">${qtyChips || '<span style="font-size:.8rem;color:var(--gray3)">No quantities entered</span>'}</div>
+      </div>
+      <div class="review-detail-section">
+        <div class="review-detail-label">Print Locations</div>
+        <div class="review-locations">${locChips}</div>
+      </div>
+      <div class="review-detail-section">
+        <div class="review-detail-label">Decoration</div>
+        <div style="font-size:.82rem;color:var(--black)">${state.printType} · ${state.printColors} color${state.printColors>1?'s':''}</div>
+      </div>`;
+
+    // ── Assemble card ────────────────────────────────────────────────────────
+    const card = document.createElement('div');
+    card.className = 'review-garment-card';
+    card.innerHTML = `
+      <div class="review-garment-header">
+        <div class="review-garment-num">Garment ${gi+1}</div>
+        <div>
+          <div class="review-garment-title">${prod.brand||''} ${prod.title||g.style} (${g.style})</div>
+          <div class="review-garment-subtitle">Color: ${g.color}</div>
+        </div>
+      </div>`;
+    const body = document.createElement('div');
+    body.className = 'review-garment-body';
+    body.appendChild(thumbsEl);
+    body.appendChild(detailsEl);
+    card.appendChild(body);
+    wrapper.appendChild(card);
   }
 
   section.innerHTML = '';
