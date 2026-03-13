@@ -768,6 +768,15 @@ function goTo(n) {
 }
 
 
+function addAnotherGarment() {
+  // Reset product selection so user can pick a new style/color
+  state.selectedStyle = null;
+  state.selectedColor = null;
+  state.quantities = {};
+  state._addingGarment = true;
+  goTo(1);
+}
+
 // ─── Step 2 ────────────────────────────────────────────────────────────────
 function renderStep2() {
   const p = CATALOG[state.selectedStyle]; if(!p) return;
