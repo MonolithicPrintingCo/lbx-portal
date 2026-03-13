@@ -307,6 +307,7 @@
   .print-type-btn,
   [class*="-chip"]{color:#f0f0f0}
   .supplier-badge{opacity:.85}
+  .badge.l7{background:#1a1a2e;color:#e8b86d}
   table{border-collapse:collapse}
   th{background:rgba(255,255,255,.06);color:rgba(255,255,255,.55);font-size:.72rem;text-transform:uppercase;letter-spacing:.5px;padding:8px 12px}
   td{padding:8px 12px;border-bottom:1px solid rgba(255,255,255,.07);color:#e0e0e0;font-size:.85rem}
@@ -567,8 +568,42 @@ function fmt(p) { return p>0 ? '$'+p.toFixed(2) : 'Call'; }
 async function initCatalog() {
   try {
     document.getElementById('catalogStatus').textContent = 'Loading catalog...';
-    const res = await fetch('./ss_catalog_full.json');
-    ALL_STYLES = await res.json();
+    const [ssRes, l7Res] = await Promise.all([
+      fetch('./ss_catalog_full.json'),
+      fetch('./lane7_catalog.json')
+    ]);
+    const ssCatalog = await ssRes.json();
+    const l7Raw = await l7Res.json();
+
+    // Pre-populate CATALOG with Lane Seven data (no proxy needed)
+    l7Raw.forEach(item => {
+      if (!item._l7 || !item._colors) return;
+      const colors = {};
+      item._colors.forEach(c => {
+        colors[c.name] = {
+          hex: '#888',
+          img: c.image || '',
+          back: c.image || '',
+          direct: '',
+          sizes: c.sizes || []
+        };
+      });
+      CATALOG[item.style] = {
+        styleID: item.id,
+        styleName: item.style,
+        brand: 'Lane Seven',
+        title: item.title,
+        category: item.cat,
+        supplier: 'Lane Seven',
+        img: item.img,
+        description: item._description || '',
+        colors,
+        pricing: {},
+        _l7: true
+      };
+    });
+
+    ALL_STYLES = [...ssCatalog, ...l7Raw];
 
     // Populate brand filter
     const brands = [...new Set(ALL_STYLES.map(s => s.brand))].sort();
@@ -584,6 +619,7 @@ async function initCatalog() {
     document.getElementById('catalogStatus').textContent = 'Failed to load catalog.';
     console.error(e);
   }
+}
 }
 
 function applyFilters() {
@@ -757,9 +793,10 @@ function renderStep2() {
   document.getElementById('previewStyle').textContent = p.styleName;
   document.getElementById('previewDesc').textContent = p.description || '';
   document.getElementById('previewBadge').innerHTML =
-    `<span class="badge ${p.supplier==='SanMar'?'sanmar':'ss'}">${p.supplier}</span>`;
+    `<span class="badge ${p.supplier==='SanMar'?'sanmar':p.supplier==='Lane Seven'?'l7':'ss'}">${p.supplier}</span>`;
   document.getElementById('priceTableBody').innerHTML =
-    Object.entries(p.pricing).map(([sz,pr])=>`<tr><td>${sz}</td><td>${fmt(pr)}/ea</td></tr>`).join('');
+    p._l7 ? '<tr><td colspan="2" style="color:#aaa;font-size:.8rem">Pricing on quote</td></tr>'
+      : Object.entries(p.pricing).map(([sz,pr])=>`<tr><td>${sz}</td><td>${fmt(pr)}/ea</td></tr>`).join('');
 
   document.getElementById('colorSwatches').innerHTML = Object.entries(p.colors).map(([name,cd2])=>{
     const sel = state.selectedColor===name?' selected':'';
@@ -819,18 +856,28 @@ function selectColor(name) {
   // rebuild angle strip for new color
   const p2 = CATALOG[state.selectedStyle];
   if(p2) updateAngleStrip(p2, name);
+  if(p2?._l7) renderQtyTable(); // re-render sizes per color for Lane Seven
   checkStep2();
 }
 function renderQtyTable() {
   const p=CATALOG[state.selectedStyle];
-  document.getElementById('qtyBody').innerHTML = Object.keys(p.pricing).map(sz=>{
+  // For Lane Seven, derive sizes from selected color (no pricing data)
+  let sizes;
+  if (p._l7) {
+    const col = state.selectedColor || Object.keys(p.colors)[0];
+    const cd = p.colors[col] || {};
+    sizes = cd.sizes && cd.sizes.length ? cd.sizes : Object.keys(p.colors).flatMap(c=>p.colors[c].sizes||[]).filter((v,i,a)=>a.indexOf(v)===i);
+  } else {
+    sizes = Object.keys(p.pricing);
+  }
+  document.getElementById('qtyBody').innerHTML = sizes.map(sz=>{
     const price=p.pricing[sz]||0, qty=state.quantities[sz]||'';
     return `<tr>
       <td><strong>${sz}</strong></td>
       <td><input class="qty-input" type="number" min="0" value="${qty}"
         oninput="updateQty('${sz}',this.value)"></td>
-      <td>${fmt(price)}</td>
-      <td id="sub_${sz}">${qty?fmt(price*parseInt(qty)):'—'}</td>
+      <td>${p._l7?'—':fmt(price)}</td>
+      <td id="sub_${sz}">${qty&&!p._l7?fmt(price*parseInt(qty)):'—'}</td>
     </tr>`;
   }).join('');
   updateTotals();
