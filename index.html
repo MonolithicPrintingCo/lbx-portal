@@ -809,7 +809,7 @@ function renderGarmentList() {
 
     // Mockup creator (canvas)
     const mockupCanvasHtml = g.mode==='create' ? `
-      <div id="mockupWrap_${g.id}_${loc.id}" style="margin-top:14px;display:${loc.artFiles.some(f=>f.isImage&&f.url&&!f.error)?'block':'none'}">
+      <div id="mockupWrap_${g.id}_${loc.id}" style="margin-top:14px;display:block">
         <div style="font-size:.88rem;font-weight:700;margin-bottom:8px;color:var(--gray4)">Mockup Preview</div>
         ${loc.name === 'LC + Full Back' ? `
           <div style="display:flex;gap:6px;margin-bottom:8px">
@@ -821,6 +821,12 @@ function renderGarmentList() {
         <div class="mockup-wrap">
           <div class="mockup-canvas-wrap" id="canvas_${g.id}_${loc.id}" style="position:relative">
             <img id="bg_${g.id}_${loc.id}" class="mockup-bg" src="${getGarmentImg(g, loc._bgView || getViewForLocation(loc.name))}" alt="Garment">
+            ${!loc.artFiles.some(f=>f.isImage&&f.url&&!f.error) ? `
+              <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none">
+                <div style="background:rgba(0,0,0,.45);color:#fff;font-size:.78rem;text-align:center;padding:10px 14px;border-radius:8px;line-height:1.5">
+                  ⬆️ Upload artwork above<br>to position it here
+                </div>
+              </div>` : ''}
           </div>
           <div class="mockup-controls">
             <h3>Layers</h3>
@@ -1237,7 +1243,7 @@ function renderLayersForGarment(g, loc) {
   const ctrlEl = document.getElementById(`layerCtrl_${g.id}_${loc.id}`);
   if (ctrlEl) ctrlEl.style.display = loc.selectedLayer ? 'block' : 'none';
   const mockupWrap = document.getElementById(`mockupWrap_${g.id}_${loc.id}`);
-  if (mockupWrap) mockupWrap.style.display = loc.artFiles.some(f=>f.isImage&&f.url&&!f.error) ? 'block' : 'none';
+  if (mockupWrap) mockupWrap.style.display = 'block'; // always show garment preview
 }
 
 function selectLayerInLoc(g, loc, id) { loc.selectedLayer=id; renderLayersForGarment(g,loc); }
