@@ -224,23 +224,71 @@ select.fi{cursor:pointer}
         </div>
 
         <div class="slbl">Print Type</div>
-        <select class="fi" id="ptype" style="margin-bottom:16px">
-          <option>Screen Print</option>
-          <option>Embroidery</option>
-          <option>DTG (Direct to Garment)</option>
-          <option>Heat Transfer</option>
-          <option>Sublimation</option>
+        <select class="fi" id="ptype" style="margin-bottom:16px" onchange="onPrintTypeChange()">
+          <option value="Screen Print">Screen Print</option>
+          <option value="Embroidery">Embroidery</option>
+          <option value="DTG">DTG (Direct to Garment)</option>
+          <option value="Heat Transfer">Heat Transfer</option>
+          <option value="Sublimation">Sublimation</option>
         </select>
 
-        <div class="slbl">Number of Colors</div>
-        <select class="fi" id="ncolors">
-          <option>1 color</option>
-          <option>2 colors</option>
-          <option>3 colors</option>
-          <option>4 colors</option>
-          <option>5+ colors</option>
-          <option>Full Color / CMYK</option>
-        </select>
+        <!-- Screen Print: color count -->
+        <div id="sp-colors-wrap">
+          <div class="slbl">Number of Colors <span style="font-size:10px;color:#555">(per location)</span></div>
+          <select class="fi" id="ncolors" onchange="updatePriceEstimate()">
+            <option value="1">1 Color</option>
+            <option value="2">2 Colors</option>
+            <option value="3">3 Colors</option>
+            <option value="4">4 Colors</option>
+            <option value="5">5 Colors</option>
+            <option value="6">6 Colors</option>
+            <option value="7">7 Colors</option>
+            <option value="8">8 Colors</option>
+          </select>
+        </div>
+
+        <!-- Embroidery: stitch count -->
+        <div id="emb-stitch-wrap" style="display:none">
+          <div class="slbl">Stitch Count</div>
+          <select class="fi" id="nstitches" onchange="onStitchChange()">
+            <option value="unsure">I'm not sure</option>
+            <option value="0-3K">0–3,000 stitches (small logo)</option>
+            <option value="3001-4K">3,001–4,000 stitches</option>
+            <option value="4001-5K">4,001–5,000 stitches</option>
+            <option value="5001-6K">5,001–6,000 stitches</option>
+            <option value="6001-7K">6,001–7,000 stitches</option>
+            <option value="7001-8K">7,001–8,000 stitches</option>
+            <option value="8001-9K">8,001–9,000 stitches</option>
+            <option value="9001-10K">9,001–10,000 stitches</option>
+            <option value="10001-11K">10,001–11,000 stitches</option>
+            <option value="11001-12K">11,001–12,000 stitches</option>
+            <option value="12001-13K">12,001–13,000 stitches</option>
+            <option value="13001-14K">13,001–14,000 stitches</option>
+            <option value="14001-15K">14,001–15,000 stitches</option>
+          </select>
+          <div id="emb-unsure-note" style="margin-top:8px;background:rgba(249,115,22,.07);border:1px solid rgba(249,115,22,.2);border-radius:10px;padding:10px 13px;font-size:12px;color:#fdba74;line-height:1.5">
+            No worries! We'll count the stitches after reviewing your artwork and include pricing in your quote.
+          </div>
+          <div id="emb-fees-note" style="margin-top:8px;background:rgba(255,255,255,.04);border:1px solid #2a2a2a;border-radius:10px;padding:10px 13px;font-size:12px;color:#888;line-height:1.5;display:none">
+            <strong style="color:#ccc">Fees:</strong> Digitizing $30 (one-time) · PUFF: +100% per pc · Patch Sew: $3/pc
+          </div>
+        </div>
+
+        <!-- Live Price Estimate -->
+        <div id="price-estimate-box" style="margin-top:16px;display:none">
+          <div class="slbl">Print Price Estimate</div>
+          <div style="background:#161616;border:1px solid #2a2a2a;border-radius:10px;padding:12px 14px">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+              <span style="font-size:12px;color:#888">Per piece (print only)</span>
+              <span style="font-size:18px;font-weight:800;color:#f97316" id="est-per-pc">—</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <span style="font-size:12px;color:#888">Total print est.</span>
+              <span style="font-size:13px;font-weight:700;color:#ccc" id="est-total">—</span>
+            </div>
+            <div style="font-size:10px;color:#555;margin-top:8px">* Print only. Garment cost, setup fees &amp; shipping added separately.</div>
+          </div>
+        </div>
 
         <div class="art-ctrl show" id="artctrl" style="margin-top:14px">
           <button class="btn btn-sm btn-s" onclick="scaleArt(1.15)">＋ Bigger</button>
@@ -750,7 +798,7 @@ function go(n){
   S.step=n; renderSteps();
   window.scrollTo({top:0,behavior:'smooth'});
   if(n===2) renderCS();
-  if(n===3) initMockup();
+  if(n===3){ initMockup(); onPrintTypeChange(); }
 }
 
 // ── Products ──
@@ -878,7 +926,7 @@ function pickColor(n, el){
 }
 
 function updQty(s,v){S.qty[s]=parseInt(v)||0; updTotal();}
-function updTotal(){document.getElementById('totqty').textContent=Object.values(S.qty).reduce((a,b)=>a+(parseInt(b)||0),0);}
+
 
 // ── Mockup with real photo ──
 function setMockupView(v){
@@ -1141,7 +1189,7 @@ async function submitOrder(){
     total_qty: tot,
     placement: S.placement,
     print_type: document.getElementById('ptype').value,
-    print_colors: document.getElementById('ncolors').value,
+    print_colors: document.getElementById('ptype').value==='Embroidery' ? (document.getElementById('nstitches').value==='unsure' ? 'To be quoted' : document.getElementById('nstitches').value+' stitches') : document.getElementById('ncolors').value+' color(s)',
     customer_first_name: S.customer.firstName,
     customer_last_name: S.customer.lastName,
     customer_email: S.customer.email,
@@ -1172,6 +1220,126 @@ async function submitOrder(){
     btn.disabled = false;
     sp.style.display = 'none';
   }
+}
+
+
+// ── Pricing Matrices ──
+const SP_PRICING = {
+  tiers: [
+    {min:12,  max:23,  prices:[6.22,  10.23, 12.56, 15.01, 19.36, 22.59, null,  null]},
+    {min:24,  max:35,  prices:[5.14,  7.07,  8.55,  10.08, 12.76, 13.52, null,  null]},
+    {min:36,  max:71,  prices:[4.10,  5.24,  6.44,  8.15,  9.66,  9.81,  9.80,  10.80]},
+    {min:72,  max:99,  prices:[3.37,  4.24,  5.36,  5.71,  6.90,  7.78,  8.81,  9.51]},
+    {min:100, max:199, prices:[2.65,  3.27,  3.86,  4.47,  6.08,  5.69,  6.14,  6.78]},
+    {min:200, max:399, prices:[2.21,  2.34,  3.07,  3.52,  3.93,  4.29,  4.62,  5.65]},
+    {min:400, max:699, prices:[1.85,  2.11,  2.37,  2.63,  2.88,  2.14,  3.35,  3.50]},
+    {min:700, max:999, prices:[1.29,  1.55,  1.82,  2.08,  2.28,  2.55,  2.76,  3.07]},
+    {min:1000,max:1749,prices:[1.16,  1.38,  1.62,  1.84,  2.01,  2.25,  2.45,  2.72]},
+  ]
+};
+
+const EMB_PRICING = {
+  tiers: [
+    {min:12,  max:49},
+    {min:50,  max:99},
+    {min:100, max:275},
+    {min:276, max:500},
+    {min:501, max:999},
+    {min:1000,max:1500},
+  ],
+  prices: {
+    "0-3K":      [3.89, 3.21, 2.72, 2.60, 2.47, 2.35],
+    "3001-4K":   [5.18, 4.14, 3.34, 3.06, 2.88, 2.66],
+    "4001-5K":   [6.47, 5.07, 3.96, 3.52, 3.30, 2.97],
+    "5001-6K":   [7.76, 5.99, 4.57, 3.99, 3.71, 3.28],
+    "6001-7K":   [9.04, 6.92, 5.19, 4.45, 4.12, 3.58],
+    "7001-8K":   [10.33,7.85, 5.81, 4.91, 4.53, 3.89],
+    "8001-9K":   [11.62,8.78, 6.43, 5.38, 4.94, 4.20],
+    "9001-10K":  [12.91,9.70, 7.05, 5.84, 5.36, 4.51],
+    "10001-11K": [14.19,10.63,7.66, 6.30, 5.77, 4.82],
+    "11001-12K": [15.48,11.56,8.28, 6.77, 6.18, 5.13],
+    "12001-13K": [16.77,12.48,8.90, 7.23, 6.59, 5.44],
+    "13001-14K": [18.06,13.41,9.52, 7.69, 7.00, 5.75],
+    "14001-15K": [19.34,14.34,10.14,8.16, 7.42, 6.06],
+  }
+};
+
+function getSPPrice(qty, colorCount){
+  const ci = colorCount - 1;
+  for(const tier of SP_PRICING.tiers){
+    if(qty >= tier.min && qty <= tier.max) return tier.prices[ci] || null;
+  }
+  return null;
+}
+
+function getEmbPrice(qty, stitchKey){
+  const prices = EMB_PRICING.prices[stitchKey];
+  if(!prices) return null;
+  for(let i=0; i<EMB_PRICING.tiers.length; i++){
+    const t = EMB_PRICING.tiers[i];
+    if(qty >= t.min && qty <= t.max) return prices[i];
+  }
+  return null;
+}
+
+function onPrintTypeChange(){
+  const pt = document.getElementById('ptype').value;
+  const isSP = pt === 'Screen Print';
+  const isEmb = pt === 'Embroidery';
+  document.getElementById('sp-colors-wrap').style.display = isSP ? '' : 'none';
+  document.getElementById('emb-stitch-wrap').style.display = isEmb ? '' : 'none';
+  updatePriceEstimate();
+}
+
+function onStitchChange(){
+  const val = document.getElementById('nstitches').value;
+  document.getElementById('emb-unsure-note').style.display = val === 'unsure' ? '' : 'none';
+  document.getElementById('emb-fees-note').style.display = val !== 'unsure' ? '' : 'none';
+  updatePriceEstimate();
+}
+
+function updatePriceEstimate(){
+  const pt = document.getElementById('ptype').value;
+  const tot = Object.values(S.qty).reduce((a,b)=>a+(parseInt(b)||0),0);
+  const box = document.getElementById('price-estimate-box');
+  if(!box) return;
+  const perPcEl = document.getElementById('est-per-pc');
+  const totalEl = document.getElementById('est-total');
+
+  if(tot < 12){ box.style.display='none'; return; }
+
+  let pricePerPc = null;
+
+  if(pt === 'Screen Print'){
+    const colors = parseInt(document.getElementById('ncolors').value) || 1;
+    pricePerPc = getSPPrice(tot, colors);
+    if(pricePerPc === null && colors > 6 && tot < 36){
+      box.style.display='';
+      perPcEl.textContent='N/A';
+      totalEl.textContent='7–8 colors require 36+ pcs';
+      return;
+    }
+  } else if(pt === 'Embroidery'){
+    const stitch = document.getElementById('nstitches').value;
+    if(stitch === 'unsure'){ box.style.display='none'; return; }
+    pricePerPc = getEmbPrice(tot, stitch);
+  } else {
+    box.style.display='none'; return;
+  }
+
+  box.style.display='';
+  if(pricePerPc){
+    perPcEl.textContent = '$' + pricePerPc.toFixed(2);
+    totalEl.textContent = '$' + (pricePerPc * tot).toFixed(2);
+  } else {
+    perPcEl.textContent = 'Quote needed';
+    totalEl.textContent = 'Contact us for pricing';
+  }
+}
+
+function updTotal(){
+  document.getElementById('totqty').textContent=Object.values(S.qty).reduce((a,b)=>a+(parseInt(b)||0),0);
+  updatePriceEstimate();
 }
 
 // ── Init ──
