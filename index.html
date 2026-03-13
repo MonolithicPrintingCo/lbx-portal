@@ -1205,9 +1205,9 @@ async function submitOrder(){
   };
 
   try {
-    const res = await fetch('https://api.base44.com/api/apps/69b379d07fc1c9e2a98e71ad/entities/Order', {
+    const res = await fetch('https://lbx-order-proxy.WORKERS_SUBDOMAIN.workers.dev', {
       method:'POST',
-      headers:{'Content-Type':'application/json','x-user-email':S.customer.email},
+      headers:{'Content-Type':'application/json'},
       body:JSON.stringify(payload)
     });
     if(!res.ok) throw new Error('Server error');
