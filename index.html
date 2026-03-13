@@ -620,7 +620,6 @@ async function initCatalog() {
     console.error(e);
   }
 }
-}
 
 function applyFilters() {
   const q = document.getElementById('searchInput').value.toLowerCase().trim();
@@ -768,17 +767,13 @@ function goTo(n) {
   window.scrollTo(0,0);
 }
 
-// ─── Step 1 ────────────────────────────────────────────────────────────────function selectProduct(s) {
-  state.selectedStyle=s; state.selectedColor=null; state.quantities={};
-  renderGrid();
-  document.getElementById('toStep2').disabled=false;
-}
+// ─── Step 1 ────────────────────────────────────────────────────────────────
 document.getElementById('searchInput').addEventListener('input', renderGrid);
 document.querySelectorAll('.filter-btn').forEach(btn => btn.addEventListener('click', () => {
   document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));
   btn.classList.add('active');
   activeCat = btn.dataset.cat;
-  renderGrid();
+  applyFilters();
 }));
 document.getElementById('toStep2').addEventListener('click', ()=>goTo(2));
 
