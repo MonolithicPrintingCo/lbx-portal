@@ -412,8 +412,9 @@
   <p class="subtitle">Double-check everything before submitting</p>
   <div class="summary-card" id="summaryCard"></div>
   <div id="reviewMockupsSection" style="margin-top:20px"></div>
-  <div class="btn-row" style="margin-top:20px">
+  <div class="btn-row" style="margin-top:20px;flex-wrap:wrap;gap:10px">
     <button class="btn btn-secondary" onclick="goTo(5)">← Edit Info</button>
+    <button class="btn btn-secondary" onclick="addAnotherGarment()" style="background:#f0f7ff;color:#1a6fde;border-color:#1a6fde">＋ Add Another Garment / Design</button>
     <button class="btn btn-primary" id="submitBtn" onclick="submitOrder()">✓ Submit Order Request</button>
   </div>
 </div>
@@ -466,6 +467,21 @@ function basePrice(pricing) {
 function fmt(p) { return p>0 ? '$'+p.toFixed(2) : 'Call'; }
 
 // ─── navigation ────────────────────────────────────────────────────────────
+
+function addAnotherGarment() {
+  // Go back to step 1 so they can pick a new product
+  // Flag that we're adding — initGarments will preserve existing garments
+  state._addingGarment = true;
+  // Reset product/color selection so step 1 & 2 are fresh
+  state.selectedStyle = null;
+  state.selectedColor = null;
+  state.quantities    = {};
+  document.getElementById('toStep2').disabled = true;
+  // Re-render step 1 so the selection is cleared
+  document.querySelectorAll('.product-card').forEach(c => c.classList.remove('selected'));
+  goTo(1);
+}
+
 function goTo(n) {
   for (let i=1;i<=7;i++) {
     const sec = document.getElementById('sec'+i);
@@ -755,11 +771,15 @@ function uid() { return ++_uid + '_' + Date.now(); }
 const LOCATIONS = ['Front', 'Back', 'Left Chest', 'Right Chest', 'Full Front', 'Full Back', 'Left Sleeve', 'Right Sleeve', 'Hat Front', 'Hat Back', 'Hood', 'Hem', 'Leg', 'Custom'];
 
 function initGarments() {
-  // Only initialize once — preserve work if user navigates back/forward
   if (garments.length === 0) {
+    // First garment ever
+    addGarment(state.selectedStyle, state.selectedColor);
+  } else if (state._addingGarment) {
+    // User came from "Add Another Garment" — append a new one
+    state._addingGarment = false;
     addGarment(state.selectedStyle, state.selectedColor);
   } else {
-    // Update the first garment's style/color if user changed them in earlier steps
+    // Normal back/forward navigation — update the first garment style/color if changed
     if (garments[0].style !== state.selectedStyle || garments[0].color !== state.selectedColor) {
       garments[0].style = state.selectedStyle;
       garments[0].color = state.selectedColor;
