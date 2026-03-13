@@ -1210,7 +1210,10 @@ async function submitOrder(){
       headers:{'Content-Type':'application/json'},
       body:JSON.stringify(payload)
     });
-    if(!res.ok) throw new Error('Server error');
+    if(!res.ok) {
+      const errText = await res.text();
+      throw new Error('Server error ' + res.status + ': ' + errText);
+    }
     document.querySelectorAll('.card').forEach(c=>c.classList.remove('active'));
     document.getElementById('s6').classList.add('active');
     document.getElementById('ok-details').innerHTML=`
@@ -1220,7 +1223,8 @@ async function submitOrder(){
     S.step=6; renderSteps();
     window.scrollTo({top:0,behavior:'smooth'});
   } catch(err){
-    alert('Something went wrong submitting your order. Please try again or contact us directly.');
+    console.error('Submit error:', err);
+    alert('Something went wrong: ' + err.message);
     btn.disabled = false;
     sp.style.display = 'none';
   }
