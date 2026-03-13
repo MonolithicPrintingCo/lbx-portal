@@ -248,6 +248,19 @@
 .reuse-art-item .icon{width:64px;height:64px;display:flex;align-items:center;justify-content:center;border-radius:4px;background:#fff;border:1px solid var(--gray2);font-size:1.6rem}
 .reuse-art-item span{font-size:.6rem;color:#555;text-align:center;max-width:76px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .reuse-art-item .used-badge{font-size:.58rem;color:#16a34a;font-weight:700}
+
+/* ── Review page: inline qty editor ─────────────────── */
+.review-qty-chip{cursor:pointer;transition:background .12s,border-color .12s}
+.review-qty-chip:hover{background:#e6f0ff;border-color:#1a6fde}
+.review-qty-edit-row{display:flex;align-items:center;gap:6px;background:#f0f7ff;border:1.5px solid #1a6fde;border-radius:8px;padding:6px 10px}
+.review-qty-edit-row label{font-size:.75rem;font-weight:700;color:#1a4fa0;min-width:32px}
+.review-qty-edit-row input{width:58px;font-size:.85rem;font-weight:700;border:1px solid #c5d9f8;border-radius:5px;padding:3px 7px;text-align:center}
+.review-qty-edit-row button{font-size:.72rem;padding:3px 10px;border-radius:5px;border:none;cursor:pointer;font-weight:600}
+.review-qty-done{background:var(--accent);color:#fff}
+.review-qty-done:hover{filter:brightness(1.1)}
+.review-qty-grid-wrap{display:flex;flex-direction:column;gap:8px}
+.review-qty-chips-row{display:flex;flex-wrap:wrap;gap:6px}
+.review-qty-total{font-size:.75rem;color:var(--gray3);margin-top:2px}
 </style>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 </head>
@@ -1555,6 +1568,7 @@ async function buildReviewMockups() {
     const sizes  = Object.entries(state.quantities).filter(([,q])=>q>0);
     const qtyChips = sizes.map(([sz,q])=>
       `<div class="review-qty-chip">${sz}<span>×${q}</span></div>`).join('');
+    const qtyEditHtml = renderReviewQtySection(g.style);
     const locChips = g.locations.map(l => {
       const art = l.artFiles.filter(f=>!f.error).length;
       return `<div class="review-loc-chip">${l.name}${art?` · ${art} file${art>1?'s':''}`:''}</div>`;
@@ -1564,8 +1578,10 @@ async function buildReviewMockups() {
     detailsEl.className = 'review-garment-details';
     detailsEl.innerHTML = `
       <div class="review-detail-section">
-        <div class="review-detail-label">Sizes &amp; Quantities</div>
-        <div class="review-qty-grid">${qtyChips || '<span style="font-size:.8rem;color:var(--gray3)">No quantities entered</span>'}</div>
+        <div id="reviewQtyWrap_${g.style}" class="review-qty-grid-wrap">
+          <div class="review-detail-label">Sizes &amp; Quantities</div>
+          ${qtyEditHtml}
+        </div>
       </div>
       <div class="review-detail-section">
         <div class="review-detail-label">Print Locations</div>
@@ -1728,6 +1744,58 @@ function reuseArtFile(gid, locId, poolIndex) {
   if (entry.isImage) addLayerToLoc(loc, entry);
 
   renderGarmentList();
+}
+
+
+// ── Review page: inline quantity editing ─────────────────────────────────────
+
+function openReviewQtyEditor(style) {
+  // Inline edit: replace the chips row with input fields for each size
+  const wrap = document.getElementById('reviewQtyWrap_' + style);
+  if (!wrap) return;
+  const p = CATALOG[style] || {};
+  const sizes = Object.keys(p.pricing || {});
+
+  const inputs = sizes.map(sz => {
+    const cur = state.quantities[sz] || '';
+    return `<div class="review-qty-edit-row">
+      <label>${sz}</label>
+      <input id="rqInput_${style}_${sz}" type="number" min="0" value="${cur}" placeholder="0">
+    </div>`;
+  }).join('');
+
+  wrap.innerHTML = `
+    <div class="review-detail-label">Sizes &amp; Quantities <span style="font-weight:400;color:#1a6fde;font-size:.7rem">(editing)</span></div>
+    <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px">${inputs}</div>
+    <button class="btn review-qty-done" onclick="saveReviewQty('${style}')">✓ Done</button>
+  `;
+}
+
+function saveReviewQty(style) {
+  const p = CATALOG[style] || {};
+  const sizes = Object.keys(p.pricing || {});
+  sizes.forEach(sz => {
+    const el = document.getElementById('rqInput_' + style + '_' + sz);
+    if (!el) return;
+    const n = parseInt(el.value) || 0;
+    if (n > 0) state.quantities[sz] = n;
+    else delete state.quantities[sz];
+  });
+  // Re-render the whole review so all cards update (totals, chips, etc.)
+  renderSummary();
+  buildReviewMockups();
+}
+
+function renderReviewQtySection(style) {
+  const p = CATALOG[style] || {};
+  const sizes = Object.keys(p.pricing || {});
+  const chips = sizes
+    .filter(sz => state.quantities[sz] > 0)
+    .map(sz => `<div class="review-qty-chip">${sz}<span>×${state.quantities[sz]}</span></div>`)
+    .join('');
+  const total = Object.values(state.quantities).reduce((a, b) => a + b, 0);
+  return `<div class="review-qty-chips-row">${chips || '<span style="font-size:.8rem;color:var(--gray3)">No quantities yet</span>'}</div>
+    <div class="review-qty-total">${total} pcs total &nbsp;·&nbsp; <a href="#" style="color:#1a6fde;font-size:.72rem;font-weight:600" onclick="event.preventDefault();openReviewQtyEditor('${style}')">✏️ Edit quantities</a></div>`;
 }
 
 </script>
