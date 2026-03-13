@@ -212,6 +212,25 @@
   .modal-box p{font-size:.87rem;color:var(--gray4);line-height:1.6;margin-bottom:16px}
   .modal-btn-row{display:flex;justify-content:flex-end;gap:10px}
 
+
+/* ── Photo strip & lightbox ─────────────────────────── */
+.photo-strip{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px;max-width:480px}
+.photo-thumb{width:72px;height:72px;object-fit:cover;border-radius:6px;cursor:pointer;border:2.5px solid transparent;transition:border-color .15s,transform .1s;background:var(--gray1)}
+.photo-thumb:hover{transform:scale(1.05)}
+.photo-thumb.active{border-color:var(--accent)}
+
+/* main image zoom cursor */
+.preview-img{cursor:zoom-in}
+
+/* ── Lightbox ────────────────────────────────────────── */
+#lightbox{display:none;position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:9999;align-items:center;justify-content:center;flex-direction:column}
+#lightbox.open{display:flex}
+#lightbox-img{max-width:92vw;max-height:82vh;object-fit:contain;border-radius:8px;box-shadow:0 8px 40px rgba(0,0,0,.6)}
+#lightbox-caption{color:#ddd;font-size:.9rem;margin-top:12px;text-align:center}
+#lightbox-close{position:absolute;top:18px;right:24px;background:none;border:none;color:#fff;font-size:2rem;cursor:pointer;line-height:1}
+#lightbox-prev,#lightbox-next{position:absolute;top:50%;transform:translateY(-50%);background:rgba(255,255,255,.15);border:none;color:#fff;font-size:2rem;cursor:pointer;padding:10px 16px;border-radius:6px;line-height:1}
+#lightbox-prev{left:16px}#lightbox-next{right:16px}
+#lightbox-prev:hover,#lightbox-next:hover{background:rgba(255,255,255,.3)}
 </style>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 </head>
@@ -260,7 +279,8 @@
   <p class="subtitle">Pick your garment color and enter quantities per size</p>
   <div style="background:#fff8e1;border:1px solid #ffe082;border-radius:8px;padding:10px 14px;font-size:.82rem;color:#7a5c00;margin-bottom:20px">&#9888;&#65039; <strong>Prices shown are standard retail.</strong> Final garment cost will be adjusted based on your order quantity &mdash; accurate pricing will appear on your quote once we review your request.</div>
   <div class="product-preview">
-    <img id="previewImg" class="preview-img" src="" alt="Product">
+    <img id="previewImg" class="preview-img" src="" alt="Product" onclick="openLightboxAt(state._lbPhotos, state._lbIndex)">
+    <div class="photo-strip" id="photoStrip"></div>
     <div class="preview-info">
       <div class="brand" id="previewBrand"></div>
       <h3 id="previewName"></h3>
@@ -513,15 +533,51 @@ function renderStep2() {
     return `<div class="color-swatch${sel}" style="background:${cd2.hex||'#ccc'}" title="${name}" onclick="selectColor('${name}')"></div>`;
   }).join('');
   document.getElementById('selectedColorLabel').textContent = state.selectedColor||'(select a color)';
+  renderPhotoStrip(p, firstColor);
   renderQtyTable();
+}
+
+function renderPhotoStrip(p, activeColor) {
+  // Build ordered list: active color first, then all others
+  const entries = Object.entries(p.colors);
+  const activeIdx = entries.findIndex(([n]) => n === activeColor);
+  const ordered = activeIdx > 0
+    ? [entries[activeIdx], ...entries.slice(0,activeIdx), ...entries.slice(activeIdx+1)]
+    : entries;
+
+  // Store photo list for lightbox navigation
+  state._lbPhotos = ordered.map(([name, cd]) => ({name, img: cd.img || p.img || ''}));
+  state._lbIndex  = 0; // active color is always first
+
+  const strip = document.getElementById('photoStrip');
+  strip.innerHTML = ordered.map(([name, cd], i) => {
+    const imgSrc = cd.img || p.img || '';
+    const isActive = name === activeColor;
+    return `<img class="photo-thumb${isActive?' active':''}" src="${imgSrc}" alt="${name}"
+      title="${name}" onclick="thumbClick('${name}',${i})" loading="lazy">`;
+  }).join('');
+}
+
+function thumbClick(colorName, lbIndex) {
+  state._lbIndex = lbIndex;
+  selectColor(colorName);
+  // Update active thumb styling
+  document.querySelectorAll('.photo-thumb').forEach((el,i) => el.classList.toggle('active', i===lbIndex));
 }
 function selectColor(name) {
   state.selectedColor=name;
   document.getElementById('selectedColorLabel').textContent=name;
   const p=CATALOG[state.selectedStyle];
   const cd=p.colors[name];
-  if(cd?.img) document.getElementById('previewImg').src=cd.img;
+  const imgSrc = cd?.img || p.img || '';
+  if(imgSrc) document.getElementById('previewImg').src=imgSrc;
   document.querySelectorAll('.color-swatch').forEach(el=>el.classList.toggle('selected',el.title===name));
+  // sync thumb active state & lightbox index
+  document.querySelectorAll('.photo-thumb').forEach((el,i)=>{
+    const active = el.title===name;
+    el.classList.toggle('active', active);
+    if(active) state._lbIndex=i;
+  });
   checkStep2();
 }
 function renderQtyTable() {
@@ -1475,6 +1531,51 @@ styleEl.textContent = '@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}';
 document.head.appendChild(styleEl);
 
 
+
+// ── Lightbox ─────────────────────────────────────────────────────────────────
+function openLightboxAt(photos, index) {
+  if(!photos || !photos.length) return;
+  state._lbPhotos = photos;
+  state._lbIndex  = index || 0;
+  _lbShow();
+}
+function _lbShow() {
+  const photos = state._lbPhotos;
+  const i = state._lbIndex;
+  if(!photos || i < 0 || i >= photos.length) return;
+  document.getElementById('lightbox-img').src     = photos[i].img;
+  document.getElementById('lightbox-caption').textContent = photos[i].name + ' (' + (i+1) + ' / ' + photos.length + ')';
+  document.getElementById('lightbox').classList.add('open');
+  document.body.style.overflow='hidden';
+}
+function closeLightbox() {
+  document.getElementById('lightbox').classList.remove('open');
+  document.body.style.overflow='';
+}
+function lbNav(dir) {
+  const photos = state._lbPhotos;
+  state._lbIndex = (state._lbIndex + dir + photos.length) % photos.length;
+  _lbShow();
+}
+// Keyboard nav
+document.addEventListener('keydown', e => {
+  const lb = document.getElementById('lightbox');
+  if(!lb.classList.contains('open')) return;
+  if(e.key==='Escape') closeLightbox();
+  if(e.key==='ArrowRight') lbNav(1);
+  if(e.key==='ArrowLeft')  lbNav(-1);
+});
+// Also open lightbox from thumbnails via middle-click safety
+
 </script>
+
+<!-- Lightbox -->
+<div id="lightbox" onclick="if(event.target===this)closeLightbox()">
+  <button id="lightbox-close" onclick="closeLightbox()">&#x2715;</button>
+  <button id="lightbox-prev" onclick="lbNav(-1)">&#8249;</button>
+  <img id="lightbox-img" src="" alt="">
+  <button id="lightbox-next" onclick="lbNav(1)">&#8250;</button>
+  <div id="lightbox-caption"></div>
+</div>
 </body>
 </html>
