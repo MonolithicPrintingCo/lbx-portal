@@ -234,6 +234,20 @@
 #lightbox-prev,#lightbox-next{position:absolute;top:50%;transform:translateY(-50%);background:rgba(255,255,255,.15);border:none;color:#fff;font-size:2rem;cursor:pointer;padding:10px 16px;border-radius:6px;line-height:1}
 #lightbox-prev{left:16px}#lightbox-next{right:16px}
 #lightbox-prev:hover,#lightbox-next:hover{background:rgba(255,255,255,.3)}
+
+/* ── Reuse artwork panel ─────────────────────────────── */
+.reuse-art-btn{display:inline-flex;align-items:center;gap:6px;font-size:.8rem;color:#1a6fde;background:#f0f7ff;border:1.5px solid #1a6fde;border-radius:6px;padding:5px 12px;cursor:pointer;margin-top:8px;transition:background .15s}
+.reuse-art-btn:hover{background:#dbeeff}
+.reuse-art-panel{background:#f8faff;border:1.5px solid #c5d9f8;border-radius:8px;padding:12px;margin-top:10px;display:none}
+.reuse-art-panel.open{display:block}
+.reuse-art-grid{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.reuse-art-item{display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;padding:6px;border-radius:6px;border:2px solid transparent;transition:border-color .15s,background .15s;width:80px}
+.reuse-art-item:hover{background:#e6f0ff;border-color:#1a6fde}
+.reuse-art-item.used{border-color:#22c55e;background:#f0fff4}
+.reuse-art-item img{width:64px;height:64px;object-fit:contain;border-radius:4px;background:#fff;border:1px solid var(--gray2)}
+.reuse-art-item .icon{width:64px;height:64px;display:flex;align-items:center;justify-content:center;border-radius:4px;background:#fff;border:1px solid var(--gray2);font-size:1.6rem}
+.reuse-art-item span{font-size:.6rem;color:#555;text-align:center;max-width:76px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.reuse-art-item .used-badge{font-size:.58rem;color:#16a34a;font-weight:700}
 </style>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 </head>
@@ -879,6 +893,27 @@ function renderGarmentList() {
     // Art files list for active location
     const artHtml = renderArtFilesHtml(loc.artFiles, g.id, loc.id);
 
+    // Reuse artwork from other garments
+    const reusePool = getReusableArt(g.id, loc.id);
+    const reuseArtHtml = reusePool.length === 0 ? '' : (() => {
+      const items = reusePool.map((f, i) => {
+        const alreadyUsed = loc.artFiles.some(x => x.name === f.name && x.url === f.url);
+        const thumb = f.isImage && (f.objectUrl || f.url)
+          ? `<img src="${f.objectUrl || f.url}" alt="">`
+          : `<div class="icon">${extIcon(f.name.split('.').pop().toUpperCase())}</div>`;
+        return `<div class="reuse-art-item ${alreadyUsed?'used':''}" onclick="reuseArtFile('${g.id}','${loc.id}',${i})" title="${f.name}\nFrom: ${f._fromLoc}">
+          ${thumb}
+          <span>${f.name}</span>
+          ${alreadyUsed ? '<span class="used-badge">✓ Added</span>' : ''}
+        </div>`;
+      }).join('');
+      return `<button class="reuse-art-btn" onclick="toggleReusePanel('${g.id}','${loc.id}')">📂 Use existing artwork (${reusePool.length})</button>
+        <div class="reuse-art-panel" id="reusePanel_${g.id}_${loc.id}">
+          <div style="font-size:.78rem;color:#555;font-weight:600">Select artwork from another garment to reuse here:</div>
+          <div class="reuse-art-grid">${items}</div>
+        </div>`;
+    })();
+
     // Mockup creator vs upload toggle
     const modeBtns = `
       <div class="mockup-mode-toggle" style="margin-top:16px;margin-bottom:0">
@@ -991,6 +1026,7 @@ function renderGarmentList() {
             <div class="drop-zone-sub">.AI · .PSD · .EPS · .PDF · PNG · JPEG</div>
           </div>
           ${artHtml}
+          ${reuseArtHtml}
           ${modeBtns}
           ${mockupCanvasHtml}
           ${mockupUploadHtml}
@@ -1600,6 +1636,66 @@ document.addEventListener('keydown', e => {
   if(e.key==='ArrowLeft')  lbNav(-1);
 });
 // Also open lightbox from thumbnails via middle-click safety
+
+
+// ── Reuse Artwork from other garments ────────────────────────────────────────
+
+function getReusableArt(excludeGid, excludeLocId) {
+  // Collect all art files across all garments/locations except the current one
+  const pool = [];
+  garments.forEach(g => {
+    g.locations.forEach(loc => {
+      if (g.id === excludeGid && loc.id === excludeLocId) return;
+      loc.artFiles.forEach(f => {
+        if (!f.error && f.url) pool.push({ ...f, _fromGarment: g.id, _fromLoc: loc.name });
+      });
+    });
+  });
+  // Deduplicate by name+url combo
+  const seen = new Set();
+  return pool.filter(f => {
+    const key = f.name + '|' + f.url.slice(0,60);
+    if (seen.has(key)) return false;
+    seen.add(key); return true;
+  });
+}
+
+function toggleReusePanel(gid, locId) {
+  const panel = document.getElementById(`reusePanel_${gid}_${locId}`);
+  if (!panel) return;
+  panel.classList.toggle('open');
+}
+
+function reuseArtFile(gid, locId, poolIndex) {
+  const g   = garments.find(x => x.id === gid); if (!g) return;
+  const loc = g.locations.find(l => l.id === locId); if (!loc) return;
+  const pool = getReusableArt(gid, locId);
+  const src  = pool[poolIndex]; if (!src) return;
+
+  // Check if already added (by name)
+  if (loc.artFiles.some(f => f.name === src.name && f.url === src.url)) {
+    alert('That file is already added to this location.');
+    return;
+  }
+
+  // Clone the file entry (no File object needed — url already loaded)
+  const entry = {
+    id: uid(),
+    file: null,
+    name: src.name,
+    url: src.url,
+    objectUrl: src.objectUrl || src.url,
+    isImage: src.isImage,
+    uploading: false,
+    error: null,
+  };
+  loc.artFiles.push(entry);
+
+  // Auto-add as mockup layer if image
+  if (entry.isImage) addLayerToLoc(loc, entry);
+
+  renderGarmentList();
+}
 
 </script>
 
