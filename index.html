@@ -767,15 +767,6 @@ function goTo(n) {
   window.scrollTo(0,0);
 }
 
-// ─── Step 1 ────────────────────────────────────────────────────────────────
-document.getElementById('searchInput').addEventListener('input', renderGrid);
-document.querySelectorAll('.filter-btn').forEach(btn => btn.addEventListener('click', () => {
-  document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));
-  btn.classList.add('active');
-  activeCat = btn.dataset.cat;
-  applyFilters();
-}));
-document.getElementById('toStep2').addEventListener('click', ()=>goTo(2));
 
 // ─── Step 2 ────────────────────────────────────────────────────────────────
 function renderStep2() {
