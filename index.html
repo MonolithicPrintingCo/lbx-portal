@@ -1189,7 +1189,7 @@ async function submitOrder(){
     product_supplier: S.product.sup,
     product_style: S.product.style,
     garment_color: S.color,
-    quantities: JSON.stringify(S.qty),
+    quantities: S.qty,
     total_qty: tot,
     placement: S.placement,
     print_type: document.getElementById('ptype').value,
