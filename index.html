@@ -693,7 +693,7 @@ let garments = [];
 let _uid = 0;
 function uid() { return ++_uid + '_' + Date.now(); }
 
-const LOCATIONS = ['Front', 'Back', 'Left Chest', 'Right Chest', 'Sleeve', 'Hat Front', 'Hat Back', 'Hem', 'Custom'];
+const LOCATIONS = ['Front', 'Back', 'Left Chest', 'Right Chest', 'Full Front', 'Full Back', 'Left Sleeve', 'Right Sleeve', 'Hat Front', 'Hat Back', 'Hood', 'Hem', 'Leg', 'Custom'];
 
 function initGarments() {
   // Only initialize once — preserve work if user navigates back/forward
@@ -811,9 +811,16 @@ function renderGarmentList() {
     const mockupCanvasHtml = g.mode==='create' ? `
       <div id="mockupWrap_${g.id}_${loc.id}" style="margin-top:14px;display:${loc.artFiles.some(f=>f.isImage&&f.url&&!f.error)?'block':'none'}">
         <div style="font-size:.88rem;font-weight:700;margin-bottom:8px;color:var(--gray4)">Mockup Preview</div>
+        ${loc.name === 'LC + Full Back' ? `
+          <div style="display:flex;gap:6px;margin-bottom:8px">
+            <button class="loc-tab ${(loc._bgView||'front')==='front'?'active':''}"
+              onclick="setLocBgView('${g.id}','${loc.id}','front')">👕 Front</button>
+            <button class="loc-tab ${(loc._bgView||'front')==='back'?'active':''}"
+              onclick="setLocBgView('${g.id}','${loc.id}','back')">👕 Back</button>
+          </div>` : ''}
         <div class="mockup-wrap">
           <div class="mockup-canvas-wrap" id="canvas_${g.id}_${loc.id}" style="position:relative">
-            <img id="bg_${g.id}_${loc.id}" class="mockup-bg" src="${getGarmentImg(g)}" alt="Garment">
+            <img id="bg_${g.id}_${loc.id}" class="mockup-bg" src="${getGarmentImg(g, loc._bgView || getViewForLocation(loc.name))}" alt="Garment">
           </div>
           <div class="mockup-controls">
             <h3>Layers</h3>
@@ -977,11 +984,34 @@ function renderMockupFilesHtml(files, gid, locId) {
     }).join('') + '</div>';
 }
 
-function getGarmentImg(g) {
+function getGarmentImg(g, view) {
+  // view: 'front' (default) or 'back'
   const prod = CATALOG[g.style];
   if (!prod) return '';
   const colorData = prod.colors?.[g.color];
-  return colorData?.img || prod.img || '';
+  let img = colorData?.img || prod.img || '';
+  if (view === 'back' && img) {
+    // S&S URL pattern: swap _f_fm.jpg → _b_fm.jpg
+    img = img.replace('_f_fm.jpg', '_b_fm.jpg').replace('_f_fm.', '_b_fm.');
+  }
+  return img;
+}
+
+function getViewForLocation(locName) {
+  const backLocs = ['Back', 'Full Back'];
+  return backLocs.includes(locName) ? 'back' : 'front';
+}
+
+function setLocBgView(gid, locId, view) {
+  const g = garments.find(x=>x.id===gid);
+  const loc = g?.locations.find(l=>l.id===locId);
+  if (!loc) return;
+  loc._bgView = view;
+  // Update the bg image immediately without full re-render
+  const bgImg = document.getElementById(`bg_${gid}_${locId}`);
+  if (bgImg) bgImg.src = getGarmentImg(g, view);
+  // Re-render garment list to update button states
+  renderGarmentList();
 }
 
 function setGarmentStyle(gid, style) {
@@ -1000,18 +1030,61 @@ function setGarmentColor(gid, color) {
 
 // ── Add location menu ─────────────────────────────────────────────────────
 function showAddLocationMenu(gid) {
-  const existing = garments.find(x=>x.id===gid)?.locations.map(l=>l.name) || [];
+  const g = garments.find(x=>x.id===gid);
+  if (!g) return;
+  const existing = g.locations.map(l=>l.name);
   const available = LOCATIONS.filter(l => !existing.includes(l));
-  const menu = document.createElement('div');
-  menu.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#fff;border:1.5px solid var(--gray2);border-radius:var(--radius);padding:16px;z-index:9999;min-width:200px;box-shadow:0 8px 32px rgba(0,0,0,.12)';
-  menu.innerHTML = `<div style="font-weight:700;margin-bottom:10px;font-size:.9rem">Add Print Location</div>
-    ${available.map(l=>`<button onclick="addLocationToGarment('${gid}','${l}');this.closest('[style]').remove()"
-      style="display:block;width:100%;text-align:left;padding:8px 10px;border:none;background:none;cursor:pointer;font-size:.88rem;border-radius:6px;hover:background:#f4f4f4"
-      onmouseover="this.style.background='#f4f4f4'" onmouseout="this.style.background='none'">${l}</button>`).join('')}
-    <button onclick="this.closest('[style]').remove()" style="margin-top:8px;width:100%;padding:6px;border:1.5px solid var(--gray2);border-radius:6px;background:none;cursor:pointer;font-size:.8rem;color:var(--gray3)">Cancel</button>`;
-  document.body.appendChild(menu);
-  menu.onclick = e => e.stopPropagation();
-  setTimeout(() => document.addEventListener('click', function h(){menu.remove();document.removeEventListener('click',h);}, {once:true}), 10);
+
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.innerHTML = `
+    <div class="modal-box" style="max-width:360px">
+      <h3 style="margin-bottom:4px">Add Print Locations</h3>
+      <p style="font-size:.82rem;color:var(--gray3);margin-bottom:14px">Select one or more locations to add</p>
+      <div id="locPickerGrid" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px">
+        ${available.map(l => `
+          <label style="display:flex;align-items:center;gap:8px;padding:8px 10px;border:1.5px solid var(--gray2);border-radius:8px;cursor:pointer;font-size:.85rem;font-weight:500;transition:all .15s" id="locLbl_${l.replace(/[^a-z]/gi,'_')}">
+            <input type="checkbox" value="${l}" style="accent-color:var(--accent);width:16px;height:16px"
+              onchange="this.closest('label').style.borderColor=this.checked?'var(--accent)':'var(--gray2)';this.closest('label').style.background=this.checked?'#fff8f0':''"
+            > ${l}
+          </label>`).join('')}
+        <label style="display:flex;align-items:center;gap:8px;padding:8px 10px;border:1.5px dashed var(--gray2);border-radius:8px;cursor:pointer;font-size:.85rem;font-weight:500;grid-column:1/-1" id="locLblCustom">
+          <input type="checkbox" value="_custom_" id="customLocChk" style="accent-color:var(--accent);width:16px;height:16px"
+            onchange="document.getElementById('customLocInput').style.display=this.checked?'block':'none';this.closest('label').style.borderColor=this.checked?'var(--accent)':'var(--gray2)'">
+          ✏️ Custom location…
+        </label>
+        <input type="text" id="customLocInput" placeholder="e.g. Left Chest, Back Collar…"
+          style="display:none;grid-column:1/-1;padding:8px 10px;border:1.5px solid var(--accent);border-radius:8px;font-size:.85rem;margin-top:-4px">
+      </div>
+      <div class="modal-btn-row">
+        <button class="btn btn-secondary" onclick="this.closest('.modal-overlay').remove()">Cancel</button>
+        <button class="btn btn-primary" onclick="confirmAddLocations('${gid}', this.closest('.modal-overlay'))">Add Selected</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click', e => { if(e.target===overlay) overlay.remove(); });
+}
+
+function confirmAddLocations(gid, overlay) {
+  const g = garments.find(x=>x.id===gid);
+  if (!g) { overlay.remove(); return; }
+  const checks = overlay.querySelectorAll('input[type=checkbox]:checked');
+  const customInput = overlay.querySelector('#customLocInput');
+  let added = 0;
+  checks.forEach(chk => {
+    if (chk.value === '_custom_') {
+      const names = customInput.value.split(',').map(s=>s.trim()).filter(Boolean);
+      names.forEach(name => { addLocation(g, name); added++; });
+    } else {
+      addLocation(g, chk.value);
+      added++;
+    }
+  });
+  overlay.remove();
+  if (added > 0) {
+    g.activeLocIdx = g.locations.length - 1;
+    renderGarmentList();
+  }
 }
 
 function addLocationToGarment(gid, name) {
@@ -1128,6 +1201,12 @@ function addLayerToLoc(loc, fileEntry) {
 function renderLayersForGarment(g, loc) {
   const wrap = document.getElementById(`canvas_${g.id}_${loc.id}`);
   if (!wrap) return;
+  // Update background image based on location (front vs back view)
+  const bgImg = document.getElementById(`bg_${g.id}_${loc.id}`);
+  if (bgImg) {
+    const view = getViewForLocation(loc.name);
+    bgImg.src = getGarmentImg(g, view);
+  }
   wrap.querySelectorAll('.mockup-layer').forEach(el=>el.remove());
   loc.layers.forEach(layer => {
     const div = document.createElement('div');
@@ -1291,60 +1370,106 @@ function extIcon(ext) {
 async function buildReviewMockups() {
   const section = document.getElementById('reviewMockupsSection');
   if (!section) return;
-  section.innerHTML = '<div style="font-size:.88rem;color:var(--gray3);margin-bottom:8px">Generating mockup previews…</div>';
+  section.innerHTML = '<div style="font-size:.82rem;color:var(--gray3);padding:8px 0">Generating previews…</div>';
+  await new Promise(r => setTimeout(r, 50));
 
-  let html = '<div class="review-garments">';
-  for (let gi=0; gi<garments.length; gi++) {
+  const wrapper = document.createElement('div');
+  wrapper.className = 'review-garments';
+
+  for (let gi = 0; gi < garments.length; gi++) {
     const g = garments[gi];
-    const prod = CATALOG[g.style]||{};
-    html += `<div class="review-garment"><h4>Garment ${gi+1}: ${prod.title||g.style} — ${g.color}</h4><div class="review-mockup-grid">`;
+    const prod = CATALOG[g.style] || {};
+    const garmentDiv = document.createElement('div');
+    garmentDiv.className = 'review-garment';
+    garmentDiv.innerHTML = `<h4>Garment ${gi+1}: ${prod.title||g.style} — ${g.color}</h4>`;
+    const grid = document.createElement('div');
+    grid.className = 'review-mockup-grid';
 
     for (const loc of g.locations) {
-      let imgHtml = '';
-      if (g.mode==='upload' && loc.mockupFiles.some(f=>f.url&&f.isImage)) {
-        // Show uploaded mockup images
-        loc.mockupFiles.filter(f=>f.url&&f.isImage).forEach(f=>{
-          imgHtml += `<div class="review-mockup-item">
-            <img class="review-mockup-img" src="${f.url}" alt="${loc.name}">
-            <div class="review-mockup-label">${loc.name}</div>
-          </div>`;
-        });
-      } else if (g.mode==='create' && loc.artFiles.some(f=>f.isImage&&f.url)) {
-        // Try canvas capture
-        const canvasEl = document.getElementById(`canvas_${g.id}_${loc.id}`);
-        if (canvasEl && typeof html2canvas !== 'undefined') {
-          try {
-            const canvas = await html2canvas(canvasEl, {useCORS:true, allowTaint:true, scale:1, logging:false});
-            imgHtml += `<div class="review-mockup-item">
-              <img class="review-mockup-img" src="${canvas.toDataURL()}" alt="${loc.name}">
-              <div class="review-mockup-label">${loc.name}</div>
-            </div>`;
-          } catch(err) {
-            // Fallback: show garment image
-            imgHtml += `<div class="review-mockup-item">
-              <img class="review-mockup-img" src="${getGarmentImg(g)}" alt="${loc.name}">
-              <div class="review-mockup-label">${loc.name} (no preview)</div>
-            </div>`;
-          }
-        } else {
-          // Fallback garment image
-          imgHtml += `<div class="review-mockup-item">
-            <img class="review-mockup-img" src="${getGarmentImg(g)}" alt="${loc.name}">
-            <div class="review-mockup-label">${loc.name}</div>
-          </div>`;
-        }
+      const item = document.createElement('div');
+      item.className = 'review-mockup-item';
+
+      if (g.mode === 'upload' && loc.mockupFiles.some(f => f.url && f.isImage)) {
+        // Show uploaded mockup image
+        const f = loc.mockupFiles.find(f => f.url && f.isImage);
+        item.innerHTML = `<img class="review-mockup-img" src="${f.url}"><div class="review-mockup-label">${loc.name}</div>`;
       } else {
-        imgHtml += `<div class="review-mockup-item">
-          <img class="review-mockup-img" src="${getGarmentImg(g)}" alt="${loc.name}" onerror="this.style.display='none'">
-          <div class="review-mockup-label">${loc.name} — no artwork</div>
-        </div>`;
+        // Composite onto canvas: garment bg + artwork layers
+        const canvas = document.createElement('canvas');
+        canvas.width = 280; canvas.height = 280;
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = '#f8f8f8';
+        ctx.fillRect(0, 0, 280, 280);
+
+        // Garment bg is drawn separately as an <img> to avoid CORS issues
+        // Canvas only draws the artwork layers (data: URLs)
+
+        // Draw artwork layers from saved position data
+        if (loc.layers.length > 0) {
+          const scale = 280 / 320; // canvas is 320px wide in the editor
+          for (const layer of loc.layers) {
+            if (!layer.url && !layer.objectUrl) continue;
+            try {
+              const layerImg = await loadImageFromUrl(layer.objectUrl || layer.url);
+              const aspect = layerImg.naturalHeight / layerImg.naturalWidth;
+              const dw = layer.w * scale;
+              const dh = dw * aspect;
+              ctx.save();
+              ctx.globalAlpha = layer.opacity || 1;
+              ctx.drawImage(layerImg, layer.x * scale, layer.y * scale, dw, dh);
+              ctx.restore();
+            } catch(e) { /* skip bad image */ }
+          }
+        }
+
+        // Build composite: garment <img> + artwork canvas overlay
+        const view = loc._bgView || getViewForLocation(loc.name);
+        const bgUrl = getGarmentImg(g, view);
+        const dataUrl = canvas.toDataURL('image/png');
+        item.innerHTML = `
+          <div style="position:relative;width:160px;height:160px;border:1.5px solid var(--gray2);border-radius:var(--radius);overflow:hidden;background:var(--gray1)">
+            ${bgUrl ? `<img src="${bgUrl}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:contain">` : ''}
+            <img src="${dataUrl}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:contain">
+          </div>
+          <div class="review-mockup-label">${loc.name}</div>`;
       }
-      html += imgHtml;
+      grid.appendChild(item);
     }
-    html += '</div></div>';
+    garmentDiv.appendChild(grid);
+    wrapper.appendChild(garmentDiv);
   }
-  html += '</div>';
-  section.innerHTML = html;
+
+  section.innerHTML = '';
+  section.appendChild(wrapper);
+}
+
+function loadImageFromUrl(url) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => resolve(img);
+    img.onerror = () => reject(new Error('load failed'));
+    img.src = url;
+  });
+}
+
+function drawImageOnCanvas(ctx, url, x, y, w, h) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      ctx.drawImage(img, x, y, w, h);
+      resolve();
+    };
+    img.onerror = () => {
+      // Try without crossOrigin (for data: URLs and same-origin)
+      const img2 = new Image();
+      img2.onload = () => { ctx.drawImage(img2, x, y, w, h); resolve(); };
+      img2.onerror = reject;
+      img2.src = url;
+    };
+    img.src = url;
+  });
 }
 
 // pulse animation
