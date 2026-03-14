@@ -387,7 +387,6 @@
       <div class="brand" id="previewBrand"></div>
       <h3 id="previewName"></h3>
       <p id="previewStyle" style="font-size:.82rem;color:#999;margin-top:2px"></p>
-      <div id="previewBadge" style="margin-top:8px"></div>
       <p id="previewDesc" style="font-size:.82rem;color:#666;margin-top:10px;line-height:1.5;"></p>
       <p id="previewPiecePrice" class="product-price" style="margin-top:8px"></p>
     </div>
@@ -824,8 +823,7 @@ function renderStep2() {
       _ppEl.textContent = '';
     }
   }
-  document.getElementById('previewBadge').innerHTML =
-    `<span class="badge ${p.supplier==='SanMar'?'sanmar':p.supplier==='Lane Seven'?'l7':'ss'}">${p.supplier}</span>`;
+
 
   document.getElementById('colorSwatches').innerHTML = Object.entries(p.colors).map(([name,cd2])=>{
     const sel = state.selectedColor===name?' selected':'';
