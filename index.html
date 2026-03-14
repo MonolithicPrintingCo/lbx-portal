@@ -1698,43 +1698,40 @@ function observeCanvasResize(gId, locId, g, loc) {
       const onHandle = e.target.closest('[data-handle]');
       const onLayer  = e.target.closest('.mockup-layer');
 
-      // Handles are handled by the layer div's own listener — just block scroll
+      // Handles: let the layer div listener deal with it
       if (onHandle) { e.preventDefault(); return; }
 
-      // Tapping directly on the selected layer image body → deselect it
-      if (onLayer && loc.selectedLayer === onLayer.dataset.id) {
+      // ── Tapped ON a layer ───────────────────────────────────────────────
+      if (onLayer) {
         e.preventDefault();
-        loc.selectedLayer = null;
-        const canvas = document.getElementById('canvas_'+gId+'_'+locId);
-        if (canvas) canvas.querySelectorAll('.mockup-layer').forEach(el => el.classList.remove('selected'));
-        _updateLayerControls(g, loc);
+        if (loc.selectedLayer === onLayer.dataset.id) {
+          // Already selected → tap again = deselect
+          loc.selectedLayer = null;
+          wrap.querySelectorAll('.mockup-layer').forEach(el => el.classList.remove('selected'));
+          _updateLayerControls(g, loc);
+        } else {
+          // Unselected layer → select it
+          const layer = loc.layers.find(l => l.id === onLayer.dataset.id);
+          if (layer) selectLayerInLoc(g, loc, layer.id);
+        }
         return;
       }
 
-      // Tapping an unselected layer → select it (no drag yet)
-      if (onLayer && loc.selectedLayer !== onLayer.dataset.id) {
-        e.preventDefault();
-        const layer = loc.layers.find(l => l.id === onLayer.dataset.id);
-        if (layer) selectLayerInLoc(g, loc, layer.id);
-        return;
-      }
-
-      // Touch landed OFF any layer
-      const layer = loc.layers.find(l => l.id === loc.selectedLayer) || loc.layers[0];
-      if (!layer) return; // no layers, allow normal scroll
+      // ── Tapped on BLANK CANVAS (no layer hit) ───────────────────────────
+      if (!loc.layers.length) return; // nothing to do
 
       e.preventDefault();
 
-      // If a layer is selected, tapping blank canvas deselects it (show clean mockup)
       if (loc.selectedLayer) {
+        // Something is selected → deselect, show clean mockup
         loc.selectedLayer = null;
-        const canvas2 = document.getElementById('canvas_'+gId+'_'+locId);
-        if (canvas2) canvas2.querySelectorAll('.mockup-layer').forEach(el => el.classList.remove('selected'));
+        wrap.querySelectorAll('.mockup-layer').forEach(el => el.classList.remove('selected'));
         _updateLayerControls(g, loc);
         return;
       }
 
-      // Nothing selected — drag moves the first/only layer immediately
+      // Nothing selected → drag moves the top layer immediately
+      const layer = loc.layers[loc.layers.length - 1];
       const t = e.touches[0];
       startDragLayerTouch(t.clientX, t.clientY, g, loc, layer, true);
     }, {passive: false});
