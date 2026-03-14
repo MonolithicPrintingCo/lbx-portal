@@ -389,7 +389,7 @@
       <p id="previewStyle" style="font-size:.82rem;color:#999;margin-top:2px"></p>
       <div id="previewBadge" style="margin-top:8px"></div>
       <p id="previewDesc" style="font-size:.82rem;color:#666;margin-top:10px;line-height:1.5;"></p>
-      
+      <p id="previewPiecePrice" class="product-price" style="margin-top:8px"></p>
     </div>
   </div>
   <div class="color-section">
@@ -399,10 +399,10 @@
   <div class="color-section">
     <h3>Sizes &amp; Quantities</h3>
     <table class="qty-table">
-      <thead><tr><th>Size</th><th>Qty</th><th>Est. Retail Price *</th><th>Subtotal</th></tr></thead>
+      <thead><tr><th>Size</th><th>Qty</th></tr></thead>
       <tbody id="qtyBody"></tbody>
       <tfoot><tr>
-        <td colspan="3" style="padding:8px 10px;font-weight:700;font-size:.88rem">Total Pieces</td>
+        <td style="padding:8px 10px;font-weight:700;font-size:.88rem">Total Pieces</td>
         <td class="qty-total" id="qtyTotal" style="padding:8px 10px">0 pcs</td>
       </tr></tfoot>
     </table>
@@ -813,6 +813,17 @@ function renderStep2() {
   document.getElementById('previewName').textContent = p.title;
   document.getElementById('previewStyle').textContent = p.styleName;
   document.getElementById('previewDesc').textContent = p.description || '';
+  // Show piece price under photo
+  const _ppEl = document.getElementById('previewPiecePrice');
+  if (_ppEl) {
+    const _prices = Object.values(p.pricing||{});
+    if (_prices.length) {
+      const _min = Math.min(..._prices), _max = Math.max(..._prices);
+      _ppEl.textContent = _min === _max ? fmt(_min) + ' / piece' : fmt(_min) + ' – ' + fmt(_max) + ' / piece';
+    } else {
+      _ppEl.textContent = '';
+    }
+  }
   document.getElementById('previewBadge').innerHTML =
     `<span class="badge ${p.supplier==='SanMar'?'sanmar':p.supplier==='Lane Seven'?'l7':'ss'}">${p.supplier}</span>`;
 
