@@ -1529,8 +1529,15 @@ function removeLocationById(gid, locId) {
 // ── Art file handling per-location ────────────────────────────────────────
 function handleArtFileInput(e, gid, locId) {
   const files = [...e.target.files];
-  e.target.value = '';
-  if (files.length) showArtworkWarning(files, fs => processArtFiles(fs, gid, locId));
+  // Reset after spreading so File objects remain valid through the warning modal
+  if (files.length) {
+    showArtworkWarning(files, fs => {
+      e.target.value = '';
+      processArtFiles(fs, gid, locId);
+    });
+  } else {
+    e.target.value = '';
+  }
 }
 function handleMockupFileInput(e, gid, locId) {
   const files = [...e.target.files];
@@ -1552,10 +1559,13 @@ function processArtFiles(files, gid, locId) {
 
 async function readArtFile(entry, gid, locId) {
   try {
-    await new Promise((res,rej) => {
+    if (!entry.file || !(entry.file instanceof File || entry.file instanceof Blob)) {
+      throw new Error('Invalid file object');
+    }
+    await new Promise((res, rej) => {
       const reader = new FileReader();
       reader.onload = e => { entry.url = e.target.result; entry.uploading = false; res(); };
-      reader.onerror = rej;
+      reader.onerror = e => rej(e.target?.error || new Error('FileReader error'));
       reader.readAsDataURL(entry.file);
     });
     // Auto-add image as mockup layer
@@ -1564,9 +1574,10 @@ async function readArtFile(entry, gid, locId) {
       const loc = g?.locations.find(l=>l.id===locId);
       if (loc) { addLayerToLoc(loc, entry); }
     }
-  } catch {
+  } catch(err) {
+    console.error('readArtFile error:', err);
     entry.uploading = false;
-    entry.error = 'Could not read file';
+    entry.error = 'Could not load artwork — try a different file';
   }
   renderGarmentList();
   // Defer layer rendering so the canvas bg image has time to lay out and get correct dimensions
