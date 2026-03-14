@@ -1698,18 +1698,38 @@ function renderLayersForGarment(g, loc) {
     const div = document.createElement('div');
     div.className = 'mockup-layer' + (loc.selectedLayer===layer.id?' selected':'');
     const _sc = getCanvasScale(g.id, loc.id);
-    div.style.cssText = `left:${layer.x*_sc}px;top:${layer.y*_sc}px;width:${layer.w*_sc}px;position:absolute;cursor:move;user-select:none;touch-action:none`;
-    div.dataset.id = layer.id;
-    const rot = layer.r || 0;
-    div.style.transform = `rotate(${rot}deg)`;
+    div.style.position = 'absolute';
+    div.style.left = (layer.x*_sc)+'px';
+    div.style.top  = (layer.y*_sc)+'px';
+    div.style.width = (layer.w*_sc)+'px';
+    div.style.cursor = 'move';
+    div.style.userSelect = 'none';
+    div.style.webkitUserSelect = 'none';
+    div.style.touchAction = 'none';
+    div.style.transform = `rotate(${layer.r||0}deg)`;
     div.style.transformOrigin = 'center center';
-    div.innerHTML = `<img src="${layer.objectUrl||layer.url}" style="width:100%;opacity:${layer.opacity};display:block;pointer-events:none;border-radius:2px" draggable="false">
-      <div data-resize="${layer.id}" style="position:absolute;bottom:-7px;right:-7px;width:18px;height:18px;background:var(--accent);border-radius:4px;cursor:se-resize;border:2px solid #fff;touch-action:none;z-index:2"></div>
-      <div data-rotate="${layer.id}" style="position:absolute;top:-22px;left:50%;transform:translateX(-50%);width:18px;height:18px;background:#6366f1;border-radius:50%;cursor:grab;border:2px solid #fff;touch-action:none;z-index:2;display:flex;align-items:center;justify-content:center;font-size:10px;color:#fff">↻</div>`;
-    div.addEventListener('pointerdown', e => {
-      if(e.target.dataset.resize) { e.stopPropagation(); e.preventDefault(); startResizeLayer(e,g,loc,layer); return; }
-      if(e.target.dataset.rotate) { e.stopPropagation(); e.preventDefault(); startRotateLayer(e,g,loc,layer); return; }
-      startDragLayer(e,g,loc,layer);
+    div.dataset.id = layer.id;
+    div.innerHTML = `<img src="${layer.objectUrl||layer.url}" style="width:100%;opacity:${layer.opacity};display:block;pointer-events:none;border-radius:2px;-webkit-user-drag:none" draggable="false">
+      <div data-handle="resize" style="position:absolute;bottom:-7px;right:-7px;width:22px;height:22px;background:var(--accent);border-radius:4px;cursor:se-resize;border:2px solid #fff;touch-action:none;z-index:10;-webkit-tap-highlight-color:transparent"></div>
+      <div data-handle="rotate" style="position:absolute;top:-26px;left:50%;transform:translateX(-50%);width:22px;height:22px;background:#6366f1;border-radius:50%;cursor:grab;border:2px solid #fff;touch-action:none;z-index:10;display:flex;align-items:center;justify-content:center;font-size:12px;color:#fff;-webkit-tap-highlight-color:transparent">↻</div>`;
+    
+    div.addEventListener('touchstart', e => {
+      e.preventDefault();
+      e.stopPropagation();
+      const t = e.touches[0];
+      const handle = e.target.closest('[data-handle]')?.dataset?.handle;
+      if (handle === 'resize') { startResizeLayerTouch(t.clientX, t.clientY, g, loc, layer); return; }
+      if (handle === 'rotate') { startRotateLayerTouch(t.clientX, t.clientY, g, loc, layer); return; }
+      startDragLayerTouch(t.clientX, t.clientY, g, loc, layer);
+    }, {passive: false});
+    div.addEventListener('mousedown', e => {
+      if (e.button !== 0) return;
+      e.preventDefault();
+      e.stopPropagation();
+      const handle = e.target.closest('[data-handle]')?.dataset?.handle;
+      if (handle === 'resize') { startResizeLayer(e, g, loc, layer); return; }
+      if (handle === 'rotate') { startRotateLayer(e, g, loc, layer); return; }
+      startDragLayer(e, g, loc, layer);
     });
     wrap.appendChild(div);
   });
@@ -1770,120 +1790,157 @@ function rotateSelectedLayer(gid,locId,val) {
   if(el) el.style.transform=`rotate(${l.r}deg)`;
 }
 
-// ── Unified pointer-event interaction (drag, resize, rotate) ─────────────
-// Works on both mouse and touch with no glitching.
-let _activeInteraction = null; // { type:'drag'|'resize'|'rotate', g, loc, layer, ... }
+// ── Layer interaction: drag / resize / rotate ────────────────────────────
+// Separate mouse and touch paths for maximum mobile compatibility.
+let _ai = null; // active interaction state
 
-function _getCanvasRect(g, loc) {
-  return document.getElementById(`canvas_${g.id}_${loc.id}`)?.getBoundingClientRect() || null;
+function _canvasRect(g, loc) {
+  return document.getElementById('canvas_'+g.id+'_'+loc.id)?.getBoundingClientRect() || null;
 }
-function _getLayerEl(g, loc, layer) {
-  return document.getElementById(`canvas_${g.id}_${loc.id}`)?.querySelector(`.mockup-layer[data-id="${layer.id}"]`) || null;
+function _layerEl(g, loc, layer) {
+  return document.getElementById('canvas_'+g.id+'_'+loc.id)?.querySelector('.mockup-layer[data-id="'+layer.id+'"]') || null;
 }
-function _applyLayerTransform(el, layer, sc) {
-  el.style.left  = (layer.x * sc) + 'px';
-  el.style.top   = (layer.y * sc) + 'px';
-  el.style.width = (layer.w * sc) + 'px';
-  el.style.transform = `rotate(${layer.r || 0}deg)`;
-}
-
-function startDragLayer(e, g, loc, layer) {
-  e.preventDefault();
-  selectLayerInLoc(g, loc, layer.id);
-  const sc = getCanvasScale(g.id, loc.id);
-  const rect = _getCanvasRect(g, loc);
-  _activeInteraction = {
-    type: 'drag', g, loc, layer, sc,
-    startX: e.clientX - rect.left - layer.x * sc,
-    startY: e.clientY - rect.top  - layer.y * sc,
-  };
-  e.target.setPointerCapture?.(e.pointerId);
-  document.addEventListener('pointermove', _onPointerMove, {passive:false});
-  document.addEventListener('pointerup',   _onPointerUp);
+function _applyLayerPos(el, layer, sc) {
+  el.style.left      = (layer.x * sc) + 'px';
+  el.style.top       = (layer.y * sc) + 'px';
+  el.style.width     = (layer.w * sc) + 'px';
+  el.style.transform = 'rotate(' + (layer.r||0) + 'deg)';
 }
 
-function startResizeLayer(e, g, loc, layer) {
-  e.preventDefault();
-  const sc = getCanvasScale(g.id, loc.id);
-  _activeInteraction = { type:'resize', g, loc, layer, sc, startX:e.clientX, startW:layer.w };
-  e.target.setPointerCapture?.(e.pointerId);
-  document.addEventListener('pointermove', _onPointerMove, {passive:false});
-  document.addEventListener('pointerup',   _onPointerUp);
-}
-
-function startRotateLayer(e, g, loc, layer) {
-  e.preventDefault();
-  const rect = _getCanvasRect(g, loc);
-  const sc = getCanvasScale(g.id, loc.id);
-  // Center of layer in viewport coords
-  const cx = rect.left + (layer.x + layer.w / 2) * sc;
-  const cy = rect.top  + (layer.y + layer.w / 2) * sc; // square assumption for center
-  const startAngle = Math.atan2(e.clientY - cy, e.clientX - cx) * 180 / Math.PI;
-  _activeInteraction = { type:'rotate', g, loc, layer, sc, cx, cy, startAngle, startR: layer.r || 0 };
-  e.target.setPointerCapture?.(e.pointerId);
-  document.addEventListener('pointermove', _onPointerMove, {passive:false});
-  document.addEventListener('pointerup',   _onPointerUp);
-}
-
-function _onPointerMove(e) {
-  if (!_activeInteraction) return;
-  e.preventDefault();
-  const { type, g, loc, layer, sc } = _activeInteraction;
-  const el = _getLayerEl(g, loc, layer);
-  if (!el) return;
-
-  if (type === 'drag') {
-    const rect = _getCanvasRect(g, loc);
-    if (!rect) return;
-    const maxX = (rect.width / sc) - layer.w;
-    const maxY = (rect.height / sc) - 20;
-    layer.x = Math.max(0, Math.min((e.clientX - rect.left - _activeInteraction.startX) / sc, maxX));
-    layer.y = Math.max(0, Math.min((e.clientY - rect.top  - _activeInteraction.startY) / sc, maxY));
-    _applyLayerTransform(el, layer, sc);
-
-  } else if (type === 'resize') {
-    layer.w = Math.max(20, _activeInteraction.startW + (e.clientX - _activeInteraction.startX) / sc);
-    _applyLayerTransform(el, layer, sc);
-    // Sync size slider
-    const sv  = document.getElementById(`ctrlSize_${g.id}_${loc.id}`);
-    const svv = document.getElementById(`ctrlSizeVal_${g.id}_${loc.id}`);
-    if (sv)  sv.value = layer.w;
-    if (svv) svv.textContent = Math.round(layer.w) + 'px';
-
-  } else if (type === 'rotate') {
-    const angle = Math.atan2(e.clientY - _activeInteraction.cy, e.clientX - _activeInteraction.cx) * 180 / Math.PI;
-    let delta = angle - _activeInteraction.startAngle;
-    // Snap to 45° increments when within 4° (hold shift feel)
-    let newR = _activeInteraction.startR + delta;
-    newR = ((newR % 360) + 360) % 360;
-    layer.r = Math.round(newR);
-    el.style.transform = `rotate(${layer.r}deg)`;
-    // Sync rotate slider
-    const rv  = document.getElementById(`ctrlRotate_${g.id}_${loc.id}`);
-    const rvv = document.getElementById(`ctrlRotateVal_${g.id}_${loc.id}`);
-    if (rv)  rv.value = layer.r;
-    if (rvv) rvv.textContent = layer.r + '°';
-  }
-}
-
-function _onPointerUp(e) {
-  if (_activeInteraction) {
-    const { g, loc, layer } = _activeInteraction;
-    layer.x = Math.round(layer.x);
-    layer.y = Math.round(layer.y);
-    layer.w = Math.round(layer.w);
+function _finishInteraction() {
+  if (_ai) {
+    const {g, loc, layer} = _ai;
+    layer.x = Math.round(layer.x || 0);
+    layer.y = Math.round(layer.y || 0);
+    layer.w = Math.round(layer.w || 20);
     layer.r = Math.round(layer.r || 0);
-    // Re-render cleanly to sync all handles
     renderLayersForGarment(g, loc);
   }
-  _activeInteraction = null;
-  document.removeEventListener('pointermove', _onPointerMove);
-  document.removeEventListener('pointerup',   _onPointerUp);
+  _ai = null;
 }
 
-// Legacy stubs (no longer used but kept for safety)
-function startDragLayerTouch(){}
-function startResizeLayerTouch(){}
+// ── DRAG ──────────────────────────────────────────────────────────────────
+function startDragLayer(e, g, loc, layer) {
+  selectLayerInLoc(g, loc, layer.id);
+  const sc = getCanvasScale(g.id, loc.id);
+  const rect = _canvasRect(g, loc); if (!rect) return;
+  _ai = { type:'drag', g, loc, layer, sc,
+    ox: e.clientX - rect.left - layer.x * sc,
+    oy: e.clientY - rect.top  - layer.y * sc };
+  document.addEventListener('mousemove', _onMouseMove);
+  document.addEventListener('mouseup',   _onMouseUp);
+}
+function _onDragMove(cx, cy) {
+  const {g,loc,layer,sc,ox,oy} = _ai;
+  const rect = _canvasRect(g,loc); if(!rect) return;
+  layer.x = Math.max(0, Math.min((cx - rect.left - ox) / sc, rect.width/sc - layer.w));
+  layer.y = Math.max(0, Math.min((cy - rect.top  - oy) / sc, rect.height/sc - 20));
+  const el = _layerEl(g,loc,layer); if(el) _applyLayerPos(el, layer, sc);
+}
+
+// ── RESIZE ────────────────────────────────────────────────────────────────
+function startResizeLayer(e, g, loc, layer) {
+  const sc = getCanvasScale(g.id, loc.id);
+  _ai = { type:'resize', g, loc, layer, sc, sx: e.clientX, sw: layer.w };
+  document.addEventListener('mousemove', _onMouseMove);
+  document.addEventListener('mouseup',   _onMouseUp);
+}
+function _onResizeMove(cx) {
+  const {g,loc,layer,sc,sx,sw} = _ai;
+  layer.w = Math.max(20, sw + (cx - sx) / sc);
+  const el = _layerEl(g,loc,layer);
+  if (el) {
+    el.style.width = (layer.w * sc) + 'px';
+    const sv  = document.getElementById('ctrlSize_'+g.id+'_'+loc.id);
+    const svv = document.getElementById('ctrlSizeVal_'+g.id+'_'+loc.id);
+    if (sv)  sv.value = layer.w;
+    if (svv) svv.textContent = Math.round(layer.w) + 'px';
+  }
+}
+
+// ── ROTATE ────────────────────────────────────────────────────────────────
+function startRotateLayer(e, g, loc, layer) {
+  const sc = getCanvasScale(g.id, loc.id);
+  const rect = _canvasRect(g,loc); if(!rect) return;
+  const cx = rect.left + (layer.x + layer.w/2) * sc;
+  const cy = rect.top  + (layer.y + layer.w/2) * sc;
+  const sa = Math.atan2(e.clientY - cy, e.clientX - cx) * 180 / Math.PI;
+  _ai = { type:'rotate', g, loc, layer, sc, cx, cy, sa, sr: layer.r||0 };
+  document.addEventListener('mousemove', _onMouseMove);
+  document.addEventListener('mouseup',   _onMouseUp);
+}
+function _onRotateMove(cx, cy) {
+  const {g,loc,layer,cx:ccx,cy:ccy,sa,sr} = _ai;
+  const a = Math.atan2(cy - ccy, cx - ccx) * 180 / Math.PI;
+  layer.r = (((sr + a - sa) % 360) + 360) % 360;
+  const el = _layerEl(g,loc,layer);
+  if (el) {
+    el.style.transform = 'rotate('+layer.r+'deg)';
+    const rv  = document.getElementById('ctrlRotate_'+g.id+'_'+loc.id);
+    const rvv = document.getElementById('ctrlRotateVal_'+g.id+'_'+loc.id);
+    if (rv)  rv.value = layer.r;
+    if (rvv) rvv.textContent = Math.round(layer.r) + '°';
+  }
+}
+
+// ── MOUSE handlers ────────────────────────────────────────────────────────
+function _onMouseMove(e) {
+  if (!_ai) return;
+  if (_ai.type==='drag')   _onDragMove(e.clientX, e.clientY);
+  if (_ai.type==='resize') _onResizeMove(e.clientX);
+  if (_ai.type==='rotate') _onRotateMove(e.clientX, e.clientY);
+}
+function _onMouseUp() {
+  document.removeEventListener('mousemove', _onMouseMove);
+  document.removeEventListener('mouseup',   _onMouseUp);
+  _finishInteraction();
+}
+
+// ── TOUCH handlers (attached to document on start) ───────────────────────
+function _attachTouchMove() {
+  document.addEventListener('touchmove',  _onTouchMove,  {passive:false});
+  document.addEventListener('touchend',   _onTouchEnd,   {passive:false});
+  document.addEventListener('touchcancel',_onTouchEnd,   {passive:false});
+}
+function _onTouchMove(e) {
+  e.preventDefault();
+  if (!_ai) return;
+  const t = e.touches[0];
+  if (_ai.type==='drag')   _onDragMove(t.clientX, t.clientY);
+  if (_ai.type==='resize') _onResizeMove(t.clientX);
+  if (_ai.type==='rotate') _onRotateMove(t.clientX, t.clientY);
+}
+function _onTouchEnd(e) {
+  document.removeEventListener('touchmove',  _onTouchMove);
+  document.removeEventListener('touchend',   _onTouchEnd);
+  document.removeEventListener('touchcancel',_onTouchEnd);
+  _finishInteraction();
+}
+
+// Layer touchstart routes to the right interaction then attaches move/end
+function startDragLayerTouch(clientX, clientY, g, loc, layer) {
+  selectLayerInLoc(g, loc, layer.id);
+  const sc = getCanvasScale(g.id, loc.id);
+  const rect = _canvasRect(g,loc); if(!rect) return;
+  _ai = { type:'drag', g, loc, layer, sc,
+    ox: clientX - rect.left - layer.x * sc,
+    oy: clientY - rect.top  - layer.y * sc };
+  _attachTouchMove();
+}
+function startResizeLayerTouch(clientX, clientY, g, loc, layer) {
+  const sc = getCanvasScale(g.id, loc.id);
+  _ai = { type:'resize', g, loc, layer, sc, sx: clientX, sw: layer.w };
+  _attachTouchMove();
+}
+function startRotateLayerTouch(clientX, clientY, g, loc, layer) {
+  const sc = getCanvasScale(g.id, loc.id);
+  const rect = _canvasRect(g,loc); if(!rect) return;
+  const cx = rect.left + (layer.x + layer.w/2) * sc;
+  const cy = rect.top  + (layer.y + layer.w/2) * sc;
+  const sa = Math.atan2(clientY - cy, clientX - cx) * 180 / Math.PI;
+  _ai = { type:'rotate', g, loc, layer, sc, cx, cy, sa, sr: layer.r||0 };
+  _attachTouchMove();
+}
 
 // ── Artwork quality warning modal ─────────────────────────────────────────
 function showArtworkWarning(files, cb) {
