@@ -911,7 +911,15 @@ function updateTotals() {
 function checkStep2() {
   document.getElementById('toStep3').disabled=!(state.selectedColor&&Object.values(state.quantities).some(q=>q>0));
 }
-document.getElementById('toStep3').addEventListener('click',()=>goTo(3));
+document.getElementById('toStep3').addEventListener('click',()=>{
+  // Save quantities into the current garment so multi-garment orders track them separately
+  if (garments.length > 0) {
+    const currentGarment = garments.find(g => g.style === state.selectedStyle && g.color === state.selectedColor)
+      || garments[garments.length - 1];
+    currentGarment.quantities = { ...state.quantities };
+  }
+  goTo(3);
+});
 
 // ─── Step 3 options ────────────────────────────────────────────────────────
 document.querySelectorAll('.option-card').forEach(card=>{
@@ -979,25 +987,47 @@ function renderSummary() {
 async function submitOrder() {
   const btn=document.getElementById('submitBtn');
   btn.disabled=true; btn.textContent='Submitting...';
-  const p=CATALOG[state.selectedStyle];
-  const total=Object.values(state.quantities).reduce((a,b)=>a+b,0);
 
-  // Build garment summary for notes
-  const garmentSummary = garments.map((g,i) => {
+  // Build one line_item per garment — each with its own style, color, quantities, placements
+  const line_items = garments.map((g, i) => {
     const prod = CATALOG[g.style] || {};
-    const locs = g.locations.map(l => l.name + (l.artFiles.length ? ` (${l.artFiles.length} file${l.artFiles.length>1?'s':''})` : '')).join(', ');
-    return `Garment ${i+1}: ${prod.title||g.style} / ${g.color} — ${locs}`;
-  }).join('\n');
+    // Quantities: use garment-specific if stored, else fall back to global state.quantities
+    const qty = g.quantities && Object.keys(g.quantities).length ? g.quantities : (i===0 ? state.quantities : {});
+    const totalQty = Object.values(qty).reduce((a,b)=>a+(parseInt(b)||0),0);
+    const placements = g.locations.map(l=>l.name).filter(Boolean).join(', ');
+    const artFiles = g.locations.flatMap(l => l.artFiles.filter(f=>!f.error).map(f=>f.name));
+    return {
+      garment_index: i+1,
+      product_name: prod.title || g.style,
+      product_supplier: prod.supplier || '',
+      product_style: g.style,
+      garment_color: g.color,
+      quantities: qty,
+      total_qty: totalQty,
+      placement: placements,
+      print_type: state.printType,
+      print_colors: state.printColors,
+      artwork_files: artFiles,
+    };
+  });
+
+  const grandTotal = line_items.reduce((a,li)=>a+li.total_qty,0);
+
+  // Summary string for notes
+  const garmentSummary = line_items.map(li =>
+    `Garment ${li.garment_index}: ${li.product_name} / ${li.garment_color} — ${li.placement} (${li.total_qty} pcs)`
+  ).join('\n');
 
   const payload={
     status:'Pending',
-    product_name: garments.map(g=>(CATALOG[g.style]||{}).title||g.style).join(', '),
-    product_supplier: garments.map(g=>(CATALOG[g.style]||{}).supplier||'').filter(Boolean).join(', '),
-    product_style: garments.map(g=>g.style).join(', '),
-    garment_color: garments.map(g=>g.color).join(', '),
-    quantities: state.quantities,
-    total_qty: total,
-    placement: garments.flatMap(g=>g.locations.map(l=>l.name)).filter((v,i,a)=>a.indexOf(v)===i).join(', '),
+    // Top-level fields = combined summary (for search/display in Base44)
+    product_name: line_items.map(li=>li.product_name).join(', '),
+    product_supplier: line_items.map(li=>li.product_supplier).filter(Boolean).join(', '),
+    product_style: line_items.map(li=>li.product_style).join(', '),
+    garment_color: line_items.map(li=>li.garment_color).join(', '),
+    quantities: line_items[0]?.quantities || state.quantities,
+    total_qty: grandTotal,
+    placement: line_items.flatMap(li=>li.placement.split(', ')).filter((v,i,a)=>a.indexOf(v)===i).join(', '),
     print_type: state.printType,
     print_colors: state.printColors,
     customer_first_name: state.firstName,
@@ -1008,12 +1038,14 @@ async function submitOrder() {
     due_date: state.dueDate||null,
     notes: (state.notes||'') + (garmentSummary ? '\n\n--- Garments ---\n' + garmentSummary : ''),
     mockup_url: '',
-    artwork_urls: garments.flatMap(g =>
+    artwork_urls: garments.flatMap((g,gi) =>
       g.locations.flatMap(l => [
-        ...l.artFiles.filter(f=>!f.error).map(f=>`[G${garments.indexOf(g)+1} ${l.name}] ${f.name}`),
-        ...l.mockupFiles.filter(f=>!f.error).map(f=>`[mockup G${garments.indexOf(g)+1} ${l.name}] ${f.name}`),
+        ...l.artFiles.filter(f=>!f.error).map(f=>`[G${gi+1} ${l.name}] ${f.name}`),
+        ...l.mockupFiles.filter(f=>!f.error).map(f=>`[mockup G${gi+1} ${l.name}] ${f.name}`),
       ])
     ),
+    // Structured per-garment line items for Printavo
+    line_items,
   };
 
   try {
