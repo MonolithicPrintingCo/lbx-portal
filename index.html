@@ -206,7 +206,15 @@
   .mockup-wrap{display:flex;gap:20px;flex-wrap:wrap;margin-top:20px;align-items:flex-start}
   .mockup-canvas-wrap{position:relative;flex-shrink:0;width:min(700px,100%)}
   .mockup-bg{width:100%;height:auto;aspect-ratio:1;object-fit:contain;display:block;border-radius:var(--radius);border:1.5px solid var(--gray2);background:rgba(255,255,255,.06);user-select:none}
-  .mockup-layer{position:absolute;cursor:move;user-select:none;touch-action:none;-webkit-user-select:none;will-change:transform}
+  .mockup-layer{position:absolute;cursor:move;user-select:none;touch-action:none;-webkit-user-select:none;will-change:transform;transition:opacity .12s}
+  .mockup-layer.selected{outline:2.5px solid var(--accent);outline-offset:2px}
+  .layer-hint{position:absolute;bottom:-28px;left:50%;transform:translateX(-50%);white-space:nowrap;font-size:.65rem;color:#fff;background:rgba(0,0,0,.6);padding:2px 8px;border-radius:10px;pointer-events:none;z-index:20;opacity:0;transition:opacity .3s}
+  .mockup-layer.selected .layer-hint{opacity:1}
+  @media(hover:none){
+    /* On touch devices show a subtle pulse on the selected layer */
+    .mockup-layer.selected{animation:layer-pulse 1.8s ease-in-out infinite}
+    @keyframes layer-pulse{0%,100%{outline-color:var(--accent)}50%{outline-color:#ff7b7b}}
+  }
   .mockup-layer img{display:block;pointer-events:none}
   .mockup-layer.selected{outline:2px dashed var(--accent);outline-offset:2px}
   .resize-handle{position:absolute;bottom:-6px;right:-6px;width:14px;height:14px;background:var(--accent);border-radius:3px;cursor:se-resize}
@@ -1676,17 +1684,18 @@ function observeCanvasResize(gId, locId, g, loc) {
   const ro = new ResizeObserver(() => { renderLayersForGarment(g, loc); });
   ro.observe(wrap);
   wrap._resizeObserver = ro;
-  // Block iOS scroll when touching inside the canvas (must be non-passive)
+  // Block iOS scroll when a layer interaction is in progress
   if (!wrap._touchBlocked) {
     wrap._touchBlocked = true;
+    // This non-passive touchstart on the canvas-wrap is required so that
+    // subsequent touchmove calls can call preventDefault on iOS Safari.
     wrap.addEventListener('touchstart', e => {
-      // Only block scroll if touch started on a layer div or its children
       if (e.target.closest('.mockup-layer')) {
-        e.preventDefault();
+        e.preventDefault(); // prevent page scroll while touching a layer
       }
     }, {passive: false});
     wrap.addEventListener('touchmove', e => {
-      if (_ai) { e.preventDefault(); }
+      if (_ai) e.preventDefault(); // block scroll while dragging/resizing/rotating
     }, {passive: false});
   }
 }
@@ -1711,29 +1720,41 @@ function renderLayersForGarment(g, loc) {
     const div = document.createElement('div');
     div.className = 'mockup-layer' + (loc.selectedLayer===layer.id?' selected':'');
     const _sc = getCanvasScale(g.id, loc.id);
-    div.style.position = 'absolute';
-    div.style.left = (layer.x*_sc)+'px';
-    div.style.top  = (layer.y*_sc)+'px';
-    div.style.width = (layer.w*_sc)+'px';
-    div.style.cursor = 'move';
-    div.style.userSelect = 'none';
-    div.style.webkitUserSelect = 'none';
-    div.style.touchAction = 'none';
-    div.style.transform = `rotate(${layer.r||0}deg)`;
-    div.style.transformOrigin = 'center center';
+    div.style.cssText = `position:absolute;left:${layer.x*_sc}px;top:${layer.y*_sc}px;width:${layer.w*_sc}px;cursor:move;user-select:none;-webkit-user-select:none;touch-action:none;transform:rotate(${layer.r||0}deg);transform-origin:center center;-webkit-tap-highlight-color:transparent`;
     div.dataset.id = layer.id;
-    div.innerHTML = `<img src="${layer.objectUrl||layer.url}" style="width:100%;opacity:${layer.opacity};display:block;pointer-events:none;border-radius:2px;-webkit-user-drag:none" draggable="false">
-      <div data-handle="resize" style="position:absolute;bottom:-10px;right:-10px;width:28px;height:28px;background:var(--accent);border-radius:5px;cursor:se-resize;border:2.5px solid #fff;touch-action:none;z-index:10;-webkit-tap-highlight-color:transparent;box-shadow:0 1px 4px rgba(0,0,0,.4)"></div>
-      <div data-handle="rotate" style="position:absolute;top:-32px;left:50%;transform:translateX(-50%);width:28px;height:28px;background:#6366f1;border-radius:50%;cursor:grab;border:2.5px solid #fff;touch-action:none;z-index:10;display:flex;align-items:center;justify-content:center;font-size:14px;color:#fff;-webkit-tap-highlight-color:transparent;box-shadow:0 1px 4px rgba(0,0,0,.4)">↻</div>`;
-    
+    // The artwork image — fills the div
+    div.innerHTML = `<img src="${layer.objectUrl||layer.url}" style="width:100%;opacity:${layer.opacity};display:block;border-radius:2px;-webkit-user-drag:none;pointer-events:none" draggable="false">
+      <div class="layer-hint">drag to move</div>
+      <div data-handle="resize" title="Drag to resize" style="position:absolute;bottom:-11px;right:-11px;width:30px;height:30px;background:var(--accent);border-radius:5px;cursor:se-resize;border:2.5px solid #fff;touch-action:none;z-index:10;-webkit-tap-highlight-color:transparent;box-shadow:0 2px 6px rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;font-size:12px;color:#fff">⤡</div>
+      <div data-handle="rotate" title="Drag to rotate" style="position:absolute;top:-34px;left:50%;transform:translateX(-50%);width:30px;height:30px;background:#6366f1;border-radius:50%;cursor:grab;border:2.5px solid #fff;touch-action:none;z-index:10;display:flex;align-items:center;justify-content:center;font-size:15px;color:#fff;-webkit-tap-highlight-color:transparent;box-shadow:0 2px 6px rgba(0,0,0,.5)">↻</div>`;
+
+    // ── TOUCH: long-press gesture system ───────────────────────────────────
+    // Touch-hold (300ms) anywhere on the layer to select mode, then drag:
+    //   • Center of image  → MOVE
+    //   • Bottom-right zone → RESIZE (no hold needed, instant)
+    //   • Top zone          → ROTATE (no hold needed, instant)
+    // Immediate drag (no hold) also works — hold just adds visual feedback.
+    let _holdTimer = null;
+    let _touchStartT = null;
+    let _touchMoved = false;
+
     div.addEventListener('touchstart', e => {
-      e.preventDefault(); // block scroll / browser default
+      e.preventDefault();
+      _touchMoved = false;
       const t = e.touches[0];
       const handle = e.target.closest('[data-handle]')?.dataset?.handle;
+
+      // Handles = instant, no hold needed
       if (handle === 'resize') { startResizeLayerTouch(t.clientX, t.clientY, g, loc, layer); return; }
       if (handle === 'rotate') { startRotateLayerTouch(t.clientX, t.clientY, g, loc, layer); return; }
+
+      // Body of image: start move immediately (natural feel), also select the layer
+      selectLayerInLoc(g, loc, layer.id);
+      div.style.opacity = '0.75';
       startDragLayerTouch(t.clientX, t.clientY, g, loc, layer);
     }, {passive: false});
+
+    // ── MOUSE (desktop) ────────────────────────────────────────────────────
     div.addEventListener('mousedown', e => {
       if (e.button !== 0) return;
       e.preventDefault();
@@ -1802,157 +1823,149 @@ function rotateSelectedLayer(gid,locId,val) {
   if(el) el.style.transform=`rotate(${l.r}deg)`;
 }
 
-// ── Layer interaction: drag / resize / rotate ────────────────────────────
-// Separate mouse and touch paths for maximum mobile compatibility.
-let _ai = null; // active interaction state
+// ══════════════════════════════════════════════════════════════════════════
+// LAYER INTERACTION ENGINE  — mouse + touch
+// Touch UX:
+//   • Tap image body  → select layer (immediate, no drag)
+//   • Touch + drag image body  → MOVE  (no hold needed)
+//   • Touch + drag RESIZE handle (bottom-right corner) → RESIZE
+//   • Touch + drag ROTATE handle (top center dot) → ROTATE
+// ══════════════════════════════════════════════════════════════════════════
+
+let _ai = null; // { type, g, loc, layer, sc, ... }
 
 function _canvasRect(g, loc) {
   return document.getElementById('canvas_'+g.id+'_'+loc.id)?.getBoundingClientRect() || null;
 }
 function _layerEl(g, loc, layer) {
-  return document.getElementById('canvas_'+g.id+'_'+loc.id)?.querySelector('.mockup-layer[data-id="'+layer.id+'"]') || null;
+  const canvas = document.getElementById('canvas_'+g.id+'_'+loc.id);
+  return canvas ? canvas.querySelector('.mockup-layer[data-id="'+layer.id+'"]') : null;
 }
-function _applyLayerPos(el, layer, sc) {
-  el.style.left      = (layer.x * sc) + 'px';
-  el.style.top       = (layer.y * sc) + 'px';
-  el.style.width     = (layer.w * sc) + 'px';
-  el.style.transform = 'rotate(' + (layer.r||0) + 'deg)';
+function _syncSliders(g, loc, layer) {
+  const sv  = document.getElementById('ctrlSize_'+g.id+'_'+loc.id);
+  const svv = document.getElementById('ctrlSizeVal_'+g.id+'_'+loc.id);
+  const rv  = document.getElementById('ctrlRotate_'+g.id+'_'+loc.id);
+  const rvv = document.getElementById('ctrlRotateVal_'+g.id+'_'+loc.id);
+  if (sv)  sv.value = Math.round(layer.w);
+  if (svv) svv.textContent = Math.round(layer.w) + 'px';
+  if (rv)  rv.value = Math.round(layer.r || 0);
+  if (rvv) rvv.textContent = Math.round(layer.r || 0) + '°';
 }
 
 function _finishInteraction() {
   if (_ai) {
-    const {g, loc, layer} = _ai;
+    const {g, loc, layer, el} = _ai;
+    if (el) el.style.opacity = '';
     layer.x = Math.round(layer.x || 0);
     layer.y = Math.round(layer.y || 0);
-    layer.w = Math.round(layer.w || 20);
-    layer.r = Math.round(layer.r || 0);
+    layer.w = Math.max(20, Math.round(layer.w || 20));
+    layer.r = Math.round(((layer.r || 0) % 360 + 360) % 360);
     renderLayersForGarment(g, loc);
   }
   _ai = null;
 }
 
-// ── DRAG ──────────────────────────────────────────────────────────────────
-function startDragLayer(e, g, loc, layer) {
+// ── MOVE ──────────────────────────────────────────────────────────────────
+function _startMove(cx, cy, g, loc, layer, isMouse) {
   selectLayerInLoc(g, loc, layer.id);
   const sc = getCanvasScale(g.id, loc.id);
   const rect = _canvasRect(g, loc); if (!rect) return;
-  _ai = { type:'drag', g, loc, layer, sc,
-    ox: e.clientX - rect.left - layer.x * sc,
-    oy: e.clientY - rect.top  - layer.y * sc };
-  document.addEventListener('mousemove', _onMouseMove);
-  document.addEventListener('mouseup',   _onMouseUp);
+  const el = _layerEl(g, loc, layer);
+  if (el) el.style.opacity = '0.72';
+  _ai = { type:'move', g, loc, layer, sc, el,
+    ox: cx - rect.left - layer.x * sc,
+    oy: cy - rect.top  - layer.y * sc };
+  if (isMouse) { _bindMouse(); } else { _bindTouch(); }
 }
-function _onDragMove(cx, cy) {
-  const {g,loc,layer,sc,ox,oy} = _ai;
-  const rect = _canvasRect(g,loc); if(!rect) return;
-  layer.x = Math.max(0, Math.min((cx - rect.left - ox) / sc, rect.width/sc - layer.w));
-  layer.y = Math.max(0, Math.min((cy - rect.top  - oy) / sc, rect.height/sc - 20));
-  const el = _layerEl(g,loc,layer); if(el) _applyLayerPos(el, layer, sc);
+function _doMove(cx, cy) {
+  const {g, loc, layer, sc, ox, oy, el} = _ai;
+  const rect = _canvasRect(g, loc); if (!rect) return;
+  layer.x = Math.max(0, Math.min((cx - rect.left - ox) / sc, rect.width  / sc - layer.w));
+  layer.y = Math.max(0, Math.min((cy - rect.top  - oy) / sc, rect.height / sc - 20));
+  if (el) { el.style.left = (layer.x * sc) + 'px'; el.style.top = (layer.y * sc) + 'px'; }
 }
+
+// Exported so layer touchstart can call it directly
+function startDragLayer(e, g, loc, layer)      { _startMove(e.clientX, e.clientY, g, loc, layer, true); }
+function startDragLayerTouch(cx, cy, g, loc, layer) { _startMove(cx, cy, g, loc, layer, false); }
 
 // ── RESIZE ────────────────────────────────────────────────────────────────
-function startResizeLayer(e, g, loc, layer) {
+function _startResize(cx, g, loc, layer, isMouse) {
   const sc = getCanvasScale(g.id, loc.id);
-  _ai = { type:'resize', g, loc, layer, sc, sx: e.clientX, sw: layer.w };
-  document.addEventListener('mousemove', _onMouseMove);
-  document.addEventListener('mouseup',   _onMouseUp);
+  const el = _layerEl(g, loc, layer);
+  _ai = { type:'resize', g, loc, layer, sc, el, sx: cx, sw: layer.w };
+  if (isMouse) { _bindMouse(); } else { _bindTouch(); }
 }
-function _onResizeMove(cx) {
-  const {g,loc,layer,sc,sx,sw} = _ai;
+function _doResize(cx) {
+  const {g, loc, layer, sc, sx, sw, el} = _ai;
   layer.w = Math.max(20, sw + (cx - sx) / sc);
-  const el = _layerEl(g,loc,layer);
-  if (el) {
-    el.style.width = (layer.w * sc) + 'px';
-    const sv  = document.getElementById('ctrlSize_'+g.id+'_'+loc.id);
-    const svv = document.getElementById('ctrlSizeVal_'+g.id+'_'+loc.id);
-    if (sv)  sv.value = layer.w;
-    if (svv) svv.textContent = Math.round(layer.w) + 'px';
-  }
+  if (el) el.style.width = (layer.w * sc) + 'px';
+  _syncSliders(g, loc, layer);
 }
+
+function startResizeLayer(e, g, loc, layer)          { _startResize(e.clientX, g, loc, layer, true); }
+function startResizeLayerTouch(cx, cy, g, loc, layer){ _startResize(cx, g, loc, layer, false); }
 
 // ── ROTATE ────────────────────────────────────────────────────────────────
-function startRotateLayer(e, g, loc, layer) {
+function _startRotate(cx, cy, g, loc, layer, isMouse) {
   const sc = getCanvasScale(g.id, loc.id);
-  const rect = _canvasRect(g,loc); if(!rect) return;
-  const cx = rect.left + (layer.x + layer.w/2) * sc;
-  const cy = rect.top  + (layer.y + layer.w/2) * sc;
-  const sa = Math.atan2(e.clientY - cy, e.clientX - cx) * 180 / Math.PI;
-  _ai = { type:'rotate', g, loc, layer, sc, cx, cy, sa, sr: layer.r||0 };
-  document.addEventListener('mousemove', _onMouseMove);
-  document.addEventListener('mouseup',   _onMouseUp);
+  const rect = _canvasRect(g, loc); if (!rect) return;
+  const pivotX = rect.left + (layer.x + layer.w / 2) * sc;
+  const pivotY = rect.top  + (layer.y + layer.w / 2) * sc;
+  const el = _layerEl(g, loc, layer);
+  _ai = { type:'rotate', g, loc, layer, sc, el,
+    pivotX, pivotY,
+    sa: Math.atan2(cy - pivotY, cx - pivotX) * 180 / Math.PI,
+    sr: layer.r || 0 };
+  if (isMouse) { _bindMouse(); } else { _bindTouch(); }
 }
-function _onRotateMove(cx, cy) {
-  const {g,loc,layer,cx:ccx,cy:ccy,sa,sr} = _ai;
-  const a = Math.atan2(cy - ccy, cx - ccx) * 180 / Math.PI;
-  layer.r = (((sr + a - sa) % 360) + 360) % 360;
-  const el = _layerEl(g,loc,layer);
-  if (el) {
-    el.style.transform = 'rotate('+layer.r+'deg)';
-    const rv  = document.getElementById('ctrlRotate_'+g.id+'_'+loc.id);
-    const rvv = document.getElementById('ctrlRotateVal_'+g.id+'_'+loc.id);
-    if (rv)  rv.value = layer.r;
-    if (rvv) rvv.textContent = Math.round(layer.r) + '°';
-  }
+function _doRotate(cx, cy) {
+  const {g, loc, layer, pivotX, pivotY, sa, sr, el} = _ai;
+  const angle = Math.atan2(cy - pivotY, cx - pivotX) * 180 / Math.PI;
+  layer.r = (((sr + angle - sa) % 360) + 360) % 360;
+  if (el) el.style.transform = 'rotate('+layer.r+'deg)';
+  _syncSliders(g, loc, layer);
 }
 
-// ── MOUSE handlers ────────────────────────────────────────────────────────
-function _onMouseMove(e) {
-  if (!_ai) return;
-  if (_ai.type==='drag')   _onDragMove(e.clientX, e.clientY);
-  if (_ai.type==='resize') _onResizeMove(e.clientX);
-  if (_ai.type==='rotate') _onRotateMove(e.clientX, e.clientY);
+function startRotateLayer(e, g, loc, layer)          { _startRotate(e.clientX, e.clientY, g, loc, layer, true); }
+function startRotateLayerTouch(cx, cy, g, loc, layer){ _startRotate(cx, cy, g, loc, layer, false); }
+
+// ── MOUSE bindings ────────────────────────────────────────────────────────
+function _bindMouse() {
+  document.addEventListener('mousemove', _onMM);
+  document.addEventListener('mouseup',   _onMU);
 }
-function _onMouseUp() {
-  document.removeEventListener('mousemove', _onMouseMove);
-  document.removeEventListener('mouseup',   _onMouseUp);
+function _onMM(e) {
+  if (!_ai) return;
+  if (_ai.type==='move')   _doMove(e.clientX, e.clientY);
+  if (_ai.type==='resize') _doResize(e.clientX);
+  if (_ai.type==='rotate') _doRotate(e.clientX, e.clientY);
+}
+function _onMU() {
+  document.removeEventListener('mousemove', _onMM);
+  document.removeEventListener('mouseup',   _onMU);
   _finishInteraction();
 }
 
-// ── TOUCH handlers ───────────────────────────────────────────────────────
-function _attachTouchMove() {
-  // Attach to both document and canvas wrap for maximum iOS/Android compat
-  document.addEventListener('touchmove',  _onTouchMove,  {passive:false});
-  document.addEventListener('touchend',   _onTouchEnd,   {passive:false});
-  document.addEventListener('touchcancel',_onTouchEnd,   {passive:false});
+// ── TOUCH bindings ────────────────────────────────────────────────────────
+function _bindTouch() {
+  document.addEventListener('touchmove',   _onTM, {passive:false});
+  document.addEventListener('touchend',    _onTE, {passive:false});
+  document.addEventListener('touchcancel', _onTE, {passive:false});
 }
-function _onTouchMove(e) {
+function _onTM(e) {
   if (!_ai) return;
-  e.preventDefault(); // must be called on non-passive listener
+  e.preventDefault();
   const t = e.touches[0];
-  if (_ai.type==='drag')   _onDragMove(t.clientX, t.clientY);
-  if (_ai.type==='resize') _onResizeMove(t.clientX);
-  if (_ai.type==='rotate') _onRotateMove(t.clientX, t.clientY);
+  if (_ai.type==='move')   _doMove(t.clientX, t.clientY);
+  if (_ai.type==='resize') _doResize(t.clientX);
+  if (_ai.type==='rotate') _doRotate(t.clientX, t.clientY);
 }
-function _onTouchEnd(e) {
-  document.removeEventListener('touchmove',  _onTouchMove);
-  document.removeEventListener('touchend',   _onTouchEnd);
-  document.removeEventListener('touchcancel',_onTouchEnd);
+function _onTE() {
+  document.removeEventListener('touchmove',   _onTM);
+  document.removeEventListener('touchend',    _onTE);
+  document.removeEventListener('touchcancel', _onTE);
   _finishInteraction();
-}
-
-// Layer touchstart routes to the right interaction then attaches move/end
-function startDragLayerTouch(clientX, clientY, g, loc, layer) {
-  selectLayerInLoc(g, loc, layer.id);
-  const sc = getCanvasScale(g.id, loc.id);
-  const rect = _canvasRect(g,loc); if(!rect) return;
-  _ai = { type:'drag', g, loc, layer, sc,
-    ox: clientX - rect.left - layer.x * sc,
-    oy: clientY - rect.top  - layer.y * sc };
-  _attachTouchMove();
-}
-function startResizeLayerTouch(clientX, clientY, g, loc, layer) {
-  const sc = getCanvasScale(g.id, loc.id);
-  _ai = { type:'resize', g, loc, layer, sc, sx: clientX, sw: layer.w };
-  _attachTouchMove();
-}
-function startRotateLayerTouch(clientX, clientY, g, loc, layer) {
-  const sc = getCanvasScale(g.id, loc.id);
-  const rect = _canvasRect(g,loc); if(!rect) return;
-  const cx = rect.left + (layer.x + layer.w/2) * sc;
-  const cy = rect.top  + (layer.y + layer.w/2) * sc;
-  const sa = Math.atan2(clientY - cy, clientX - cx) * 180 / Math.PI;
-  _ai = { type:'rotate', g, loc, layer, sc, cx, cy, sa, sr: layer.r||0 };
-  _attachTouchMove();
 }
 
 // ── Artwork quality warning modal ─────────────────────────────────────────
