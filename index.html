@@ -207,11 +207,12 @@
   .mockup-canvas-wrap{position:relative;flex-shrink:0;width:min(700px,100%)}
   .mockup-bg{width:100%;height:auto;aspect-ratio:1;object-fit:contain;display:block;border-radius:var(--radius);border:1.5px solid var(--gray2);background:rgba(255,255,255,.06);user-select:none}
   .mockup-layer{position:absolute;cursor:move;user-select:none;touch-action:none;-webkit-user-select:none;will-change:transform;transition:opacity .12s}
+  .mockup-layer [data-handle]{display:none}
   .mockup-layer.selected{outline:2.5px solid var(--accent);outline-offset:2px}
+  .mockup-layer.selected [data-handle]{display:flex}
   .layer-hint{position:absolute;bottom:-28px;left:50%;transform:translateX(-50%);white-space:nowrap;font-size:.65rem;color:#fff;background:rgba(0,0,0,.6);padding:2px 8px;border-radius:10px;pointer-events:none;z-index:20;opacity:0;transition:opacity .3s}
   .mockup-layer.selected .layer-hint{opacity:1}
   @media(hover:none){
-    /* On touch devices show a subtle pulse on the selected layer */
     .mockup-layer.selected{animation:layer-pulse 1.8s ease-in-out infinite}
     @keyframes layer-pulse{0%,100%{outline-color:var(--accent)}50%{outline-color:#ff7b7b}}
   }
