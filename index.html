@@ -1252,12 +1252,11 @@ function renderGarmentList() {
         <div class="mockup-wrap">
           <div class="mockup-canvas-wrap" id="canvas_${g.id}_${loc.id}" style="position:relative">
             <img id="bg_${g.id}_${loc.id}" class="mockup-bg" src="${getGarmentImg(g, loc._bgView || getViewForLocation(loc.name))}" alt="Garment">
-            ${!loc.artFiles.some(f=>f.isImage&&f.url&&!f.error) ? `
-              <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none">
+            <div id="artNotice_${g.id}_${loc.id}" style="position:absolute;inset:0;display:${!loc.artFiles.some(f=>f.isImage&&(f.url||f.objectUrl)&&!f.error)?'flex':'none'};align-items:center;justify-content:center;pointer-events:none">
                 <div style="background:rgba(0,0,0,.45);color:#fff;font-size:.78rem;text-align:center;padding:10px 14px;border-radius:8px;line-height:1.5">
                   ⬆️ Upload artwork above<br>to position it here
                 </div>
-              </div>` : ''}
+              </div>
           </div>
           <div class="mockup-controls">
             <h3>Layers</h3>
@@ -1714,6 +1713,12 @@ function renderLayersForGarment(g, loc) {
       return;
     }
   }
+  // Show/hide the "upload artwork" notice based on whether any image art exists
+  const notice = document.getElementById(`artNotice_${g.id}_${loc.id}`);
+  if (notice) {
+    const hasArt = loc.artFiles.some(f => f.isImage && (f.url || f.objectUrl) && !f.error);
+    notice.style.display = hasArt ? 'none' : 'flex';
+  }
   wrap.querySelectorAll('.mockup-layer').forEach(el=>el.remove());
   observeCanvasResize(g.id, loc.id, g, loc);
   loc.layers.forEach(layer => {
@@ -1728,29 +1733,13 @@ function renderLayersForGarment(g, loc) {
       <div data-handle="resize" title="Drag to resize" style="position:absolute;bottom:-11px;right:-11px;width:30px;height:30px;background:var(--accent);border-radius:5px;cursor:se-resize;border:2.5px solid #fff;touch-action:none;z-index:10;-webkit-tap-highlight-color:transparent;box-shadow:0 2px 6px rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;font-size:12px;color:#fff">⤡</div>
       <div data-handle="rotate" title="Drag to rotate" style="position:absolute;top:-34px;left:50%;transform:translateX(-50%);width:30px;height:30px;background:#6366f1;border-radius:50%;cursor:grab;border:2.5px solid #fff;touch-action:none;z-index:10;display:flex;align-items:center;justify-content:center;font-size:15px;color:#fff;-webkit-tap-highlight-color:transparent;box-shadow:0 2px 6px rgba(0,0,0,.5)">↻</div>`;
 
-    // ── TOUCH: long-press gesture system ───────────────────────────────────
-    // Touch-hold (300ms) anywhere on the layer to select mode, then drag:
-    //   • Center of image  → MOVE
-    //   • Bottom-right zone → RESIZE (no hold needed, instant)
-    //   • Top zone          → ROTATE (no hold needed, instant)
-    // Immediate drag (no hold) also works — hold just adds visual feedback.
-    let _holdTimer = null;
-    let _touchStartT = null;
-    let _touchMoved = false;
-
     div.addEventListener('touchstart', e => {
       e.preventDefault();
-      _touchMoved = false;
       const t = e.touches[0];
       const handle = e.target.closest('[data-handle]')?.dataset?.handle;
-
-      // Handles = instant, no hold needed
       if (handle === 'resize') { startResizeLayerTouch(t.clientX, t.clientY, g, loc, layer); return; }
       if (handle === 'rotate') { startRotateLayerTouch(t.clientX, t.clientY, g, loc, layer); return; }
-
-      // Body of image: start move immediately (natural feel), also select the layer
-      selectLayerInLoc(g, loc, layer.id);
-      div.style.opacity = '0.75';
+      // Drag body of image — _startMove handles selection in-place (no re-render)
       startDragLayerTouch(t.clientX, t.clientY, g, loc, layer);
     }, {passive: false});
 
@@ -1771,7 +1760,7 @@ function renderLayersForGarment(g, loc) {
   if (listEl) {
     listEl.innerHTML = loc.layers.length
       ? loc.layers.map(l=>`
-          <div class="layer-item${loc.selectedLayer===l.id?' active':''}" onclick="selectLayerInLoc_byId('${g.id}','${loc.id}','${l.id}')">
+          <div class="layer-item${loc.selectedLayer===l.id?' active':''}" data-lid="${l.id}" onclick="selectLayerInLoc_byId('${g.id}','${loc.id}','${l.id}')">
             <img class="layer-thumb" src="${l.objectUrl||l.url}" alt="">
             <span class="layer-name">${l.name}</span>
             <button class="layer-delete" onclick="event.stopPropagation();deleteLayerFromLoc('${g.id}','${loc.id}','${l.id}')">✕</button>
@@ -1784,7 +1773,49 @@ function renderLayersForGarment(g, loc) {
   if (mockupWrap) mockupWrap.style.display = 'block'; // always show garment preview
 }
 
-function selectLayerInLoc(g, loc, id) { loc.selectedLayer=id; renderLayersForGarment(g,loc); }
+function selectLayerInLoc(g, loc, id) {
+  loc.selectedLayer = id;
+  // Update selected class in-place — NO full re-render, preserves active drag
+  const canvas = document.getElementById('canvas_'+g.id+'_'+loc.id);
+  if (canvas) {
+    canvas.querySelectorAll('.mockup-layer').forEach(el => {
+      el.classList.toggle('selected', el.dataset.id === id);
+    });
+  }
+  _updateLayerControls(g, loc);
+}
+
+function _updateLayerControls(g, loc) {
+  // Update layer list highlighting
+  const listEl = document.getElementById('layerList_'+g.id+'_'+loc.id);
+  if (listEl) {
+    listEl.querySelectorAll('.layer-item').forEach(el => {
+      el.classList.toggle('active', el.dataset.lid === loc.selectedLayer);
+    });
+  }
+  // Show/hide the slider controls panel
+  const ctrlEl = document.getElementById('layerCtrl_'+g.id+'_'+loc.id);
+  if (ctrlEl) {
+    ctrlEl.style.display = loc.selectedLayer ? 'block' : 'none';
+    if (loc.selectedLayer) {
+      const layer = loc.layers.find(l => l.id === loc.selectedLayer);
+      if (layer) {
+        const sv  = document.getElementById('ctrlSize_'+g.id+'_'+loc.id);
+        const svv = document.getElementById('ctrlSizeVal_'+g.id+'_'+loc.id);
+        const rv  = document.getElementById('ctrlRotate_'+g.id+'_'+loc.id);
+        const rvv = document.getElementById('ctrlRotateVal_'+g.id+'_'+loc.id);
+        const ov  = document.getElementById('ctrlOpacity_'+g.id+'_'+loc.id);
+        const ovv = document.getElementById('ctrlOpacityVal_'+g.id+'_'+loc.id);
+        if (sv)  sv.value = Math.round(layer.w);
+        if (svv) svv.textContent = Math.round(layer.w) + 'px';
+        if (rv)  rv.value = Math.round(layer.r || 0);
+        if (rvv) rvv.textContent = Math.round(layer.r || 0) + '°';
+        if (ov)  ov.value = Math.round((layer.opacity || 1) * 100);
+        if (ovv) ovv.textContent = Math.round((layer.opacity || 1) * 100) + '%';
+      }
+    }
+  }
+}
 function selectLayerInLoc_byId(gid, locId, lid) {
   const g=garments.find(x=>x.id===gid); const loc=g?.locations.find(l=>l.id===locId);
   if(g&&loc){loc.selectedLayer=lid;renderLayersForGarment(g,loc);}
@@ -1860,18 +1891,23 @@ function _finishInteraction() {
     layer.y = Math.round(layer.y || 0);
     layer.w = Math.max(20, Math.round(layer.w || 20));
     layer.r = Math.round(((layer.r || 0) % 360 + 360) % 360);
-    renderLayersForGarment(g, loc);
+    // Re-render once at end to snap everything clean
+    requestAnimationFrame(() => renderLayersForGarment(g, loc));
   }
   _ai = null;
 }
 
 // ── MOVE ──────────────────────────────────────────────────────────────────
 function _startMove(cx, cy, g, loc, layer, isMouse) {
-  selectLayerInLoc(g, loc, layer.id);
+  // Select without re-rendering (safe to call during active interaction)
+  loc.selectedLayer = layer.id;
   const sc = getCanvasScale(g.id, loc.id);
   const rect = _canvasRect(g, loc); if (!rect) return;
   const el = _layerEl(g, loc, layer);
-  if (el) el.style.opacity = '0.72';
+  // Update selected state visually in-place
+  const canvas = document.getElementById('canvas_'+g.id+'_'+loc.id);
+  if (canvas) canvas.querySelectorAll('.mockup-layer').forEach(e2 => e2.classList.toggle('selected', e2===el));
+  if (el) el.style.opacity = '0.75';
   _ai = { type:'move', g, loc, layer, sc, el,
     ox: cx - rect.left - layer.x * sc,
     oy: cy - rect.top  - layer.y * sc };
