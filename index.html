@@ -206,7 +206,7 @@
   .mockup-wrap{display:flex;gap:20px;flex-wrap:wrap;margin-top:20px;align-items:flex-start}
   .mockup-canvas-wrap{position:relative;flex-shrink:0;width:min(700px,100%)}
   .mockup-bg{width:100%;height:auto;aspect-ratio:1;object-fit:contain;display:block;border-radius:var(--radius);border:1.5px solid var(--gray2);background:rgba(255,255,255,.06);user-select:none}
-  .mockup-layer{position:absolute;cursor:move;user-select:none;touch-action:none}
+  .mockup-layer{position:absolute;cursor:move;user-select:none;touch-action:none;-webkit-user-select:none;will-change:transform}
   .mockup-layer img{display:block;pointer-events:none}
   .mockup-layer.selected{outline:2px dashed var(--accent);outline-offset:2px}
   .resize-handle{position:absolute;bottom:-6px;right:-6px;width:14px;height:14px;background:var(--accent);border-radius:3px;cursor:se-resize}
@@ -1267,8 +1267,14 @@ function renderGarmentList() {
                   oninput="opacitySelectedLayer('${g.id}','${loc.id}',this.value)" id="ctrlOpacity_${g.id}_${loc.id}">
                 <span class="ctrl-val" id="ctrlOpacityVal_${g.id}_${loc.id}">${loc.selectedLayer ? Math.round(((loc.layers.find(l=>l.id===loc.selectedLayer)||{opacity:1}).opacity||1)*100) : 100}%</span>
               </div>
+              <div class="ctrl-row">
+                <label>Rotate</label>
+                <input type="range" min="0" max="359" value="${loc.selectedLayer ? ((loc.layers.find(l=>l.id===loc.selectedLayer)||{r:0}).r||0) : 0}"
+                  oninput="rotateSelectedLayer('${g.id}','${loc.id}',this.value)" id="ctrlRotate_${g.id}_${loc.id}">
+                <span class="ctrl-val" id="ctrlRotateVal_${g.id}_${loc.id}">${loc.selectedLayer ? ((loc.layers.find(l=>l.id===loc.selectedLayer)||{r:0}).r||0) : 0}°</span>
+              </div>
             </div>
-            <p class="mockup-hint">Drag artwork to reposition &bull; Use the resize handle (corner) or the Size slider to scale.</p>
+            <p class="mockup-hint">Drag to move &bull; <span style="color:#6366f1">↻</span> handle to rotate &bull; corner handle or slider to resize</p>
           </div>
         </div>
       </div>` : '';
@@ -1659,7 +1665,7 @@ function addLayerToLoc(loc, fileEntry) {
     name: fileEntry.name,
     x: Math.round((EDITOR_SIZE - _defaultW) / 2),  // centered
     y: Math.round(EDITOR_SIZE * 0.25),              // ~25% from top
-    w: _defaultW, opacity: 1
+    w: _defaultW, opacity: 1, r: 0               // r = rotation degrees
   });
 }
 
@@ -1694,13 +1700,17 @@ function renderLayersForGarment(g, loc) {
     const _sc = getCanvasScale(g.id, loc.id);
     div.style.cssText = `left:${layer.x*_sc}px;top:${layer.y*_sc}px;width:${layer.w*_sc}px;position:absolute;cursor:move;user-select:none;touch-action:none`;
     div.dataset.id = layer.id;
-    div.innerHTML = `<img src="${layer.objectUrl||layer.url}" style="width:100%;opacity:${layer.opacity};display:block;pointer-events:none" draggable="false">
-      <div class="resize-handle" style="position:absolute;bottom:-4px;right:-4px;width:12px;height:12px;background:var(--accent);border-radius:50%;cursor:se-resize;border:2px solid #fff" data-resize="${layer.id}"></div>`;
-    div.addEventListener('click', () => selectLayerInLoc(g, loc, layer.id));
-    div.addEventListener('mousedown', e => { if(!e.target.dataset.resize) startDragLayer(e, g, loc, layer); });
-    div.addEventListener('touchstart', e => { if(!e.target.dataset.resize) startDragLayerTouch(e, g, loc, layer); }, {passive:false});
-    div.querySelector('[data-resize]').addEventListener('mousedown', e=>{e.stopPropagation();startResizeLayer(e,g,loc,layer);});
-    div.querySelector('[data-resize]').addEventListener('touchstart', e=>{e.stopPropagation();startResizeLayerTouch(e,g,loc,layer);},{passive:false});
+    const rot = layer.r || 0;
+    div.style.transform = `rotate(${rot}deg)`;
+    div.style.transformOrigin = 'center center';
+    div.innerHTML = `<img src="${layer.objectUrl||layer.url}" style="width:100%;opacity:${layer.opacity};display:block;pointer-events:none;border-radius:2px" draggable="false">
+      <div data-resize="${layer.id}" style="position:absolute;bottom:-7px;right:-7px;width:18px;height:18px;background:var(--accent);border-radius:4px;cursor:se-resize;border:2px solid #fff;touch-action:none;z-index:2"></div>
+      <div data-rotate="${layer.id}" style="position:absolute;top:-22px;left:50%;transform:translateX(-50%);width:18px;height:18px;background:#6366f1;border-radius:50%;cursor:grab;border:2px solid #fff;touch-action:none;z-index:2;display:flex;align-items:center;justify-content:center;font-size:10px;color:#fff">↻</div>`;
+    div.addEventListener('pointerdown', e => {
+      if(e.target.dataset.resize) { e.stopPropagation(); e.preventDefault(); startResizeLayer(e,g,loc,layer); return; }
+      if(e.target.dataset.rotate) { e.stopPropagation(); e.preventDefault(); startRotateLayer(e,g,loc,layer); return; }
+      startDragLayer(e,g,loc,layer);
+    });
     wrap.appendChild(div);
   });
   // Layer list
@@ -1749,80 +1759,131 @@ function opacitySelectedLayer(gid,locId,val) {
   document.getElementById(`ctrlOpacityVal_${gid}_${locId}`).textContent=val+'%';
   renderLayersForGarment(g,loc);
 }
+function rotateSelectedLayer(gid,locId,val) {
+  const g=garments.find(x=>x.id===gid);const loc=g?.locations.find(l=>l.id===locId);
+  if(!loc) return;
+  const l=loc.layers.find(x=>x.id===loc.selectedLayer); if(!l) return;
+  l.r=parseInt(val)||0;
+  document.getElementById(`ctrlRotateVal_${gid}_${locId}`).textContent=l.r+'°';
+  // Apply without full re-render for smoothness
+  const el=document.getElementById(`canvas_${gid}_${locId}`)?.querySelector(`.mockup-layer[data-id="${l.id}"]`);
+  if(el) el.style.transform=`rotate(${l.r}deg)`;
+}
 
-// ── Drag / resize for per-garment layers ──────────────────────────────────
-let _drag=null, _resize=null;
-function startDragLayer(e,g,loc,layer){
-  e.preventDefault(); selectLayerInLoc(g,loc,layer.id);
-  const _dsc = getCanvasScale(g.id, loc.id);
-  _drag={g,loc,layer,startX:e.clientX-layer.x*_dsc,startY:e.clientY-layer.y*_dsc,scale:_dsc};
-  document.addEventListener('mousemove',onDragLayer);
-  document.addEventListener('mouseup',stopDragLayer);
+// ── Unified pointer-event interaction (drag, resize, rotate) ─────────────
+// Works on both mouse and touch with no glitching.
+let _activeInteraction = null; // { type:'drag'|'resize'|'rotate', g, loc, layer, ... }
+
+function _getCanvasRect(g, loc) {
+  return document.getElementById(`canvas_${g.id}_${loc.id}`)?.getBoundingClientRect() || null;
 }
-function onDragLayer(e){
-  if(!_drag) return;
-  const {g,loc,layer}=_drag;
-  const wrap=document.getElementById(`canvas_${g.id}_${loc.id}`);
-  if(!wrap) return;
-  const r=wrap.getBoundingClientRect();
-  const _msc=_drag.scale||1;
-  layer.x=Math.max(0,Math.min((e.clientX-_drag.startX)/_msc,(r.width/_msc)-layer.w));
-  layer.y=Math.max(0,Math.min((e.clientY-_drag.startY)/_msc,(r.height/_msc)-20));
-  const el=wrap.querySelector(`.mockup-layer[data-id="${layer.id}"]`);
-  if(el){el.style.left=(layer.x*_msc)+'px';el.style.top=(layer.y*_msc)+'px';}
+function _getLayerEl(g, loc, layer) {
+  return document.getElementById(`canvas_${g.id}_${loc.id}`)?.querySelector(`.mockup-layer[data-id="${layer.id}"]`) || null;
 }
-function stopDragLayer(){_drag=null;document.removeEventListener('mousemove',onDragLayer);document.removeEventListener('mouseup',stopDragLayer);}
-function startDragLayerTouch(e,g,loc,layer){
-  e.preventDefault();selectLayerInLoc(g,loc,layer.id);
-  const t=e.touches[0];
-  const _tdsc = getCanvasScale(g.id, loc.id);
-  _drag={g,loc,layer,startX:t.clientX-layer.x*_tdsc,startY:t.clientY-layer.y*_tdsc,scale:_tdsc};
-  document.addEventListener('touchmove',onDragLayerTouch,{passive:false});
-  document.addEventListener('touchend',stopDragLayerTouch);
+function _applyLayerTransform(el, layer, sc) {
+  el.style.left  = (layer.x * sc) + 'px';
+  el.style.top   = (layer.y * sc) + 'px';
+  el.style.width = (layer.w * sc) + 'px';
+  el.style.transform = `rotate(${layer.r || 0}deg)`;
 }
-function onDragLayerTouch(e){
-  e.preventDefault();if(!_drag)return;
-  const t=e.touches[0],{g,loc,layer}=_drag;
-  const wrap=document.getElementById(`canvas_${g.id}_${loc.id}`);if(!wrap)return;
-  const r=wrap.getBoundingClientRect();
-  const _tmsc=_drag.scale||1;
-  layer.x=Math.max(0,Math.min((t.clientX-_drag.startX)/_tmsc,(r.width/_tmsc)-layer.w));
-  layer.y=Math.max(0,Math.min((t.clientY-_drag.startY)/_tmsc,(r.height/_tmsc)-20));
-  const el=wrap.querySelector(`.mockup-layer[data-id="${layer.id}"]`);
-  if(el){el.style.left=(layer.x*_tmsc)+'px';el.style.top=(layer.y*_tmsc)+'px';}
-}
-function stopDragLayerTouch(){_drag=null;document.removeEventListener('touchmove',onDragLayerTouch);document.removeEventListener('touchend',stopDragLayerTouch);}
-function startResizeLayer(e,g,loc,layer){
+
+function startDragLayer(e, g, loc, layer) {
   e.preventDefault();
-  const _rsc = getCanvasScale(g.id, loc.id);
-  _resize={g,loc,layer,startX:e.clientX,startW:layer.w,scale:_rsc};
-  document.addEventListener('mousemove',onResizeLayer);
-  document.addEventListener('mouseup',stopResizeLayer);
+  selectLayerInLoc(g, loc, layer.id);
+  const sc = getCanvasScale(g.id, loc.id);
+  const rect = _getCanvasRect(g, loc);
+  _activeInteraction = {
+    type: 'drag', g, loc, layer, sc,
+    startX: e.clientX - rect.left - layer.x * sc,
+    startY: e.clientY - rect.top  - layer.y * sc,
+  };
+  e.target.setPointerCapture?.(e.pointerId);
+  document.addEventListener('pointermove', _onPointerMove, {passive:false});
+  document.addEventListener('pointerup',   _onPointerUp);
 }
-function onResizeLayer(e){
-  if(!_resize)return;
-  const{g,loc,layer}=_resize;
-  const _rscm=_resize.scale||1; layer.w=Math.max(30,_resize.startW+(e.clientX-_resize.startX)/_rscm);
-  const el=document.getElementById(`canvas_${g.id}_${loc.id}`)?.querySelector(`.mockup-layer[data-id="${layer.id}"]`);
-  if(el){el.style.width=(layer.w*(_rscm||1))+'px';const sv=document.getElementById(`ctrlSize_${g.id}_${loc.id}`);const svv=document.getElementById(`ctrlSizeVal_${g.id}_${loc.id}`);if(sv)sv.value=layer.w;if(svv)svv.textContent=Math.round(layer.w)+'px';}
-}
-function stopResizeLayer(){if(_resize){_resize.layer.w=Math.round(_resize.layer.w);renderLayersForGarment(_resize.g,_resize.loc);}_resize=null;document.removeEventListener('mousemove',onResizeLayer);document.removeEventListener('mouseup',stopResizeLayer);}
-function startResizeLayerTouch(e,g,loc,layer){
+
+function startResizeLayer(e, g, loc, layer) {
   e.preventDefault();
-  const t=e.touches[0];
-  const _trsc = getCanvasScale(g.id, loc.id);
-  _resize={g,loc,layer,startX:t.clientX,startW:layer.w,scale:_trsc};
-  document.addEventListener('touchmove',onResizeLayerTouch,{passive:false});
-  document.addEventListener('touchend',stopResizeLayerTouch);
+  const sc = getCanvasScale(g.id, loc.id);
+  _activeInteraction = { type:'resize', g, loc, layer, sc, startX:e.clientX, startW:layer.w };
+  e.target.setPointerCapture?.(e.pointerId);
+  document.addEventListener('pointermove', _onPointerMove, {passive:false});
+  document.addEventListener('pointerup',   _onPointerUp);
 }
-function onResizeLayerTouch(e){
-  e.preventDefault();if(!_resize)return;
-  const t=e.touches[0],{g,loc,layer}=_resize;
-  const _trscm=_resize.scale||1; layer.w=Math.max(30,_resize.startW+(t.clientX-_resize.startX)/_trscm);
-  const el=document.getElementById(`canvas_${g.id}_${loc.id}`)?.querySelector(`.mockup-layer[data-id="${layer.id}"]`);
-  if(el){el.style.width=layer.w+'px';}
+
+function startRotateLayer(e, g, loc, layer) {
+  e.preventDefault();
+  const rect = _getCanvasRect(g, loc);
+  const sc = getCanvasScale(g.id, loc.id);
+  // Center of layer in viewport coords
+  const cx = rect.left + (layer.x + layer.w / 2) * sc;
+  const cy = rect.top  + (layer.y + layer.w / 2) * sc; // square assumption for center
+  const startAngle = Math.atan2(e.clientY - cy, e.clientX - cx) * 180 / Math.PI;
+  _activeInteraction = { type:'rotate', g, loc, layer, sc, cx, cy, startAngle, startR: layer.r || 0 };
+  e.target.setPointerCapture?.(e.pointerId);
+  document.addEventListener('pointermove', _onPointerMove, {passive:false});
+  document.addEventListener('pointerup',   _onPointerUp);
 }
-function stopResizeLayerTouch(){if(_resize){_resize.layer.w=Math.round(_resize.layer.w);renderLayersForGarment(_resize.g,_resize.loc);}_resize=null;document.removeEventListener('touchmove',onResizeLayerTouch);document.removeEventListener('touchend',stopResizeLayerTouch);}
+
+function _onPointerMove(e) {
+  if (!_activeInteraction) return;
+  e.preventDefault();
+  const { type, g, loc, layer, sc } = _activeInteraction;
+  const el = _getLayerEl(g, loc, layer);
+  if (!el) return;
+
+  if (type === 'drag') {
+    const rect = _getCanvasRect(g, loc);
+    if (!rect) return;
+    const maxX = (rect.width / sc) - layer.w;
+    const maxY = (rect.height / sc) - 20;
+    layer.x = Math.max(0, Math.min((e.clientX - rect.left - _activeInteraction.startX) / sc, maxX));
+    layer.y = Math.max(0, Math.min((e.clientY - rect.top  - _activeInteraction.startY) / sc, maxY));
+    _applyLayerTransform(el, layer, sc);
+
+  } else if (type === 'resize') {
+    layer.w = Math.max(20, _activeInteraction.startW + (e.clientX - _activeInteraction.startX) / sc);
+    _applyLayerTransform(el, layer, sc);
+    // Sync size slider
+    const sv  = document.getElementById(`ctrlSize_${g.id}_${loc.id}`);
+    const svv = document.getElementById(`ctrlSizeVal_${g.id}_${loc.id}`);
+    if (sv)  sv.value = layer.w;
+    if (svv) svv.textContent = Math.round(layer.w) + 'px';
+
+  } else if (type === 'rotate') {
+    const angle = Math.atan2(e.clientY - _activeInteraction.cy, e.clientX - _activeInteraction.cx) * 180 / Math.PI;
+    let delta = angle - _activeInteraction.startAngle;
+    // Snap to 45° increments when within 4° (hold shift feel)
+    let newR = _activeInteraction.startR + delta;
+    newR = ((newR % 360) + 360) % 360;
+    layer.r = Math.round(newR);
+    el.style.transform = `rotate(${layer.r}deg)`;
+    // Sync rotate slider
+    const rv  = document.getElementById(`ctrlRotate_${g.id}_${loc.id}`);
+    const rvv = document.getElementById(`ctrlRotateVal_${g.id}_${loc.id}`);
+    if (rv)  rv.value = layer.r;
+    if (rvv) rvv.textContent = layer.r + '°';
+  }
+}
+
+function _onPointerUp(e) {
+  if (_activeInteraction) {
+    const { g, loc, layer } = _activeInteraction;
+    layer.x = Math.round(layer.x);
+    layer.y = Math.round(layer.y);
+    layer.w = Math.round(layer.w);
+    layer.r = Math.round(layer.r || 0);
+    // Re-render cleanly to sync all handles
+    renderLayersForGarment(g, loc);
+  }
+  _activeInteraction = null;
+  document.removeEventListener('pointermove', _onPointerMove);
+  document.removeEventListener('pointerup',   _onPointerUp);
+}
+
+// Legacy stubs (no longer used but kept for safety)
+function startDragLayerTouch(){}
+function startResizeLayerTouch(){}
 
 // ── Artwork quality warning modal ─────────────────────────────────────────
 function showArtworkWarning(files, cb) {
