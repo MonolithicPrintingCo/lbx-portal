@@ -6,7 +6,7 @@
  *   GET  /ss/products?styleID=N  → proxy S&S product/color data
  */
 
-const BASE44_URL = 'https://base44.app/api/apps/69b379d07fc1c9e2a98e71ad/entities/Order';
+const BASE44_URL = 'https://app.base44.com/api/apps/69b379d07fc1c9e2a98e71ad/entities/Order';
 const SS_BASE    = 'https://api.ssactivewear.com/v2';
 
 const CORS = {
