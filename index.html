@@ -1809,13 +1809,16 @@ function renderLayersForGarment(g, loc) {
       <div data-handle="rotate" title="Drag to rotate" style="position:absolute;top:-34px;left:50%;transform:translateX(-50%);width:30px;height:30px;background:#6366f1;border-radius:50%;cursor:grab;border:2.5px solid #fff;touch-action:none;z-index:10;display:flex;align-items:center;justify-content:center;font-size:15px;color:#fff;-webkit-tap-highlight-color:transparent;box-shadow:0 2px 6px rgba(0,0,0,.5)">↻</div>`;
 
     div.addEventListener('touchstart', e => {
-      e.preventDefault();
+      e.preventDefault(); // prevent scroll / context menu on the layer
       const t = e.touches[0];
       const handle = e.target.closest('[data-handle]')?.dataset?.handle;
       if (handle === 'resize') { startResizeLayerTouch(t.clientX, t.clientY, g, loc, layer); return; }
       if (handle === 'rotate') { startRotateLayerTouch(t.clientX, t.clientY, g, loc, layer); return; }
-      // Drag body of image — _startMove handles selection in-place (no re-render)
-      startDragLayerTouch(t.clientX, t.clientY, g, loc, layer);
+      // Image body touch — just select the layer, no drag (drag via hold-outside)
+      loc.selectedLayer = layer.id;
+      const canvas = document.getElementById('canvas_'+g.id+'_'+loc.id);
+      if (canvas) canvas.querySelectorAll('.mockup-layer').forEach(el2 => el2.classList.toggle('selected', el2===div));
+      _updateLayerControls(g, loc);
     }, {passive: false});
 
     // ── MOUSE (desktop) ────────────────────────────────────────────────────
