@@ -818,6 +818,7 @@ function renderStep2() {
   document.getElementById('selectedColorLabel').textContent = state.selectedColor||'(select a color)';
   renderPhotoStrip(p, firstColor);
   renderQtyTable();
+  checkStep2();
 }
 
 function renderPhotoStrip(p, activeColor) {
