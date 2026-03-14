@@ -1720,13 +1720,22 @@ function observeCanvasResize(gId, locId, g, loc) {
       }
 
       // Touch landed OFF any layer
-      // → find the layer to move: selected one, or first layer if none selected
       const layer = loc.layers.find(l => l.id === loc.selectedLayer) || loc.layers[0];
       if (!layer) return; // no layers, allow normal scroll
 
       e.preventDefault();
+
+      // If a layer is selected, tapping blank canvas deselects it (show clean mockup)
+      if (loc.selectedLayer) {
+        loc.selectedLayer = null;
+        const canvas2 = document.getElementById('canvas_'+gId+'_'+locId);
+        if (canvas2) canvas2.querySelectorAll('.mockup-layer').forEach(el => el.classList.remove('selected'));
+        _updateLayerControls(g, loc);
+        return;
+      }
+
+      // Nothing selected — drag moves the first/only layer immediately
       const t = e.touches[0];
-      // Start move immediately — anchor to layer center so no jump
       startDragLayerTouch(t.clientX, t.clientY, g, loc, layer, true);
     }, {passive: false});
 
