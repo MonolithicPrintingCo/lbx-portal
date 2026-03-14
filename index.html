@@ -205,14 +205,14 @@
   .art-status.error{color:var(--accent)}
 
   /* ── Mockup Generator ── */
-  .mockup-wrap{display:flex;gap:28px;flex-wrap:wrap;margin-top:20px;align-items:flex-start}
-  .mockup-canvas-wrap{position:relative;flex-shrink:0;width:700px}
-  .mockup-bg{width:700px;height:700px;object-fit:contain;display:block;border-radius:var(--radius);border:1.5px solid var(--gray2);background:rgba(255,255,255,.06);user-select:none}
+  .mockup-wrap{display:flex;gap:20px;flex-wrap:wrap;margin-top:20px;align-items:flex-start}
+  .mockup-canvas-wrap{position:relative;flex-shrink:0;width:min(700px,100%)}
+  .mockup-bg{width:100%;height:auto;aspect-ratio:1;object-fit:contain;display:block;border-radius:var(--radius);border:1.5px solid var(--gray2);background:rgba(255,255,255,.06);user-select:none}
   .mockup-layer{position:absolute;cursor:move;user-select:none;touch-action:none}
   .mockup-layer img{display:block;pointer-events:none}
   .mockup-layer.selected{outline:2px dashed var(--accent);outline-offset:2px}
   .resize-handle{position:absolute;bottom:-6px;right:-6px;width:14px;height:14px;background:var(--accent);border-radius:3px;cursor:se-resize}
-  .mockup-controls{flex:1;min-width:260px}
+  .mockup-controls{flex:1;min-width:min(260px,100%);width:100%}
   .mockup-controls h3{font-size:.95rem;font-weight:700;margin-bottom:12px}
   .layer-list{display:flex;flex-direction:column;gap:8px;margin-bottom:16px}
   .layer-item{display:flex;align-items:center;gap:10px;padding:8px 10px;border:1.5px solid var(--gray2);border-radius:var(--radius);cursor:pointer;font-size:.82rem;font-weight:500;background:rgba(255,255,255,.07)}
@@ -229,6 +229,12 @@
   .ptab{padding:5px 12px;border-radius:20px;border:1.5px solid var(--gray2);background:var(--white);font-size:.78rem;font-weight:500;cursor:pointer}
   .ptab.active{background:var(--black);color:var(--white);border-color:#efefef}
   .mockup-hint{font-size:.75rem;color:var(--gray3);margin-top:10px;line-height:1.5}
+  @media(max-width:600px){
+    .mockup-wrap{flex-direction:column;gap:14px}
+    .mockup-canvas-wrap{width:100%}
+    .mockup-controls{min-width:0;width:100%}
+    .resize-handle{width:20px!important;height:20px!important;bottom:-8px!important;right:-8px!important}
+  }
 
   /* ── Modal ── */
   .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:999;display:flex;align-items:center;justify-content:center;padding:20px}
@@ -1252,7 +1258,7 @@ function renderGarmentList() {
                 <span class="ctrl-val" id="ctrlOpacityVal_${g.id}_${loc.id}">${loc.selectedLayer ? Math.round(((loc.layers.find(l=>l.id===loc.selectedLayer)||{opacity:1}).opacity||1)*100) : 100}%</span>
               </div>
             </div>
-            <p class="mockup-hint">Drag to reposition, resize handle to scale.</p>
+            <p class="mockup-hint">Drag artwork to reposition &bull; Use the resize handle (corner) or the Size slider to scale.</p>
           </div>
         </div>
       </div>` : '';
@@ -1612,6 +1618,15 @@ function addLayerToLoc(loc, fileEntry) {
   });
 }
 
+// Observe canvas size changes and re-render layers to match new scale
+function observeCanvasResize(gId, locId, g, loc) {
+  const wrap = document.getElementById(`canvas_${gId}_${locId}`);
+  if (!wrap || wrap._resizeObserver) return;
+  const ro = new ResizeObserver(() => { renderLayersForGarment(g, loc); });
+  ro.observe(wrap);
+  wrap._resizeObserver = ro;
+}
+
 function renderLayersForGarment(g, loc) {
   const wrap = document.getElementById(`canvas_${g.id}_${loc.id}`);
   if (!wrap) return;
@@ -1622,10 +1637,12 @@ function renderLayersForGarment(g, loc) {
     bgImg.src = getGarmentImg(g, view);
   }
   wrap.querySelectorAll('.mockup-layer').forEach(el=>el.remove());
+  observeCanvasResize(g.id, loc.id, g, loc);
   loc.layers.forEach(layer => {
     const div = document.createElement('div');
     div.className = 'mockup-layer' + (loc.selectedLayer===layer.id?' selected':'');
-    div.style.cssText = `left:${layer.x}px;top:${layer.y}px;width:${layer.w}px;position:absolute;cursor:move;user-select:none;touch-action:none`;
+    const _sc = getCanvasScale(g.id, loc.id);
+    div.style.cssText = `left:${layer.x*_sc}px;top:${layer.y*_sc}px;width:${layer.w*_sc}px;position:absolute;cursor:move;user-select:none;touch-action:none`;
     div.dataset.id = layer.id;
     div.innerHTML = `<img src="${layer.objectUrl||layer.url}" style="width:100%;opacity:${layer.opacity};display:block;pointer-events:none" draggable="false">
       <div class="resize-handle" style="position:absolute;bottom:-4px;right:-4px;width:12px;height:12px;background:var(--accent);border-radius:50%;cursor:se-resize;border:2px solid #fff" data-resize="${layer.id}"></div>`;
@@ -1687,7 +1704,8 @@ function opacitySelectedLayer(gid,locId,val) {
 let _drag=null, _resize=null;
 function startDragLayer(e,g,loc,layer){
   e.preventDefault(); selectLayerInLoc(g,loc,layer.id);
-  _drag={g,loc,layer,startX:e.clientX-layer.x,startY:e.clientY-layer.y};
+  const _dsc = getCanvasScale(g.id, loc.id);
+  _drag={g,loc,layer,startX:e.clientX-layer.x*_dsc,startY:e.clientY-layer.y*_dsc,scale:_dsc};
   document.addEventListener('mousemove',onDragLayer);
   document.addEventListener('mouseup',stopDragLayer);
 }
@@ -1697,16 +1715,18 @@ function onDragLayer(e){
   const wrap=document.getElementById(`canvas_${g.id}_${loc.id}`);
   if(!wrap) return;
   const r=wrap.getBoundingClientRect();
-  layer.x=Math.max(0,Math.min(e.clientX-_drag.startX,r.width-layer.w));
-  layer.y=Math.max(0,Math.min(e.clientY-_drag.startY,r.height-20));
+  const _msc=_drag.scale||1;
+  layer.x=Math.max(0,Math.min((e.clientX-_drag.startX)/_msc,(r.width/_msc)-layer.w));
+  layer.y=Math.max(0,Math.min((e.clientY-_drag.startY)/_msc,(r.height/_msc)-20));
   const el=wrap.querySelector(`.mockup-layer[data-id="${layer.id}"]`);
-  if(el){el.style.left=layer.x+'px';el.style.top=layer.y+'px';}
+  if(el){el.style.left=(layer.x*_msc)+'px';el.style.top=(layer.y*_msc)+'px';}
 }
 function stopDragLayer(){_drag=null;document.removeEventListener('mousemove',onDragLayer);document.removeEventListener('mouseup',stopDragLayer);}
 function startDragLayerTouch(e,g,loc,layer){
   e.preventDefault();selectLayerInLoc(g,loc,layer.id);
   const t=e.touches[0];
-  _drag={g,loc,layer,startX:t.clientX-layer.x,startY:t.clientY-layer.y};
+  const _tdsc = getCanvasScale(g.id, loc.id);
+  _drag={g,loc,layer,startX:t.clientX-layer.x*_tdsc,startY:t.clientY-layer.y*_tdsc,scale:_tdsc};
   document.addEventListener('touchmove',onDragLayerTouch,{passive:false});
   document.addEventListener('touchend',stopDragLayerTouch);
 }
@@ -1715,37 +1735,40 @@ function onDragLayerTouch(e){
   const t=e.touches[0],{g,loc,layer}=_drag;
   const wrap=document.getElementById(`canvas_${g.id}_${loc.id}`);if(!wrap)return;
   const r=wrap.getBoundingClientRect();
-  layer.x=Math.max(0,Math.min(t.clientX-_drag.startX,r.width-layer.w));
-  layer.y=Math.max(0,Math.min(t.clientY-_drag.startY,r.height-20));
+  const _tmsc=_drag.scale||1;
+  layer.x=Math.max(0,Math.min((t.clientX-_drag.startX)/_tmsc,(r.width/_tmsc)-layer.w));
+  layer.y=Math.max(0,Math.min((t.clientY-_drag.startY)/_tmsc,(r.height/_tmsc)-20));
   const el=wrap.querySelector(`.mockup-layer[data-id="${layer.id}"]`);
-  if(el){el.style.left=layer.x+'px';el.style.top=layer.y+'px';}
+  if(el){el.style.left=(layer.x*_tmsc)+'px';el.style.top=(layer.y*_tmsc)+'px';}
 }
 function stopDragLayerTouch(){_drag=null;document.removeEventListener('touchmove',onDragLayerTouch);document.removeEventListener('touchend',stopDragLayerTouch);}
 function startResizeLayer(e,g,loc,layer){
   e.preventDefault();
-  _resize={g,loc,layer,startX:e.clientX,startW:layer.w};
+  const _rsc = getCanvasScale(g.id, loc.id);
+  _resize={g,loc,layer,startX:e.clientX,startW:layer.w,scale:_rsc};
   document.addEventListener('mousemove',onResizeLayer);
   document.addEventListener('mouseup',stopResizeLayer);
 }
 function onResizeLayer(e){
   if(!_resize)return;
   const{g,loc,layer}=_resize;
-  layer.w=Math.max(30,_resize.startW+(e.clientX-_resize.startX));
+  const _rscm=_resize.scale||1; layer.w=Math.max(30,_resize.startW+(e.clientX-_resize.startX)/_rscm);
   const el=document.getElementById(`canvas_${g.id}_${loc.id}`)?.querySelector(`.mockup-layer[data-id="${layer.id}"]`);
-  if(el){el.style.width=layer.w+'px';const sv=document.getElementById(`ctrlSize_${g.id}_${loc.id}`);const svv=document.getElementById(`ctrlSizeVal_${g.id}_${loc.id}`);if(sv)sv.value=layer.w;if(svv)svv.textContent=Math.round(layer.w)+'px';}
+  if(el){el.style.width=(layer.w*(_rscm||1))+'px';const sv=document.getElementById(`ctrlSize_${g.id}_${loc.id}`);const svv=document.getElementById(`ctrlSizeVal_${g.id}_${loc.id}`);if(sv)sv.value=layer.w;if(svv)svv.textContent=Math.round(layer.w)+'px';}
 }
 function stopResizeLayer(){if(_resize){_resize.layer.w=Math.round(_resize.layer.w);renderLayersForGarment(_resize.g,_resize.loc);}_resize=null;document.removeEventListener('mousemove',onResizeLayer);document.removeEventListener('mouseup',stopResizeLayer);}
 function startResizeLayerTouch(e,g,loc,layer){
   e.preventDefault();
   const t=e.touches[0];
-  _resize={g,loc,layer,startX:t.clientX,startW:layer.w};
+  const _trsc = getCanvasScale(g.id, loc.id);
+  _resize={g,loc,layer,startX:t.clientX,startW:layer.w,scale:_trsc};
   document.addEventListener('touchmove',onResizeLayerTouch,{passive:false});
   document.addEventListener('touchend',stopResizeLayerTouch);
 }
 function onResizeLayerTouch(e){
   e.preventDefault();if(!_resize)return;
   const t=e.touches[0],{g,loc,layer}=_resize;
-  layer.w=Math.max(30,_resize.startW+(t.clientX-_resize.startX));
+  const _trscm=_resize.scale||1; layer.w=Math.max(30,_resize.startW+(t.clientX-_resize.startX)/_trscm);
   const el=document.getElementById(`canvas_${g.id}_${loc.id}`)?.querySelector(`.mockup-layer[data-id="${layer.id}"]`);
   if(el){el.style.width=layer.w+'px';}
 }
@@ -1788,6 +1811,11 @@ async function buildReviewMockups() {
   await new Promise(r => setTimeout(r, 50));
 
   const EDITOR_SIZE = 700;
+  function getCanvasScale(gId, locId) {
+    const wrap = document.getElementById(`canvas_${gId}_${locId}`);
+    if (!wrap) return 1;
+    return wrap.offsetWidth / EDITOR_SIZE;
+  }
   const THUMB_SIZE  = 150;
   const wrapper = document.createElement('div');
   wrapper.className = 'review-garments';
