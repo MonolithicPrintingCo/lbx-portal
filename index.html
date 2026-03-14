@@ -734,10 +734,27 @@ async function selectProduct(styleName, styleID) {
     c.classList.toggle('selected', c.dataset.style === styleName);
   });
   document.getElementById('toStep2').disabled = false;
+
+  // Show loading state and advance to step 2
   goTo(2);
 
-  // Pre-fetch product data in background
-  if (styleID) fetchProductData(styleID, styleName).catch(()=>{});
+  // If not yet cached, fetch now and re-render once ready
+  if (!CATALOG[styleName] && styleID) {
+    // Show a loading indicator in step 2 while fetching
+    const sec2 = document.getElementById('sec2');
+    if (sec2) {
+      const loader = document.createElement('div');
+      loader.id = 'step2Loader';
+      loader.style.cssText = 'position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.5);z-index:10;border-radius:12px;font-size:1rem;color:#fff;gap:10px';
+      loader.innerHTML = '<span style="font-size:1.4rem">⏳</span> Loading product...';
+      sec2.style.position = 'relative';
+      sec2.appendChild(loader);
+    }
+    await fetchProductData(styleID, styleName).catch(() => {});
+    const loader = document.getElementById('step2Loader');
+    if (loader) loader.remove();
+    renderStep2();
+  }
 }
 
 // ─── Step 1 listeners ───────────────────────────────────────────────────────
