@@ -82,9 +82,7 @@
   .preview-info{width:100%;max-width:480px}
   .preview-info h3{font-size:1.1rem;font-weight:700}
   .preview-info .brand{color:var(--gray3);font-size:.82rem;margin-bottom:6px}
-  .price-table{font-size:.82rem;margin-top:10px;border-collapse:collapse}
-  .price-table td{padding:2px 12px 2px 0}
-  .price-table td:last-child{font-weight:600;color:var(--accent)}
+
 
   .color-section{margin-top:24px}
   .color-section h3{font-size:1rem;font-weight:600;margin-bottom:12px}
@@ -381,7 +379,7 @@
 <div class="section" id="sec2">
   <h2>Color &amp; Quantity</h2>
   <p class="subtitle">Pick your garment color and enter quantities per size</p>
-  <div style="background:#fff8e1;border:1px solid #ffe082;border-radius:8px;padding:10px 14px;font-size:.82rem;color:#7a5c00;margin-bottom:20px">&#9888;&#65039; <strong>Prices shown are standard retail.</strong> Final garment cost will be adjusted based on your order quantity &mdash; accurate pricing will appear on your quote once we review your request.</div>
+
   <div class="product-preview">
     <img id="previewImg" class="preview-img" src="" alt="Product" onclick="openLightboxAt(state._lbPhotos, state._lbIndex)" style="cursor:zoom-in">
     <div class="photo-strip" id="photoStrip"></div>
@@ -391,7 +389,7 @@
       <p id="previewStyle" style="font-size:.82rem;color:#999;margin-top:2px"></p>
       <div id="previewBadge" style="margin-top:8px"></div>
       <p id="previewDesc" style="font-size:.82rem;color:#666;margin-top:10px;line-height:1.5;"></p>
-      <table class="price-table"><tbody id="priceTableBody"></tbody></table>
+      
     </div>
   </div>
   <div class="color-section">
@@ -408,7 +406,7 @@
         <td class="qty-total" id="qtyTotal" style="padding:8px 10px">0 pcs</td>
       </tr></tfoot>
     </table>
-    <p style="font-size:.78rem;color:#999;margin-top:-8px">* Retail pricing shown for reference. Final garment cost will vary by quantity — your quote will show the real number.</p>
+
   </div>
   <div class="btn-row">
     <button class="btn btn-secondary" onclick="goTo(1)">← Back</button>
@@ -817,9 +815,6 @@ function renderStep2() {
   document.getElementById('previewDesc').textContent = p.description || '';
   document.getElementById('previewBadge').innerHTML =
     `<span class="badge ${p.supplier==='SanMar'?'sanmar':p.supplier==='Lane Seven'?'l7':'ss'}">${p.supplier}</span>`;
-  document.getElementById('priceTableBody').innerHTML =
-    p._l7 ? '<tr><td colspan="2" style="color:#aaa;font-size:.8rem">Pricing on quote</td></tr>'
-      : Object.entries(p.pricing).map(([sz,pr])=>`<tr><td>${sz}</td><td>${fmt(pr)}/ea</td></tr>`).join('');
 
   document.getElementById('colorSwatches').innerHTML = Object.entries(p.colors).map(([name,cd2])=>{
     const sel = state.selectedColor===name?' selected':'';
@@ -900,8 +895,6 @@ function renderQtyTable() {
       <td><strong>${sz}</strong></td>
       <td><input class="qty-input" type="number" min="0" value="${qty}"
         oninput="updateQty('${sz}',this.value)"></td>
-      <td>${p._l7?'—':fmt(price)}</td>
-      <td id="sub_${sz}">${qty&&!p._l7?fmt(price*parseInt(qty)):'—'}</td>
     </tr>`;
   }).join('');
   updateTotals();
@@ -909,9 +902,6 @@ function renderQtyTable() {
 function updateQty(sz,val) {
   const n=parseInt(val)||0;
   if(n>0) state.quantities[sz]=n; else delete state.quantities[sz];
-  const p=CATALOG[state.selectedStyle];
-  const sub=document.getElementById('sub_'+sz);
-  if(sub) sub.textContent=n>0?fmt((p.pricing[sz]||0)*n):'—';
   updateTotals(); checkStep2();
 }
 function updateTotals() {
