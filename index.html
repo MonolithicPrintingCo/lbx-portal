@@ -1328,7 +1328,7 @@ function renderGarmentList() {
             <div class="drop-zone-label">Drop artwork files here or click to browse</div>
             <div class="drop-zone-sub">.AI · .PSD · .EPS · .PDF · PNG · JPEG</div>
           </div>
-          ${artHtml}
+          <div id="artList_${g.id}_${loc.id}">${artHtml}</div>
           ${reuseArtHtml}
           ${modeBtns}
           ${mockupCanvasHtml}
@@ -1363,7 +1363,7 @@ function renderGarmentList() {
       }
       renderLayersForGarment(g, loc);
     });
-  }, 0);
+  }, 150);
 }
 
 function renderArtFilesHtml(artFiles, gid, locId) {
@@ -1580,15 +1580,27 @@ async function readArtFile(entry, gid, locId) {
     entry.uploading = false;
     entry.error = 'Could not load artwork — try a different file';
   }
-  renderGarmentList();
-  // Defer layer rendering so the canvas bg image has time to lay out and get correct dimensions
-  requestAnimationFrame(() => {
-    requestAnimationFrame(() => {
-      const g = garments.find(x=>x.id===gid);
-      const loc = g?.locations.find(l=>l.id===locId);
-      if (g && loc) renderLayersForGarment(g, loc);
-    });
-  });
+  // Update art file list display without re-creating the canvas DOM
+  const _rg = garments.find(x=>x.id===gid);
+  const _rl = _rg?.locations.find(l=>l.id===locId);
+  if (_rg && _rl) {
+    // Refresh just the art files HTML panel
+    const artListEl = document.getElementById(`artList_${gid}_${locId}`);
+    if (artListEl) {
+      artListEl.innerHTML = renderArtFilesHtml(_rl.artFiles, gid, locId);
+    } else {
+      // fallback if element not found
+      renderGarmentList();
+    }
+    // Re-render layers after a short delay so the canvas image has loaded
+    setTimeout(() => {
+      const g2 = garments.find(x=>x.id===gid);
+      const l2 = g2?.locations.find(l=>l.id===locId);
+      if (g2 && l2) renderLayersForGarment(g2, l2);
+    }, 100);
+  } else {
+    renderGarmentList();
+  }
 }
 
 function removeArtFileFromLoc(gid, locId, idx) {
