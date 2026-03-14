@@ -1083,6 +1083,12 @@ async function submitOrder() {
 let garments = [];
 let _uid = 0;
 const EDITOR_SIZE = 700;
+function getCanvasScale(gId, locId) {
+  const wrap = document.getElementById('canvas_' + gId + '_' + locId);
+  if (!wrap) return 1;
+  const w = wrap.getBoundingClientRect().width || wrap.offsetWidth;
+  return w > 0 ? w / EDITOR_SIZE : 1;
+}
 function uid() { return ++_uid + '_' + Date.now(); }
 
 const LOCATIONS = ['Front', 'Back', 'Left Chest', 'Right Chest', 'Full Front', 'Full Back', 'Left Sleeve', 'Right Sleeve', 'Hat Front', 'Hat Back', 'Hood', 'Hem', 'Leg', 'Custom'];
@@ -1674,6 +1680,11 @@ function renderLayersForGarment(g, loc) {
   if (bgImg) {
     const view = getViewForLocation(loc.name);
     bgImg.src = getGarmentImg(g, view);
+    // If image not yet loaded, wait for it then re-render
+    if (!bgImg.complete || bgImg.naturalHeight === 0) {
+      bgImg.onload = () => renderLayersForGarment(g, loc);
+      return;
+    }
   }
   wrap.querySelectorAll('.mockup-layer').forEach(el=>el.remove());
   observeCanvasResize(g.id, loc.id, g, loc);
