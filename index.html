@@ -1670,10 +1670,11 @@ function addLayerToLoc(loc, fileEntry) {
     id: uid(), fileId: fileEntry.id,
     url: fileEntry.url, objectUrl: fileEntry.objectUrl,
     name: fileEntry.name,
-    x: Math.round((EDITOR_SIZE - _defaultW) / 2),  // centered
-    y: Math.round(EDITOR_SIZE * 0.25),              // ~25% from top
-    w: _defaultW, opacity: 1, r: 0               // r = rotation degrees
+    x: Math.round((EDITOR_SIZE - _defaultW) / 2),   // centered horizontally
+    y: Math.round((EDITOR_SIZE - _defaultW) / 2),   // centered vertically
+    w: _defaultW, opacity: 1, r: 0
   });
+  loc.selectedLayer = null; // start unselected — user taps to select
 }
 
 // Observe canvas size changes and re-render layers to match new scale
@@ -1687,90 +1688,51 @@ function observeCanvasResize(gId, locId, g, loc) {
   if (!wrap._touchBlocked) {
     wrap._touchBlocked = true;
 
-    // ── Canvas-level touch: hold-outside-image → drag selected layer ──────
-    // Holding anywhere on the canvas (not on a layer or handle) for 250ms
-    // activates move mode for the currently selected layer.
-    let _canvasHoldTimer = null;
-    let _canvasHoldActive = false;
-    let _canvasTouchId = null;
+    // ── Canvas-level touch rules ───────────────────────────────────────────
+    // UNSELECTED: drag anywhere on canvas → move the (only/first) layer
+    // SELECTED:   tap image → deselect  |  drag off-image → move
+    //             resize/rotate handles still work as before
+    // ─────────────────────────────────────────────────────────────────────
 
     wrap.addEventListener('touchstart', e => {
-      const onLayer  = e.target.closest('.mockup-layer');
       const onHandle = e.target.closest('[data-handle]');
+      const onLayer  = e.target.closest('.mockup-layer');
 
-      if (onLayer && !onHandle) {
-        // Touching directly on the image body — let the layer's own listener handle it
+      // Handles are handled by the layer div's own listener — just block scroll
+      if (onHandle) { e.preventDefault(); return; }
+
+      // Tapping directly on the selected layer image body → deselect it
+      if (onLayer && loc.selectedLayer === onLayer.dataset.id) {
         e.preventDefault();
+        loc.selectedLayer = null;
+        const canvas = document.getElementById('canvas_'+gId+'_'+locId);
+        if (canvas) canvas.querySelectorAll('.mockup-layer').forEach(el => el.classList.remove('selected'));
+        _updateLayerControls(g, loc);
         return;
       }
-      if (onHandle) {
+
+      // Tapping an unselected layer → select it (no drag yet)
+      if (onLayer && loc.selectedLayer !== onLayer.dataset.id) {
         e.preventDefault();
+        const layer = loc.layers.find(l => l.id === onLayer.dataset.id);
+        if (layer) selectLayerInLoc(g, loc, layer.id);
         return;
       }
 
-      // Touch landed OUTSIDE any layer — start hold timer
+      // Touch landed OFF any layer
+      // → find the layer to move: selected one, or first layer if none selected
+      const layer = loc.layers.find(l => l.id === loc.selectedLayer) || loc.layers[0];
+      if (!layer) return; // no layers, allow normal scroll
+
+      e.preventDefault();
       const t = e.touches[0];
-      _canvasTouchId   = t.identifier;
-      _canvasHoldActive = false;
-
-      _canvasHoldTimer = setTimeout(() => {
-        // Find the selected layer
-        const layer = loc.layers.find(l => l.id === loc.selectedLayer);
-        if (!layer) return;
-
-        _canvasHoldActive = true;
-
-        // Haptic pulse (iOS/Android if available)
-        if (navigator.vibrate) navigator.vibrate(30);
-
-        // Visual cue: briefly pulse the selected layer element
-        const el = _layerEl(g, loc, layer);
-        if (el) {
-          el.style.outline = '3px solid #ff7b7b';
-          setTimeout(() => { if (el) el.style.outline = ''; }, 400);
-        }
-
-        // Figure out touch position from the stored touch
-        const currentT = [...(document._lastCanvasTouch || [])].find(t2 => t2.identifier === _canvasTouchId);
-        const cx = currentT ? currentT.clientX : t.clientX;
-        const cy = currentT ? currentT.clientY : t.clientY;
-
-        startDragLayerTouch(cx, cy, g, loc, layer, true); // fromOutside=true → anchor to center
-      }, 250);
-
-      // Track current touch position for when timer fires
-      document._lastCanvasTouch = e.touches;
-
-      // Don't prevent default yet — allow scroll if hold doesn't trigger
-    }, {passive: true});
-
-    wrap.addEventListener('touchmove', e => {
-      // Update tracked position
-      document._lastCanvasTouch = e.touches;
-
-      if (_ai) {
-        e.preventDefault(); // block scroll during active interaction
-        return;
-      }
-      if (_canvasHoldTimer && !_canvasHoldActive) {
-        // Moved before hold completed — cancel hold, allow scroll
-        clearTimeout(_canvasHoldTimer);
-        _canvasHoldTimer = null;
-      }
+      // Start move immediately — anchor to layer center so no jump
+      startDragLayerTouch(t.clientX, t.clientY, g, loc, layer, true);
     }, {passive: false});
 
-    wrap.addEventListener('touchend', e => {
-      clearTimeout(_canvasHoldTimer);
-      _canvasHoldTimer  = null;
-      _canvasHoldActive = false;
-      _canvasTouchId    = null;
-    }, {passive: true});
-
-    wrap.addEventListener('touchcancel', e => {
-      clearTimeout(_canvasHoldTimer);
-      _canvasHoldTimer  = null;
-      _canvasHoldActive = false;
-    }, {passive: true});
+    wrap.addEventListener('touchmove', e => {
+      if (_ai) e.preventDefault();
+    }, {passive: false});
   }
 }
 
@@ -1809,16 +1771,11 @@ function renderLayersForGarment(g, loc) {
       <div data-handle="rotate" title="Drag to rotate" style="position:absolute;top:-34px;left:50%;transform:translateX(-50%);width:30px;height:30px;background:#6366f1;border-radius:50%;cursor:grab;border:2.5px solid #fff;touch-action:none;z-index:10;display:flex;align-items:center;justify-content:center;font-size:15px;color:#fff;-webkit-tap-highlight-color:transparent;box-shadow:0 2px 6px rgba(0,0,0,.5)">↻</div>`;
 
     div.addEventListener('touchstart', e => {
-      e.preventDefault(); // prevent scroll / context menu on the layer
-      const t = e.touches[0];
+      // Only intercept handle touches here — all other logic is on the canvas wrapper
       const handle = e.target.closest('[data-handle]')?.dataset?.handle;
-      if (handle === 'resize') { startResizeLayerTouch(t.clientX, t.clientY, g, loc, layer); return; }
-      if (handle === 'rotate') { startRotateLayerTouch(t.clientX, t.clientY, g, loc, layer); return; }
-      // Image body touch — just select the layer, no drag (drag via hold-outside)
-      loc.selectedLayer = layer.id;
-      const canvas = document.getElementById('canvas_'+g.id+'_'+loc.id);
-      if (canvas) canvas.querySelectorAll('.mockup-layer').forEach(el2 => el2.classList.toggle('selected', el2===div));
-      _updateLayerControls(g, loc);
+      if (handle === 'resize') { e.preventDefault(); e.stopPropagation(); startResizeLayerTouch(e.touches[0].clientX, e.touches[0].clientY, g, loc, layer); return; }
+      if (handle === 'rotate') { e.preventDefault(); e.stopPropagation(); startRotateLayerTouch(e.touches[0].clientX, e.touches[0].clientY, g, loc, layer); return; }
+      // Let the canvas-wrap touchstart handle everything else (select, deselect, move)
     }, {passive: false});
 
     // ── MOUSE (desktop) ────────────────────────────────────────────────────
@@ -1977,23 +1934,22 @@ function _finishInteraction() {
 
 // ── MOVE ──────────────────────────────────────────────────────────────────
 function _startMove(cx, cy, g, loc, layer, isMouse, anchorToCenter) {
-  // Select without re-rendering (safe to call during active interaction)
   loc.selectedLayer = layer.id;
   const sc = getCanvasScale(g.id, loc.id);
   const rect = _canvasRect(g, loc); if (!rect) return;
   const el = _layerEl(g, loc, layer);
-  // Update selected state visually in-place
   const canvas = document.getElementById('canvas_'+g.id+'_'+loc.id);
   if (canvas) canvas.querySelectorAll('.mockup-layer').forEach(e2 => e2.classList.toggle('selected', e2===el));
   if (el) el.style.opacity = '0.75';
 
-  // anchorToCenter: when starting drag from OUTSIDE the image (hold-outside),
-  // anchor to the image center so there's no jarring jump.
+  // ox/oy = offset from the touch point to the layer's top-left corner.
+  // anchorToCenter=true: touch is outside the image, lock offset to layer center
+  // so the image doesn't jump — it stays put and follows finger from that offset.
   const ox = anchorToCenter
-    ? (layer.x + layer.w / 2) * sc   // finger locks to center of image
-    : cx - rect.left - layer.x * sc; // finger locks to where you touched
+    ? cx - rect.left - layer.x * sc - (layer.w * sc / 2)  // delta from finger to image corner via center
+    : cx - rect.left - layer.x * sc;
   const oy = anchorToCenter
-    ? (layer.y + layer.w / 2) * sc
+    ? cy - rect.top  - layer.y * sc - (layer.w * sc / 2)
     : cy - rect.top  - layer.y * sc;
 
   _ai = { type:'move', g, loc, layer, sc, el, ox, oy };
@@ -2002,8 +1958,6 @@ function _startMove(cx, cy, g, loc, layer, isMouse, anchorToCenter) {
 function _doMove(cx, cy) {
   const {g, loc, layer, sc, ox, oy, el} = _ai;
   const rect = _canvasRect(g, loc); if (!rect) return;
-  // ox/oy is either the touch-offset-from-corner (direct) or half-width (center anchor)
-  // Either way: newCornerPos = fingerPos - offset
   layer.x = Math.max(0, Math.min((cx - rect.left - ox) / sc, rect.width  / sc - layer.w));
   layer.y = Math.max(0, Math.min((cy - rect.top  - oy) / sc, rect.height / sc - 20));
   if (el) { el.style.left = (layer.x * sc) + 'px'; el.style.top = (layer.y * sc) + 'px'; }
