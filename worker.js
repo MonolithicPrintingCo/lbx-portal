@@ -30,7 +30,7 @@ export default {
       if (!styleID) return new Response('Missing styleID', { status: 400, headers: CORS });
 
       const creds = btoa(`${env.SS_ACCOUNT_NUMBER}:${env.SS_API_KEY}`);
-      const ssUrl = `${SS_BASE}/products/?styleID=${encodeURIComponent(styleID)}&fields=styleID,styleName,brandName,colorName,colorCode,colorFamilyID,colorFamily,color1,color2,colorSwatchImage,colorFrontImage,colorBackImage,colorDirectSideImage,colorOnModelFrontImage,sizeName,sizeOrder,piecePrice,customerPrice,qty`;
+      const ssUrl = `${SS_BASE}/products/?styleID=${encodeURIComponent(styleID)}&fields=styleID,styleName,brandName,colorName,colorCode,colorFamilyID,colorFamily,color1,color2,colorSwatchImage,colorFrontImage,colorBackImage,colorDirectSideImage,colorOnModelFrontImage,sizeName,sizeOrder,piecePrice,customerPrice,mapPrice,qty`;
 
       const ssRes = await fetch(ssUrl, {
         headers: {

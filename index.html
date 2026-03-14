@@ -700,7 +700,11 @@ async function fetchProductData(styleID, styleName) {
       }
       // Collect sizes for pricing
       if (p.sizeName && !sizesMap[p.sizeName]) {
-        sizesMap[p.sizeName] = { order: p.sizeOrder || 99, price: p.piecePrice || p.customerPrice || 0 };
+        // Use mapPrice (retail MAP) if meaningful, else estimate retail as ~1.9x wholesale
+        const wholesale = p.piecePrice || p.customerPrice || 0;
+        const mapP = p.mapPrice || 0;
+        const retailPrice = mapP > 1 ? mapP : Math.round(wholesale * 1.9 * 100) / 100;
+        sizesMap[p.sizeName] = { order: p.sizeOrder || 99, price: retailPrice };
       }
     });
 
@@ -1566,6 +1570,14 @@ async function readArtFile(entry, gid, locId) {
     entry.error = 'Could not read file';
   }
   renderGarmentList();
+  // Defer layer rendering so the canvas bg image has time to lay out and get correct dimensions
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      const g = garments.find(x=>x.id===gid);
+      const loc = g?.locations.find(l=>l.id===locId);
+      if (g && loc) renderLayersForGarment(g, loc);
+    });
+  });
 }
 
 function removeArtFileFromLoc(gid, locId, idx) {
@@ -1611,10 +1623,14 @@ function removeMockupFileFromLoc(gid, locId, idx) {
 
 // ── Layer system ──────────────────────────────────────────────────────────
 function addLayerToLoc(loc, fileEntry) {
+  const _defaultW = 200; // logical px (out of 700)
   loc.layers.push({
     id: uid(), fileId: fileEntry.id,
     url: fileEntry.url, objectUrl: fileEntry.objectUrl,
-    name: fileEntry.name, x:100, y:80, w:120, opacity:1
+    name: fileEntry.name,
+    x: Math.round((EDITOR_SIZE - _defaultW) / 2),  // centered
+    y: Math.round(EDITOR_SIZE * 0.25),              // ~25% from top
+    w: _defaultW, opacity: 1
   });
 }
 
@@ -1814,7 +1830,8 @@ async function buildReviewMockups() {
   function getCanvasScale(gId, locId) {
     const wrap = document.getElementById(`canvas_${gId}_${locId}`);
     if (!wrap) return 1;
-    return wrap.offsetWidth / EDITOR_SIZE;
+    const w = wrap.getBoundingClientRect().width || wrap.offsetWidth;
+    return w > 0 ? w / EDITOR_SIZE : 1;
   }
   const THUMB_SIZE  = 150;
   const wrapper = document.createElement('div');
