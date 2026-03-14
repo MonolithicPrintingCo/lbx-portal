@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <title>LBX Printing & Design — Order Portal</title>
 <style>
   *{box-sizing:border-box;margin:0;padding:0}
@@ -1676,6 +1676,19 @@ function observeCanvasResize(gId, locId, g, loc) {
   const ro = new ResizeObserver(() => { renderLayersForGarment(g, loc); });
   ro.observe(wrap);
   wrap._resizeObserver = ro;
+  // Block iOS scroll when touching inside the canvas (must be non-passive)
+  if (!wrap._touchBlocked) {
+    wrap._touchBlocked = true;
+    wrap.addEventListener('touchstart', e => {
+      // Only block scroll if touch started on a layer div or its children
+      if (e.target.closest('.mockup-layer')) {
+        e.preventDefault();
+      }
+    }, {passive: false});
+    wrap.addEventListener('touchmove', e => {
+      if (_ai) { e.preventDefault(); }
+    }, {passive: false});
+  }
 }
 
 function renderLayersForGarment(g, loc) {
@@ -1710,12 +1723,11 @@ function renderLayersForGarment(g, loc) {
     div.style.transformOrigin = 'center center';
     div.dataset.id = layer.id;
     div.innerHTML = `<img src="${layer.objectUrl||layer.url}" style="width:100%;opacity:${layer.opacity};display:block;pointer-events:none;border-radius:2px;-webkit-user-drag:none" draggable="false">
-      <div data-handle="resize" style="position:absolute;bottom:-7px;right:-7px;width:22px;height:22px;background:var(--accent);border-radius:4px;cursor:se-resize;border:2px solid #fff;touch-action:none;z-index:10;-webkit-tap-highlight-color:transparent"></div>
-      <div data-handle="rotate" style="position:absolute;top:-26px;left:50%;transform:translateX(-50%);width:22px;height:22px;background:#6366f1;border-radius:50%;cursor:grab;border:2px solid #fff;touch-action:none;z-index:10;display:flex;align-items:center;justify-content:center;font-size:12px;color:#fff;-webkit-tap-highlight-color:transparent">↻</div>`;
+      <div data-handle="resize" style="position:absolute;bottom:-10px;right:-10px;width:28px;height:28px;background:var(--accent);border-radius:5px;cursor:se-resize;border:2.5px solid #fff;touch-action:none;z-index:10;-webkit-tap-highlight-color:transparent;box-shadow:0 1px 4px rgba(0,0,0,.4)"></div>
+      <div data-handle="rotate" style="position:absolute;top:-32px;left:50%;transform:translateX(-50%);width:28px;height:28px;background:#6366f1;border-radius:50%;cursor:grab;border:2.5px solid #fff;touch-action:none;z-index:10;display:flex;align-items:center;justify-content:center;font-size:14px;color:#fff;-webkit-tap-highlight-color:transparent;box-shadow:0 1px 4px rgba(0,0,0,.4)">↻</div>`;
     
     div.addEventListener('touchstart', e => {
-      e.preventDefault();
-      e.stopPropagation();
+      e.preventDefault(); // block scroll / browser default
       const t = e.touches[0];
       const handle = e.target.closest('[data-handle]')?.dataset?.handle;
       if (handle === 'resize') { startResizeLayerTouch(t.clientX, t.clientY, g, loc, layer); return; }
@@ -1896,15 +1908,16 @@ function _onMouseUp() {
   _finishInteraction();
 }
 
-// ── TOUCH handlers (attached to document on start) ───────────────────────
+// ── TOUCH handlers ───────────────────────────────────────────────────────
 function _attachTouchMove() {
+  // Attach to both document and canvas wrap for maximum iOS/Android compat
   document.addEventListener('touchmove',  _onTouchMove,  {passive:false});
   document.addEventListener('touchend',   _onTouchEnd,   {passive:false});
   document.addEventListener('touchcancel',_onTouchEnd,   {passive:false});
 }
 function _onTouchMove(e) {
-  e.preventDefault();
   if (!_ai) return;
+  e.preventDefault(); // must be called on non-passive listener
   const t = e.touches[0];
   if (_ai.type==='drag')   _onDragMove(t.clientX, t.clientY);
   if (_ai.type==='resize') _onResizeMove(t.clientX);
