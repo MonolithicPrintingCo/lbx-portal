@@ -1,0 +1,3969 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LBX Printing & Design — Order Portal</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{overflow-x:hidden;max-width:100vw}
+  :root{
+    --black:#0a0a0a;--white:#fff;--accent:#e63946;
+    --gray1:rgba(255,255,255,.06);--gray2:rgba(255,255,255,.12);
+    --gray3:rgba(255,255,255,.4);--gray4:rgba(255,255,255,.65);
+    --radius:10px;--shadow:0 4px 24px rgba(0,0,0,.45);
+    --glass:rgba(255,255,255,.07);
+    --glass-border:rgba(255,255,255,.14);
+    --surface:rgba(15,15,20,.72);
+    --text:#f0f0f0;
+    --text-muted:rgba(255,255,255,.45);
+  }
+  body{
+    font-family:'Inter',system-ui,sans-serif;
+    background:#0d0d12;
+    color:var(--text);
+    min-height:100vh;
+    background-image:
+      radial-gradient(ellipse 80% 60% at 20% 0%, rgba(230,57,70,.18) 0%, transparent 60%),
+      radial-gradient(ellipse 60% 50% at 80% 100%, rgba(26,111,222,.14) 0%, transparent 55%),
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='4' height='4'%3E%3Crect width='1' height='1' x='0' y='0' fill='rgba(255,255,255,.03)'/%3E%3Crect width='1' height='1' x='2' y='2' fill='rgba(255,255,255,.03)'/%3E%3C/svg%3E");
+    background-attachment:fixed;
+  }
+
+  header{
+    background:rgba(8,8,12,.85);
+    backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
+    border-bottom:1px solid var(--glass-border);
+    padding:14px 32px;
+    display:flex;align-items:center;gap:20px;
+    position:sticky;top:0;z-index:100;
+  }
+  header img{height:52px;filter:drop-shadow(0 0 12px rgba(230,57,70,.5))}
+  header h1{font-size:1.1rem;font-weight:700;color:rgba(255,255,255,.9);
+    letter-spacing:.5px;text-transform:uppercase;font-size:.85rem;
+    border-left:2px solid var(--accent);padding-left:16px;line-height:1.4}
+  header h1{color:var(--white);font-size:1.1rem;font-weight:600;letter-spacing:.02em}
+
+  .steps{display:flex;align-items:center;background:rgba(0,0,0,.35);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-bottom:1px solid var(--glass-border);padding:0 28px;overflow-x:auto}
+  .step{display:flex;align-items:center;gap:8px;padding:14px 20px;font-size:.82rem;font-weight:500;color:rgba(255,255,255,.35);white-space:nowrap;border-bottom:3px solid transparent;cursor:default;transition:all .2s}
+  .step.done{cursor:pointer}
+  .step.done:hover{color:rgba(255,255,255,.85);border-bottom-color:rgba(255,255,255,.25)}
+  .step.active{color:#fff;border-bottom-color:var(--accent)}
+  .step.done{color:rgba(255,255,255,.55)}
+  .step-num{width:22px;height:22px;border-radius:50%;background:var(--gray2);display:flex;align-items:center;justify-content:center;font-size:.72rem;font-weight:700;flex-shrink:0}
+  .step.active .step-num{background:var(--accent);color:var(--white)}
+  .step.done .step-num{background:var(--black);color:var(--white)}
+
+  main{max-width:960px;margin:0 auto;padding:28px 20px;overflow-x:hidden}
+  .section{display:none}
+  .section.active{display:block}
+  h2{font-size:1.25rem;font-weight:700;margin-bottom:6px}
+  .subtitle{color:var(--gray3);font-size:.88rem;margin-bottom:20px}
+
+  .filters{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:20px}
+  .filter-btn{padding:7px 14px;border-radius:20px;border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.08);font-size:.8rem;font-weight:500;cursor:pointer;transition:all .15s;white-space:nowrap}
+  .filter-btn:hover{border-color:#efefef}
+  .filter-btn.active{background:var(--accent);color:var(--white);border-color:var(--accent)}
+  .filter-toggle-btn{display:inline-flex;align-items:center;gap:6px;padding:9px 16px;border-radius:20px;border:1.5px solid rgba(255,255,255,.18);background:rgba(255,255,255,.06);color:rgba(255,255,255,.75);font-size:.83rem;font-weight:600;cursor:pointer;white-space:nowrap;transition:all .15s;position:relative}
+  .filter-toggle-btn:hover,.filter-toggle-btn.active{border-color:var(--accent);color:#fff;background:rgba(230,57,70,.12)}
+  .filter-active-dot{width:7px;height:7px;border-radius:50%;background:var(--accent);position:absolute;top:4px;right:4px}
+  .filter-label{display:block;font-size:.75rem;font-weight:600;color:rgba(255,255,255,.45);margin-bottom:5px;text-transform:uppercase;letter-spacing:.04em}
+  .filter-select{width:100%;padding:8px 10px;border:1.5px solid rgba(255,255,255,.15);border-radius:8px;font-size:.84rem;color:#e0e0e0;background:rgba(255,255,255,.07);cursor:pointer;outline:none}
+  .filter-select:focus{border-color:rgba(255,255,255,.4)}
+  .product-card .color-count-badge{font-size:.68rem;color:rgba(255,255,255,.4);margin-top:2px}
+  .product-card .price-badge{font-size:.72rem;color:var(--accent);font-weight:600;margin-top:3px}
+
+  .search-bar{width:100%;padding:10px 14px;border:1.5px solid rgba(255,255,255,.15);border-radius:var(--radius);font-size:.9rem;margin-bottom:20px;outline:none;background:rgba(255,255,255,.07);color:#f0f0f0}
+  .search-bar:focus{border-color:rgba(255,255,255,.45)}
+
+  .product-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:14px}
+  .product-card{background:rgba(255,255,255,.06);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border:1px solid var(--glass-border);border-radius:12px;overflow:hidden;cursor:pointer;transition:all .18s;box-shadow:0 2px 16px rgba(0,0,0,.3)}
+  .product-card:hover{border-color:#efefef;transform:translateY(-1px);box-shadow:var(--shadow)}
+  .product-card.selected{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent)}
+  .product-card img{width:100%;aspect-ratio:1;object-fit:cover;background:rgba(255,255,255,.06)}
+  .product-card-info{padding:10px}
+  .product-brand{font-size:.7rem;color:var(--gray3);font-weight:600;text-transform:uppercase;letter-spacing:.05em}
+  .product-name{font-size:.82rem;font-weight:600;margin-top:2px}
+  .product-style{font-size:.75rem;color:var(--gray4);margin-top:1px}
+  .product-price{font-size:.78rem;color:var(--accent);font-weight:600;margin-top:4px}
+  .no-results{text-align:center;padding:40px;color:var(--gray3);grid-column:1/-1}
+
+  .product-preview{display:flex;flex-direction:row;gap:24px;margin-bottom:24px;align-items:flex-start;flex-wrap:wrap}
+  .preview-img{width:280px;height:280px;object-fit:contain;border-radius:var(--radius);border:1.5px solid var(--gray2);background:rgba(255,255,255,.06);display:block;flex-shrink:0}
+  .preview-info{flex:1;min-width:200px}
+  .preview-info h3{font-size:1.1rem;font-weight:700}
+  .preview-info .brand{color:var(--gray3);font-size:.82rem;margin-bottom:6px}
+  .price-table{font-size:.82rem;margin-top:10px;border-collapse:collapse}
+  .price-table td{padding:2px 12px 2px 0;color:rgba(255,255,255,.7);font-size:.82rem}
+  .price-table td:last-child{font-weight:600;color:var(--accent)}
+
+  .color-section{margin-top:20px}
+  .color-section h3{font-size:1rem;font-weight:600;margin-bottom:12px}
+  .color-swatches{display:flex;flex-wrap:wrap;gap:8px}
+  .color-swatch{width:32px;height:32px;border-radius:50%;cursor:pointer;border:3px solid var(--white);box-shadow:0 0 0 1.5px #bbb;transition:all .15s}
+  .color-swatch:hover{transform:scale(1.15)}
+  .color-swatch.selected{box-shadow:0 0 0 2.5px var(--accent)}
+
+  .qty-table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:16px 0;border-radius:8px}
+  .qty-table{width:100%;border-collapse:collapse;font-size:.88rem;min-width:320px}
+  .qty-table th{text-align:left;padding:8px 10px;background:rgba(255,255,255,.06);border-bottom:1px solid rgba(255,255,255,.12);font-weight:600;font-size:.78rem;text-transform:uppercase;letter-spacing:.5px;color:rgba(255,255,255,.5);white-space:nowrap}
+  .qty-table td{padding:8px 10px;border-bottom:1px solid rgba(255,255,255,.07);color:#e0e0e0;white-space:nowrap}
+  .qty-input{width:64px;padding:6px 6px;border:1.5px solid var(--gray2);border-radius:6px;text-align:center;font-size:.88rem;outline:none}
+  .qty-input:focus{border-color:#efefef}
+  @media(max-width:520px){
+    .qty-table-wrap{margin:12px -4px}
+    .qty-table{min-width:unset;width:100%;font-size:.8rem}
+    .qty-table th,.qty-table td{padding:6px 6px;font-size:.78rem}
+    .qty-input{width:52px;font-size:.8rem;padding:4px 3px}
+    .qty-table th:nth-child(4),.qty-table td:nth-child(4){display:none}
+  }
+  .qty-total{font-weight:700;color:var(--accent)}
+
+  .option-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;margin-bottom:20px}
+  .option-card{padding:12px;border:1.5px solid rgba(255,255,255,.12);border-radius:var(--radius);cursor:pointer;text-align:center;transition:all .15s;font-size:.84rem;font-weight:500;background:rgba(255,255,255,.04);color:#e0e0e0}
+  .option-card:hover{border-color:rgba(255,255,255,.4);background:rgba(255,255,255,.08)}
+  .option-card.selected{border-color:var(--accent);background:rgba(230,57,70,.18);color:var(--accent)}
+  .option-icon{font-size:1.4rem;margin-bottom:4px}
+
+  .placement-group{margin-bottom:24px}
+  .placement-group > label{display:block;font-size:.88rem;font-weight:600;margin-bottom:10px;color:var(--gray4)}
+
+  .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:20px}
+  @media(max-width:520px){.form-grid{grid-template-columns:1fr}}
+  .form-group{display:flex;flex-direction:column;gap:5px}
+  .form-group label{font-size:.82rem;font-weight:600;color:var(--gray4)}
+  .form-group input,.form-group textarea,.form-group select{padding:9px 12px;border:1.5px solid rgba(255,255,255,.15);border-radius:var(--radius);font-size:.9rem;outline:none;font-family:inherit;background:rgba(255,255,255,.07);color:#f0f0f0}
+  .form-group input:focus,.form-group textarea:focus,.form-group select:focus{border-color:rgba(255,255,255,.45);outline:none}
+  .form-group.full{grid-column:1/-1}
+  textarea{resize:vertical;min-height:80px}
+
+  .summary-card{background:rgba(255,255,255,.06);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border:1px solid var(--glass-border);border-radius:12px;padding:20px;margin-bottom:20px;box-shadow:var(--shadow)}
+  .summary-row{display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--gray1);font-size:.88rem;gap:16px}
+  .summary-row:last-child{border-bottom:none}
+  .summary-row .label{color:rgba(255,255,255,.5);flex-shrink:0;font-size:.82rem}
+  .summary-row .value{font-weight:600;text-align:right;color:#f0f0f0;font-size:.88rem}
+
+  .btn{display:inline-flex;align-items:center;gap:8px;padding:11px 24px;border-radius:var(--radius);font-size:.9rem;font-weight:600;cursor:pointer;border:none;transition:all .18s;letter-spacing:.2px}
+  .btn-primary{background:linear-gradient(135deg,#e63946,#c1121f);color:#fff;box-shadow:0 0 0 1px rgba(230,57,70,.3),0 4px 16px rgba(230,57,70,.35)}.btn-primary:hover{filter:brightness(1.12);box-shadow:0 0 0 1px rgba(230,57,70,.5),0 6px 22px rgba(230,57,70,.5)}
+  .btn-primary:hover{background:#c1121f}
+  .btn-primary:disabled{background:var(--gray2);color:var(--gray3);cursor:not-allowed}
+  .btn-secondary{background:rgba(255,255,255,.08);color:rgba(255,255,255,.85);border:1.5px solid rgba(255,255,255,.18)}.btn-secondary:hover{background:rgba(255,255,255,.14);border-color:rgba(255,255,255,.3)}
+  .btn-secondary:hover{border-color:#efefef}
+  .btn-row{display:flex;gap:12px;justify-content:flex-end;margin-top:24px}
+
+  .badge{display:inline-block;padding:3px 10px;border-radius:20px;font-size:.72rem;font-weight:600}
+  .badge.ss{background:rgba(34,197,94,.15);color:#4ade80}
+  .badge.sanmar{background:rgba(26,111,222,.15);color:#60a5fa}
+
+  .success-box{text-align:center;padding:60px 20px}
+  .success-icon{font-size:3.5rem;margin-bottom:16px}
+  .success-box h2{font-size:1.6rem;margin-bottom:10px}
+  .success-box p{color:var(--gray4);font-size:.95rem;max-width:420px;margin:0 auto 28px;line-height:1.6}
+
+  /* ── Mockup Mode Toggle ── */
+  .mockup-mode-toggle{display:flex;gap:8px;margin-bottom:14px;margin-top:12px}
+  .mode-btn{flex:1;min-width:160px;padding:12px 16px;border:1.5px solid rgba(255,255,255,.15);border-radius:var(--radius);background:rgba(255,255,255,.06);font-size:.85rem;font-weight:600;cursor:pointer;transition:all .2s;color:rgba(255,255,255,.55);text-align:center}
+  .mode-btn:hover{border-color:rgba(230,57,70,.6);color:var(--accent);background:rgba(230,57,70,.08)}
+  .mode-btn.active{border-color:var(--accent);background:rgba(230,57,70,.18);color:var(--accent)}
+
+  /* ── Multi-Garment ── */
+  .garment-list{display:flex;flex-direction:column;gap:16px;margin-bottom:20px}
+  .garment-card{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);border-radius:var(--radius);overflow:hidden;transition:border-color .2s}
+  .garment-card.active-garment{border-color:var(--accent)}
+  .garment-card-header{display:flex;align-items:center;gap:10px;padding:12px 14px;cursor:pointer;background:rgba(255,255,255,.06);border-bottom:1px solid var(--gray2)}
+  .garment-card-header:hover{background:rgba(255,255,255,.06)}
+  .garment-card-num{width:26px;height:26px;border-radius:50%;background:var(--accent);color:#fff;font-size:.8rem;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+  .garment-card-title{flex:1;font-weight:600;font-size:.9rem}
+  .garment-card-subtitle{font-size:.78rem;color:var(--gray3)}
+  .garment-card-body{padding:14px}
+  .garment-card-body.collapsed{display:none}
+  .add-garment-btn{display:flex;align-items:center;gap:8px;padding:12px 16px;border:2px dashed var(--gray2);border-radius:var(--radius);background:none;cursor:pointer;font-size:.88rem;font-weight:600;color:var(--gray3);width:100%;transition:all .2s}
+  .add-garment-btn:hover{border-color:var(--accent);color:var(--accent)}
+  .remove-garment-btn{background:none;border:none;cursor:pointer;color:var(--gray3);font-size:1rem;padding:4px 6px;border-radius:4px}
+  .remove-garment-btn:hover{color:#f87171;background:rgba(230,57,70,.15)}
+  /* Location tabs inside garment */
+  .loc-tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;align-items:center}
+  .loc-tab{padding:5px 12px;border:1.5px solid var(--gray2);border-radius:20px;background:rgba(255,255,255,.08);font-size:.8rem;font-weight:600;cursor:pointer;transition:all .2s;color:var(--gray3)}
+  .loc-tab:hover{border-color:var(--accent);color:var(--accent)}
+  .loc-tab.active{border-color:var(--accent);background:var(--accent);color:#fff}
+  .add-loc-btn{padding:7px 16px;border:2px solid var(--accent);border-radius:20px;background:var(--accent);font-size:.85rem;font-weight:600;cursor:pointer;color:#fff;transition:all .2s;display:flex;align-items:center;gap:5px}
+  .add-loc-btn:hover{background:var(--accent-dark,#c45c00);border-color:var(--accent-dark,#c45c00);color:#fff;transform:scale(1.03)}
+  .loc-panel{border:1.5px solid rgba(255,255,255,.1);border-radius:var(--radius);padding:14px;margin-top:4px;background:rgba(0,0,0,.15)}
+  /* Review mockup grid */
+  .review-garments{display:flex;flex-direction:column;gap:20px}
+  .review-garment{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);border-radius:var(--radius);padding:14px}
+  .review-garment h4{font-size:.9rem;font-weight:700;margin-bottom:10px;color:#efefef}
+  .review-mockup-grid{display:flex;gap:10px;flex-wrap:wrap}
+  .review-mockup-item{text-align:center}
+  .review-mockup-img{width:160px;height:160px;object-fit:contain;border:1.5px solid var(--gray2);border-radius:var(--radius);background:rgba(255,255,255,.06);display:block}
+  .review-mockup-label{font-size:.75rem;color:var(--gray3);margin-top:4px}
+  .review-uploaded-mockup{width:160px;height:160px;object-fit:contain;border:1.5px solid var(--gray2);border-radius:var(--radius);background:rgba(255,255,255,.06)}
+
+
+  /* ── Garment Sidebar ─────────────────────────────────── */
+  .garment-workspace{display:flex;gap:0;border:1px solid var(--glass-border);border-radius:14px;overflow:hidden;margin-bottom:16px}
+  .garment-sidebar{width:90px;flex-shrink:0;background:rgba(0,0,0,.35);border-right:1px solid var(--glass-border);display:flex;flex-direction:column;align-items:center;padding:10px 0;gap:6px;overflow-y:auto}
+  .garment-sidebar-thumb{width:68px;height:68px;border-radius:10px;border:2.5px solid transparent;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;transition:all .18s;background:rgba(255,255,255,.06);position:relative;padding:4px}
+  .garment-sidebar-thumb:hover{border-color:rgba(255,255,255,.4);background:rgba(255,255,255,.12)}
+  .garment-sidebar-thumb.active{border-color:var(--accent);background:rgba(230,57,70,.15)}
+  .garment-sidebar-thumb img{width:44px;height:44px;object-fit:contain;border-radius:5px}
+  .garment-sidebar-thumb .g-num{position:absolute;top:2px;left:2px;width:16px;height:16px;background:var(--accent);color:#fff;border-radius:50%;font-size:.58rem;font-weight:700;display:flex;align-items:center;justify-content:center}
+  .garment-sidebar-thumb .g-label{font-size:.56rem;color:rgba(255,255,255,.5);text-align:center;line-height:1.2;max-width:64px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .garment-sidebar-add{width:48px;height:48px;border-radius:50%;border:2px dashed rgba(255,255,255,.25);background:none;cursor:pointer;color:rgba(255,255,255,.4);font-size:1.4rem;display:flex;align-items:center;justify-content:center;margin-top:4px;transition:all .2s}
+  .garment-sidebar-add:hover{border-color:var(--accent);color:var(--accent)}
+  .garment-main{flex:1;min-width:0;display:flex;flex-direction:column}
+  .garment-main-header{padding:14px 18px;border-bottom:1px solid var(--glass-border);background:rgba(255,255,255,.04);display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .garment-main-header h3{font-size:1rem;font-weight:700;flex:1}
+  .garment-main-header h3 a:hover{border-bottom-color:rgba(255,255,255,.8)!important;opacity:.85}
+  .garment-main-body{padding:14px 16px;flex:1;overflow-y:auto}
+
+  /* ── Refreshed mockup canvas ─────────────────────────── */
+  .mockup-studio{display:flex;gap:14px;align-items:flex-start;flex-wrap:nowrap;margin-top:14px}
+  .mockup-canvas-area{flex:1;min-width:0;display:flex;flex-direction:column;gap:10px}
+  .mockup-canvas-wrap{position:relative;width:100%;aspect-ratio:1/1;border-radius:12px;overflow:hidden;border:1.5px solid rgba(255,255,255,.12);background:#f8f8f8;touch-action:none}
+  .mockup-canvas-inner{position:absolute;inset:0;width:100%;height:100%}
+  .mockup-bg{width:100%;height:100%;object-fit:contain;display:block;user-select:none;pointer-events:none;border-radius:0}
+  .mockup-sidebar{width:200px;flex-shrink:0;display:flex;flex-direction:column;gap:8px;min-width:0}
+  @media(max-width:680px){.mockup-sidebar{width:100%} .garment-sidebar{width:72px} .garment-sidebar-thumb{width:56px;height:56px}}
+
+  /* ── Mockup control panel ────────────────────────────── */
+  .mockup-panel{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:12px;display:flex;flex-direction:column;gap:8px}
+  .mockup-panel h4{font-size:.78rem;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:rgba(255,255,255,.45);margin-bottom:2px}
+  .layer-card{background:rgba(255,255,255,.06);border:1.5px solid rgba(255,255,255,.08);border-radius:8px;padding:8px 10px;display:flex;align-items:center;gap:8px;cursor:pointer;transition:all .15s}
+  .layer-card:hover{border-color:rgba(255,255,255,.25)}
+  .layer-card.active{border-color:var(--accent);background:rgba(230,57,70,.12)}
+  .layer-card img{width:36px;height:36px;object-fit:contain;border-radius:4px;background:rgba(255,255,255,.08);flex-shrink:0}
+  .layer-card-name{flex:1;font-size:.78rem;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .layer-card-del{background:none;border:none;color:rgba(255,255,255,.3);cursor:pointer;font-size:.9rem;padding:2px 4px;border-radius:4px;flex-shrink:0}
+  .layer-card-del:hover{color:var(--accent);background:rgba(230,57,70,.15)}
+
+  .slider-row{display:flex;flex-direction:column;gap:3px;width:100%}
+  .slider-row-top{display:flex;justify-content:space-between;align-items:center}
+  .slider-row label{font-size:.72rem;color:rgba(255,255,255,.5);flex-shrink:0}
+  .slider-row input[type=range]{width:100%;accent-color:var(--accent);margin:0}
+  .slider-row .val{font-size:.72rem;color:rgba(255,255,255,.75);font-weight:600;text-align:right;flex-shrink:0;max-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+  /* ── BG remove button ────────────────────────────────── */
+  .bg-remove-btn{display:flex;align-items:center;gap:6px;padding:7px 12px;border-radius:8px;border:1.5px solid rgba(155,89,182,.6);background:rgba(155,89,182,.12);color:#c39bd3;font-size:.78rem;font-weight:600;cursor:pointer;transition:all .2s;width:100%}
+  .bg-remove-btn:hover{background:rgba(155,89,182,.25);border-color:#9b59b6;color:#e8d5f0}
+  .bg-remove-btn:disabled{opacity:.4;cursor:not-allowed}
+  .bg-remove-btn .spin{display:inline-block;animation:spin .8s linear infinite}
+  .bg-remove-btn.active-wand{border-color:#f39c12;background:rgba(243,156,18,.18);color:#f9ca24;animation:wand-pulse 1s ease-in-out infinite alternate}
+  @keyframes wand-pulse{from{box-shadow:0 0 0 0 rgba(243,156,18,.4)}to{box-shadow:0 0 0 6px rgba(243,156,18,0)}}
+  .wand-tolerance-row{display:flex;align-items:center;gap:6px;margin-top:5px}
+  .wand-tolerance-row label{font-size:.71rem;color:rgba(255,255,255,.45);white-space:nowrap}
+  .wand-tolerance-row input[type=range]{flex:1;accent-color:#f39c12}
+  .wand-tolerance-row .val{font-size:.71rem;color:rgba(255,255,255,.6);width:26px;text-align:right}
+  .wand-undo-btn{display:flex;align-items:center;gap:5px;padding:5px 10px;border-radius:7px;border:1.5px solid rgba(255,255,255,.18);background:rgba(255,255,255,.06);color:rgba(255,255,255,.55);font-size:.75rem;font-weight:600;cursor:pointer;transition:all .15s;width:100%}
+  .wand-undo-btn:hover{border-color:rgba(255,255,255,.35);color:#fff}
+  .layer-wand-cursor{cursor:crosshair !important}
+  .layer-wand-cursor *{cursor:crosshair !important}
+  @keyframes spin{to{transform:rotate(360deg)}}
+
+  /* ── View angle tabs ─────────────────────────────────── */
+  .view-tabs{display:flex;gap:5px;flex-wrap:wrap}
+  .view-tab{flex:1;padding:7px 6px;border:1.5px solid var(--glass-border);border-radius:8px;background:rgba(255,255,255,.06);font-size:.72rem;font-weight:600;cursor:pointer;text-align:center;transition:all .15s;color:rgba(255,255,255,.5);white-space:nowrap}
+  .view-tab.active{border-color:var(--accent);background:rgba(230,57,70,.15);color:var(--accent)}
+
+  /* ── Quote preview panel ─────────────────────────────── */
+  .quote-preview{background:rgba(230,57,70,.07);border:1.5px solid rgba(230,57,70,.25);border-radius:12px;padding:14px 16px;margin-bottom:16px}
+  .quote-preview h4{font-size:.82rem;font-weight:700;color:var(--accent);margin-bottom:10px;display:flex;align-items:center;gap:6px}
+  .quote-line{display:flex;justify-content:space-between;font-size:.8rem;padding:4px 0;border-bottom:1px solid rgba(255,255,255,.06)}
+  .quote-line:last-child{border-bottom:none;font-weight:700;font-size:.85rem;color:var(--accent)}
+  .quote-line .ql{color:rgba(255,255,255,.6)}
+  .quote-line .qr{font-weight:600}
+
+  /* ── Artwork Upload ── */
+  .art-warning{background:rgba(255,200,0,.07);border:1.5px solid rgba(255,200,0,.25);border-radius:var(--radius);padding:12px 14px;font-size:.82rem;color:rgba(255,220,100,.85);margin-bottom:16px;line-height:1.6}
+  .art-warning strong{display:block;margin-bottom:4px;font-size:.9rem}
+  .drop-zone{border:2px dashed rgba(255,255,255,.18);border-radius:12px;padding:28px 20px;text-align:center;cursor:pointer;transition:all .2s;background:rgba(255,255,255,.03);position:relative}
+  .drop-zone:hover,.drop-zone.drag-over{border-color:var(--accent);background:rgba(230,57,70,.08)}
+  .drop-zone input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+  .drop-zone-icon{font-size:2rem;margin-bottom:8px}
+  .drop-zone-label{font-size:.9rem;font-weight:600;color:#efefef}
+  .drop-zone-sub{font-size:.78rem;color:var(--gray3);margin-top:4px}
+  .art-files{display:flex;flex-direction:column;gap:10px;margin-top:16px}
+  .art-file{display:flex;align-items:center;gap:12px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.16);border-radius:var(--radius);padding:10px 12px}
+  .art-file-thumb{width:52px;height:52px;object-fit:contain;border-radius:6px;background:rgba(255,255,255,.06);flex-shrink:0;border:1px solid var(--gray2)}
+  .art-file-thumb.non-image{display:flex;align-items:center;justify-content:center;font-size:1.4rem}
+  .art-file-info{flex:1;min-width:0}
+  .art-file-name{font-size:.84rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .art-file-meta{font-size:.75rem;color:var(--gray3);margin-top:2px}
+  .art-file-remove{background:none;border:none;cursor:pointer;color:var(--gray3);font-size:1.1rem;padding:4px;flex-shrink:0}
+  .art-file-remove:hover{color:var(--accent)}
+  .upload-progress{height:3px;background:var(--gray2);border-radius:2px;margin-top:6px;overflow:hidden}
+  .upload-progress-bar{height:100%;background:var(--accent);width:0%;transition:width .3s}
+  .art-status{font-size:.75rem;color:var(--gray3);margin-top:2px}
+  .art-status.done{color:#2a7a2a}
+  .art-status.error{color:var(--accent)}
+
+  /* ── Mockup Generator ── */
+  .mockup-wrap{display:flex;gap:28px;flex-wrap:wrap;margin-top:20px;align-items:flex-start}
+  /* old mockup-bg for standalone generator */
+  .mockup-bg-standalone{width:700px;height:700px;object-fit:contain;display:block;border-radius:var(--radius);border:1.5px solid var(--gray2);background:rgba(255,255,255,.06);user-select:none}
+  .mockup-layer{position:absolute;cursor:move;user-select:none;touch-action:none}
+  .mockup-layer img{display:block;pointer-events:none}
+  .rotate-handle{position:absolute;top:-22px;left:50%;transform:translateX(-50%);width:20px;height:20px;background:#9b59b6;border-radius:50%;cursor:grab;border:2px solid #fff;display:none;align-items:center;justify-content:center;font-size:11px;color:#fff;user-select:none;touch-action:none}
+  .mockup-layer.selected .rotate-handle{display:flex}
+  .mockup-layer.selected .resize-handle{display:block!important}
+  .mockup-layer:not(.selected) .resize-handle{display:none!important}
+  .mockup-layer{transform-origin:center center}
+
+  .mockup-layer.selected{outline:2px dashed var(--accent);outline-offset:2px}
+  .resize-handle{position:absolute;bottom:-6px;right:-6px;width:18px;height:18px;background:var(--accent);border-radius:50%;cursor:se-resize;border:2px solid #fff;touch-action:none;display:none}
+  .mockup-controls{flex:1;min-width:260px}
+  .mockup-controls h3{font-size:.95rem;font-weight:700;margin-bottom:12px}
+  .layer-list{display:flex;flex-direction:column;gap:8px;margin-bottom:16px}
+  .layer-item{display:flex;align-items:center;gap:10px;padding:8px 10px;border:1.5px solid var(--gray2);border-radius:var(--radius);cursor:pointer;font-size:.82rem;font-weight:500;background:rgba(255,255,255,.07)}
+  .layer-item.active{border-color:var(--accent);background:rgba(230,57,70,.15)}
+  .layer-thumb{width:32px;height:32px;object-fit:contain;border-radius:4px;background:rgba(255,255,255,.06)}
+  .layer-name{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .layer-delete{background:none;border:none;color:var(--gray3);cursor:pointer;font-size:.9rem;padding:2px 4px}
+  .layer-delete:hover{color:var(--accent)}
+  .ctrl-row{display:flex;gap:8px;align-items:center;margin-bottom:10px;font-size:.82rem}
+  .ctrl-row label{color:var(--gray4);min-width:60px;font-weight:500}
+  .ctrl-row input[type=range]{flex:1;accent-color:var(--accent)}
+  .ctrl-val{min-width:36px;text-align:right;font-size:.78rem;color:var(--gray4)}
+  .placement-tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px}
+  .ptab{padding:5px 12px;border-radius:20px;border:1.5px solid var(--gray2);background:var(--white);font-size:.78rem;font-weight:500;cursor:pointer}
+  .ptab.active{background:var(--black);color:var(--white);border-color:#efefef}
+  .mockup-hint{font-size:.75rem;color:var(--gray3);margin-top:10px;line-height:1.5}
+
+  /* ── Modal ── */
+  .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:999;display:flex;align-items:center;justify-content:center;padding:20px}
+  .modal-box{background:#1a1a22;border:1px solid rgba(255,255,255,.14);border-radius:12px;padding:28px;max-width:480px;width:100%;box-shadow:0 8px 40px rgba(0,0,0,.2)}
+  .modal-box h3{font-size:1.05rem;font-weight:700;margin-bottom:14px;display:flex;align-items:center;gap:8px}
+  .modal-box ul{padding-left:20px;margin:10px 0 16px;font-size:.87rem;line-height:1.8;color:var(--gray4)}
+  .modal-box p{font-size:.87rem;color:var(--gray4);line-height:1.6;margin-bottom:16px}
+  .modal-btn-row{display:flex;justify-content:flex-end;gap:10px}
+
+
+/* ── Photo strip & lightbox ─────────────────────────── */
+.photo-strip{display:flex;flex-wrap:nowrap;gap:8px;margin-top:8px;width:280px}
+.angle-thumb{display:flex;flex-direction:column;align-items:center;cursor:pointer;border:2px solid rgba(255,255,255,.12);border-radius:8px;padding:4px;transition:border-color .15s,transform .1s;background:rgba(255,255,255,.05);width:88px;box-sizing:border-box}
+.angle-thumb img{width:78px;height:62px;object-fit:contain;border-radius:4px;display:block}
+.angle-thumb span{font-size:.62rem;color:rgba(255,255,255,.45);margin-top:5px;text-transform:uppercase;letter-spacing:.05em;display:block}
+.angle-thumb:hover{transform:scale(1.04)}
+.angle-thumb.active{border-color:var(--accent)}
+.angle-thumb.active span{color:var(--accent);font-weight:600}
+
+/* main image zoom cursor */
+.preview-img{cursor:zoom-in}
+
+/* ── Lightbox ────────────────────────────────────────── */
+#lightbox{display:none;position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:9999;align-items:center;justify-content:center;flex-direction:column}
+#lightbox.open{display:flex}
+#lightbox-img{max-width:92vw;max-height:82vh;object-fit:contain;border-radius:8px;box-shadow:0 8px 40px rgba(0,0,0,.6)}
+#lightbox-caption{color:#ddd;font-size:.9rem;margin-top:12px;text-align:center}
+#lightbox-close{position:absolute;top:18px;right:24px;background:none;border:none;color:#fff;font-size:2rem;cursor:pointer;line-height:1}
+#lightbox-prev,#lightbox-next{position:absolute;top:50%;transform:translateY(-50%);background:rgba(255,255,255,.15);border:none;color:#fff;font-size:2rem;cursor:pointer;padding:10px 16px;border-radius:6px;line-height:1}
+#lightbox-prev{left:16px}#lightbox-next{right:16px}
+#lightbox-prev:hover,#lightbox-next:hover{background:rgba(255,255,255,.3)}
+
+/* ── Reuse artwork panel ─────────────────────────────── */
+.reuse-art-btn{display:inline-flex;align-items:center;gap:6px;font-size:.8rem;color:#60a5fa;background:rgba(26,111,222,.12);border:1.5px solid rgba(26,111,222,.4);border-radius:6px;padding:5px 12px;cursor:pointer;margin-top:8px;transition:background .15s}
+.reuse-art-btn:hover{background:rgba(26,111,222,.22)}
+.reuse-art-panel{background:rgba(26,111,222,.08);border:1.5px solid rgba(26,111,222,.3);border-radius:8px;padding:12px;margin-top:10px;display:none}
+.reuse-art-panel.open{display:block}
+.reuse-art-grid{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.reuse-art-item{display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;padding:6px;border-radius:6px;border:2px solid transparent;transition:border-color .15s,background .15s;width:80px}
+.reuse-art-item:hover{background:rgba(26,111,222,.2);border-color:#60a5fa}
+.reuse-art-item.used{border-color:#22c55e;background:rgba(34,197,94,.1)}
+.reuse-art-item img{width:64px;height:64px;object-fit:contain;border-radius:4px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.15)}
+.reuse-art-item .icon{width:64px;height:64px;display:flex;align-items:center;justify-content:center;border-radius:4px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.15);font-size:1.6rem}
+.reuse-art-item span{font-size:.6rem;color:rgba(255,255,255,.55);text-align:center;max-width:76px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.reuse-art-item .used-badge{font-size:.58rem;color:#16a34a;font-weight:700}
+
+/* ── Review page: inline qty editor ─────────────────── */
+.review-qty-chip{cursor:pointer;transition:background .12s,border-color .12s}
+.review-qty-chip:hover{background:#e6f0ff;border-color:#1a6fde}
+.review-qty-edit-row{display:flex;align-items:center;gap:6px;background:rgba(26,111,222,.12);border:1.5px solid rgba(26,111,222,.4);border-radius:8px;padding:6px 10px}
+.review-qty-edit-row label{font-size:.75rem;font-weight:700;color:#1a4fa0;min-width:32px}
+.review-qty-edit-row input{width:58px;font-size:.85rem;font-weight:700;border:1px solid #c5d9f8;border-radius:5px;padding:3px 7px;text-align:center}
+.review-qty-edit-row button{font-size:.72rem;padding:3px 10px;border-radius:5px;border:none;cursor:pointer;font-weight:600}
+.review-qty-done{background:var(--accent);color:#fff}
+.review-qty-done:hover{filter:brightness(1.1)}
+.review-qty-grid-wrap{display:flex;flex-direction:column;gap:8px}
+.review-qty-chips-row{display:flex;flex-wrap:wrap;gap:6px}
+.review-qty-total{font-size:.75rem;color:var(--gray3);margin-top:2px}
+
+  /* ── Dark mode polish ──────────────────────────────────────── */
+  select option{background:#1a1a24;color:#f0f0f0}
+  input::placeholder,textarea::placeholder{color:rgba(255,255,255,.3)}
+  input[type=number]{background:rgba(255,255,255,.07);border:1.5px solid rgba(255,255,255,.15);color:#f0f0f0;border-radius:6px;padding:4px 8px}
+  input[type=number]:focus{outline:none;border-color:var(--accent)}
+  .review-qty-edit-row{background:rgba(26,111,222,.12);border-color:rgba(26,111,222,.4)}
+  .review-qty-edit-row label{color:rgba(255,255,255,.7)}
+  .review-qty-edit-row input{background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.2);color:#f0f0f0}
+  .card-header{background:rgba(255,255,255,.05);border-bottom:1px solid rgba(255,255,255,.1)}
+  .progress-bar-wrap{background:rgba(255,255,255,.08)}
+  ::-webkit-scrollbar{width:6px;height:6px}
+  ::-webkit-scrollbar-track{background:rgba(255,255,255,.04)}
+  ::-webkit-scrollbar-thumb{background:rgba(255,255,255,.18);border-radius:3px}
+  ::-webkit-scrollbar-thumb:hover{background:rgba(255,255,255,.32)}
+  .qty-input{background:rgba(255,255,255,.08);border:1.5px solid rgba(255,255,255,.15);color:#f0f0f0;border-radius:6px;width:72px;padding:5px 8px;text-align:center;font-size:.88rem}
+  .qty-input:focus{outline:none;border-color:var(--accent)}
+  .print-type-btn,
+  [class*="-chip"]{color:#f0f0f0}
+  .supplier-badge{opacity:.85}
+  table{border-collapse:collapse}
+  th{background:rgba(255,255,255,.06);color:rgba(255,255,255,.55);font-size:.72rem;text-transform:uppercase;letter-spacing:.5px;padding:8px 12px}
+  td{padding:8px 12px;border-bottom:1px solid rgba(255,255,255,.07);color:#e0e0e0;font-size:.85rem}
+
+  /* ── Ink color picker ─────────────────────────── */
+  .ink-section-label{font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:rgba(255,255,255,.35);margin:8px 0 5px;padding-top:5px}
+  .ink-section-label:first-child{margin-top:0;padding-top:0}
+  .ink-expand-btn{font-size:.75rem;color:#60a5fa;background:rgba(26,111,222,.1);border:1px solid rgba(26,111,222,.3);border-radius:6px;padding:4px 10px;cursor:pointer;margin-top:6px;width:100%}
+  .ink-expand-btn:hover{background:rgba(26,111,222,.2)}
+  .ink-full-palette{display:none;margin-top:6px}
+  .ink-full-palette.open{display:block}
+  .ink-group{margin-bottom:8px}
+  .ink-picker-wrap{margin-top:2px}
+  .ink-picker-label{font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:rgba(255,255,255,.45);margin-bottom:7px}
+  .ink-swatches{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:7px}
+  .ink-swatch{width:22px;height:22px;border-radius:50%;border:2px solid transparent;cursor:pointer;transition:transform .15s,border-color .15s;flex-shrink:0;position:relative}
+  .ink-swatch:hover{transform:scale(1.18);border-color:rgba(255,255,255,.6)}
+  .ink-swatch.active{border-color:#fff;transform:scale(1.18)}
+  .ink-swatch[data-name="White"]{border-color:rgba(255,255,255,.35)}
+  .ink-selected-row{display:flex;align-items:center;gap:8px;margin-top:4px}
+  .ink-selected-dot{width:16px;height:16px;border-radius:50%;border:1.5px solid rgba(255,255,255,.35);flex-shrink:0}
+  .ink-selected-name{font-size:.74rem;color:rgba(255,255,255,.75);flex:1}
+  .ink-selected-pms{font-size:.68rem;color:rgba(255,255,255,.38);font-style:italic}
+  /* Ink color overlay removed — we use CSS filter on the img directly */
+
+
+  /* ── Cart ──────────────────────────────────────────── */
+  .cart-bar{background:rgba(26,111,222,.08);border:1.5px solid rgba(26,111,222,.3);border-radius:12px;padding:14px 18px;margin-bottom:20px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+  .cart-bar-icon{font-size:1.4rem;flex-shrink:0}
+  .cart-bar-info{flex:1;min-width:0}
+  .cart-bar-title{font-size:.9rem;font-weight:700;color:#60a5fa}
+  .cart-bar-sub{font-size:.78rem;color:rgba(255,255,255,.45);margin-top:2px}
+  .cart-item{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:12px 14px;display:flex;align-items:center;gap:12px;margin-bottom:8px;flex-wrap:wrap}
+  .cart-item-thumb{width:60px;height:60px;object-fit:contain;border-radius:7px;background:rgba(255,255,255,.08);flex-shrink:0}
+  .cart-item-info{flex:1;min-width:0}
+  .cart-item-name{font-size:.85rem;font-weight:700}
+  .cart-item-sub{font-size:.75rem;color:rgba(255,255,255,.45);margin-top:2px}
+  .cart-item-actions{display:flex;gap:6px;flex-shrink:0}
+  .cart-item-edit{padding:5px 12px;border-radius:6px;border:1.5px solid rgba(26,111,222,.5);background:rgba(26,111,222,.12);color:#60a5fa;font-size:.75rem;font-weight:600;cursor:pointer;transition:all .15s}
+  .cart-item-edit:hover{background:rgba(26,111,222,.25)}
+  .cart-item-remove{padding:5px 10px;border-radius:6px;border:1.5px solid rgba(230,57,70,.35);background:rgba(230,57,70,.08);color:#f87171;font-size:.75rem;font-weight:600;cursor:pointer;transition:all .15s}
+  .cart-item-remove:hover{background:rgba(230,57,70,.2)}
+  .btn-add-cart{background:linear-gradient(135deg,rgba(26,111,222,.9),rgba(16,80,170,.9));color:#fff;box-shadow:0 0 0 1px rgba(26,111,222,.4),0 4px 16px rgba(26,111,222,.3)}
+  .btn-add-cart:hover{filter:brightness(1.12)}
+  .cart-mockup-thumbs{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+  .cart-mockup-thumb{width:44px;height:44px;object-fit:contain;border-radius:5px;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.06)}
+  .cart-count-badge{background:var(--accent);color:#fff;border-radius:50%;width:18px;height:18px;display:inline-flex;align-items:center;justify-content:center;font-size:.65rem;font-weight:700;margin-left:6px;vertical-align:middle}
+  /* saved toast */
+  #savedToast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:rgba(34,197,94,.92);color:#fff;padding:10px 22px;border-radius:30px;font-size:.88rem;font-weight:600;box-shadow:0 4px 20px rgba(0,0,0,.4);z-index:9998;opacity:0;transition:opacity .3s;pointer-events:none}
+  #savedToast.show{opacity:1}
+
+  /* ── Imprint-based layout ──────────────────────────── */
+  .imprint-workspace{display:flex;flex-direction:column;gap:0;border:1px solid var(--glass-border);border-radius:14px;overflow:hidden;margin-bottom:16px}
+  /* Top: imprint tabs strip */
+  .imprint-tab-strip{display:flex;align-items:stretch;background:rgba(0,0,0,.35);border-bottom:1px solid var(--glass-border);overflow-x:auto;min-height:52px}
+  .imprint-tab{display:flex;align-items:center;gap:8px;padding:10px 18px;font-size:.82rem;font-weight:600;color:rgba(255,255,255,.4);white-space:nowrap;border-right:1px solid var(--glass-border);cursor:pointer;transition:all .18s;border-bottom:3px solid transparent;position:relative;flex-shrink:0}
+  .imprint-tab:hover{color:rgba(255,255,255,.75);background:rgba(255,255,255,.04)}
+  .imprint-tab.active{color:#fff;background:rgba(255,255,255,.06);border-bottom-color:var(--accent)}
+  .imprint-tab-num{width:22px;height:22px;border-radius:50%;background:var(--gray2);display:flex;align-items:center;justify-content:center;font-size:.68rem;font-weight:700;flex-shrink:0}
+  .imprint-tab.active .imprint-tab-num{background:var(--accent);color:#fff}
+  .imprint-tab-del{background:none;border:none;color:rgba(255,255,255,.25);cursor:pointer;font-size:.9rem;padding:2px 4px;border-radius:3px;margin-left:2px;line-height:1}
+  .imprint-tab-del:hover{color:#f87171;background:rgba(230,57,70,.15)}
+  .imprint-tab-add{display:flex;align-items:center;gap:5px;padding:10px 16px;color:rgba(255,255,255,.35);cursor:pointer;font-size:.82rem;font-weight:600;white-space:nowrap;flex-shrink:0;border:none;background:none;transition:all .18s}
+  .imprint-tab-add:hover{color:var(--accent);background:rgba(230,57,70,.06)}
+  /* Main imprint panel */
+  .imprint-panel{display:flex;flex-direction:column;flex:1}
+  .imprint-panel-header{padding:14px 18px;border-bottom:1px solid var(--glass-border);background:rgba(255,255,255,.03);display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .imprint-panel-title{flex:1;min-width:0}
+  .imprint-panel-title h3{font-size:1rem;font-weight:700;color:#fff}
+  .imprint-panel-title .sub{font-size:.78rem;color:rgba(255,255,255,.4);margin-top:2px}
+  .imprint-location-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+  .imprint-location-label{font-size:.8rem;font-weight:600;color:rgba(255,255,255,.45);white-space:nowrap}
+  .imprint-location-select{padding:6px 10px;border:1.5px solid rgba(255,255,255,.15);border-radius:8px;background:rgba(255,255,255,.08);color:#f0f0f0;font-size:.82rem;cursor:pointer;outline:none}
+  .imprint-location-select:focus{border-color:rgba(255,255,255,.4)}
+  /* Garment list within an imprint */
+  .imprint-garments-section{padding:14px 16px;border-bottom:1px solid var(--glass-border);background:rgba(0,0,0,.12)}
+  .imprint-garments-label{font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:rgba(255,255,255,.35);margin-bottom:10px}
+  .imprint-garment-chips{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+  .imprint-garment-chip{display:flex;align-items:center;gap:8px;padding:6px 10px;background:rgba(255,255,255,.07);border:1.5px solid rgba(255,255,255,.14);border-radius:10px;cursor:pointer;transition:all .15s}
+  .imprint-garment-chip:hover{border-color:rgba(255,255,255,.3)}
+  .imprint-garment-chip.active-chip{border-color:var(--accent);background:rgba(230,57,70,.12)}
+  .imprint-garment-chip img{width:36px;height:36px;object-fit:contain;border-radius:5px;background:rgba(255,255,255,.08)}
+  .imprint-garment-chip-info{min-width:0}
+  .imprint-garment-chip-name{font-size:.75rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100px}
+  .imprint-garment-chip-color{font-size:.68rem;color:rgba(255,255,255,.45)}
+  .imprint-garment-chip-del{background:none;border:none;color:rgba(255,255,255,.25);cursor:pointer;font-size:.85rem;padding:2px 4px;border-radius:3px;margin-left:2px;flex-shrink:0}
+  .imprint-garment-chip-del:hover{color:#f87171}
+  .add-garment-chip-btn{display:flex;align-items:center;gap:5px;padding:6px 12px;background:rgba(255,255,255,.04);border:1.5px dashed rgba(255,255,255,.2);border-radius:10px;cursor:pointer;font-size:.75rem;font-weight:600;color:rgba(255,255,255,.4);transition:all .15s;white-space:nowrap}
+  .add-garment-chip-btn:hover{border-color:rgba(255,255,255,.5);color:rgba(255,255,255,.8)}
+  /* Active garment within imprint: mockup area */
+  .imprint-mockup-body{padding:14px 16px;flex:1}
+  @media(max-width:520px){
+    .imprint-tab{padding:8px 12px;font-size:.75rem}
+    .imprint-panel-header{padding:10px 12px}
+  }
+  </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+</head>
+<body>
+
+<header>
+  <img src="logo.png" alt="LBX Printing & Design" onerror="this.style.display='none'" style="height:54px;object-fit:contain">
+  <div style="border-left:2px solid var(--accent);padding-left:16px;display:flex;flex-direction:column;gap:2px">
+    <span style="font-size:.72rem;font-weight:500;color:rgba(255,255,255,.45);text-transform:uppercase;letter-spacing:1.5px">Screen Printing & Embroidery</span>
+    <span style="font-size:1rem;font-weight:700;color:#fff;letter-spacing:.3px">Order Portal</span>
+  </div>
+</header>
+
+<div class="steps">
+  <div class="step active" id="step1" onclick="stepNavClick(1)"><span class="step-num">1</span>Select Product</div>
+  <div class="step" id="step2" onclick="stepNavClick(2)"><span class="step-num">2</span>Color &amp; Quantity</div>
+  <div class="step" id="step3" onclick="stepNavClick(3)"><span class="step-num">3</span>Print Details</div>
+  <div class="step" id="step4" onclick="stepNavClick(4)"><span class="step-num">4</span>Garments &amp; Art</div>
+  <div class="step" id="step5" onclick="stepNavClick(5)"><span class="step-num">5</span>Your Info</div>
+  <div class="step" id="step6" onclick="stepNavClick(6)"><span class="step-num">6</span>Review &amp; Submit</div>
+</div>
+
+<main>
+
+<!-- STEP 1 -->
+<div class="section active" id="sec1">
+  <h2>Choose a Product</h2>
+  <p class="subtitle">Browse 5,700+ styles from S&amp;S Activewear — filter by category, brand, or search by name/style#</p>
+
+  <!-- Search + Quick filters row -->
+  <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:10px">
+    <input type="text" class="search-bar" id="searchInput" placeholder="e.g. 3001, Gildan, hoodie, Richardson..." style="flex:1;min-width:200px;margin:0">
+    <button class="filter-toggle-btn" id="filterToggleBtn" onclick="toggleAdvancedFilters()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="4" y1="6" x2="20" y2="6"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="11" y1="18" x2="13" y2="18"/></svg>
+      Filters &amp; Sort
+      <span class="filter-active-dot" id="filterActiveDot" style="display:none"></span>
+    </button>
+  </div>
+
+  <!-- Category pills -->
+  <div class="filters" id="catFilters">
+    <button class="filter-btn active" data-cat="all">All</button>
+    <button class="filter-btn" data-cat="Premium Tees">Premium Tees</button>
+    <button class="filter-btn" data-cat="Core Tees">Core Tees</button>
+    <button class="filter-btn" data-cat="Long Sleeve">Long Sleeve</button>
+    <button class="filter-btn" data-cat="Hoodies">Hoodies</button>
+    <button class="filter-btn" data-cat="Crewnecks">Crewnecks</button>
+    <button class="filter-btn" data-cat="Polos">Polos</button>
+    <button class="filter-btn" data-cat="Headwear">Headwear</button>
+    <button class="filter-btn" data-cat="Outerwear">Outerwear</button>
+    <button class="filter-btn" data-cat="Bags">Bags</button>
+    <button class="filter-btn" data-cat="Bottoms">Bottoms</button>
+  </div>
+
+  <!-- Advanced filter panel -->
+  <div id="advancedFilters" style="display:none;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:16px;margin-bottom:14px">
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:14px;align-items:end">
+      <!-- Brand -->
+      <div>
+        <label class="filter-label">Brand</label>
+        <select id="brandFilter" class="filter-select">
+          <option value="">All Brands</option>
+        </select>
+      </div>
+      <!-- Price Range -->
+      <div>
+        <label class="filter-label">Price Range</label>
+        <select id="priceFilter" class="filter-select" onchange="applyFilters()">
+          <option value="">Any Price</option>
+          <option value="0-5">Under $5</option>
+          <option value="5-10">$5 – $10</option>
+          <option value="10-20">$10 – $20</option>
+          <option value="20-40">$20 – $40</option>
+          <option value="40-999">$40+</option>
+        </select>
+      </div>
+      <!-- Color Family -->
+      <div>
+        <label class="filter-label">Color</label>
+        <select id="colorFamilyFilter" class="filter-select" onchange="applyFilters()">
+          <option value="">Any Color</option>
+          <option value="Blacks">Blacks</option>
+          <option value="Whites">Whites</option>
+          <option value="Greys">Greys</option>
+          <option value="Heather">Heather</option>
+          <option value="Blues">Blues</option>
+          <option value="Reds">Reds</option>
+          <option value="Greens">Greens</option>
+          <option value="Yellows">Yellows</option>
+          <option value="Oranges">Oranges</option>
+          <option value="Pinks">Pinks</option>
+          <option value="Purples">Purples</option>
+          <option value="Browns">Browns</option>
+          <option value="Neutrals">Neutrals</option>
+          <option value="Camouflage">Camouflage</option>
+        </select>
+      </div>
+      <!-- Sort -->
+      <div>
+        <label class="filter-label">Sort By</label>
+        <select id="sortBy" class="filter-select" onchange="applyFilters()">
+          <option value="default">Default</option>
+          <option value="price-asc">Price: Low to High</option>
+          <option value="price-desc">Price: High to Low</option>
+          <option value="colors-desc">Most Colors</option>
+          <option value="name-asc">Name A–Z</option>
+          <option value="brand-asc">Brand A–Z</option>
+        </select>
+      </div>
+      <!-- Reset -->
+      <div style="display:flex;align-items:flex-end">
+        <button onclick="resetFilters()" style="padding:8px 14px;border-radius:8px;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.06);color:rgba(255,255,255,.6);font-size:.8rem;cursor:pointer;white-space:nowrap">✕ Reset All</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="catalogStatus" style="font-size:.82rem;color:rgba(255,255,255,.4);margin-bottom:8px"></div>
+  <div class="product-grid" id="productGrid"></div>
+  <div id="loadMoreRow" style="text-align:center;margin-top:16px;display:none">
+    <button class="btn btn-secondary" id="loadMoreBtn" onclick="loadMore()">Load More</button>
+  </div>
+  <div class="btn-row">
+    <button class="btn btn-primary" id="toStep2" disabled>Next: Choose Color &amp; Size →</button>
+  </div>
+</div>
+
+<!-- STEP 2 -->
+<div class="section" id="sec2">
+  <h2>Color &amp; Quantity</h2>
+  <p class="subtitle">Pick your garment color and enter quantities per size</p>
+  <div style="background:rgba(255,200,0,.08);border:1px solid rgba(255,200,0,.25);border-radius:8px;padding:10px 14px;font-size:.82rem;color:rgba(255,220,100,.85);margin-bottom:20px">&#9888;&#65039; <strong>Prices shown are standard retail.</strong> Final garment cost will be adjusted based on your order quantity — accurate pricing will appear on your quote once we review your request.</div>
+  <div class="product-preview">
+    <div style="display:flex;flex-direction:column;align-items:flex-start;gap:0;flex-shrink:0">
+      <img id="previewImg" class="preview-img" src="" alt="Product" onclick="openLightboxAt(state._lbPhotos, state._lbIndex)" style="cursor:zoom-in">
+      <div class="photo-strip" id="photoStrip"></div>
+    </div>
+    <div class="preview-info">
+      <div class="brand" id="previewBrand"></div>
+      <h3 id="previewName"></h3>
+      <p id="previewStyle" style="font-size:.82rem;color:rgba(255,255,255,.4);margin-top:2px"></p>
+      <div id="previewBadge" style="margin-top:8px"></div>
+      <p id="previewPiecePrice" class="product-price" style="margin-top:6px;font-size:.9rem;color:var(--accent);font-weight:600"></p>
+      <p id="previewDesc" style="font-size:.82rem;color:rgba(255,255,255,.5);margin-top:10px;line-height:1.5;"></p>
+      <table class="price-table"><tbody id="priceTableBody"></tbody></table>
+    </div>
+  </div>
+  <div class="color-section">
+    <h3>Color: <span id="selectedColorLabel" style="color:var(--accent);font-weight:500"></span></h3>
+    <div class="color-swatches" id="colorSwatches"></div>
+  </div>
+  <div class="color-section">
+    <h3>Sizes &amp; Quantities</h3>
+    <div class="qty-table-wrap">
+    <table class="qty-table">
+      <thead><tr><th>Size</th><th>Qty</th><th>Est. Price *</th><th>Subtotal</th></tr></thead>
+      <tbody id="qtyBody"></tbody>
+      <tfoot><tr>
+        <td colspan="3" style="padding:8px 10px;font-weight:700;font-size:.88rem">Total Pieces</td>
+        <td class="qty-total" id="qtyTotal" style="padding:8px 10px">0 pcs</td>
+      </tr></tfoot>
+    </table>
+    </div>
+    <p style="font-size:.78rem;color:rgba(255,255,255,.35);margin-top:-8px">* Retail pricing shown for reference. Final garment cost will vary by quantity — your quote will show the real number.</p>
+  </div>
+  <div class="btn-row">
+    <button class="btn btn-secondary" onclick="goTo(1)">← Back</button>
+    <button class="btn btn-primary" id="toStep3" disabled>Next: Print Details →</button>
+  </div>
+</div>
+
+<!-- STEP 3 -->
+<div class="section" id="sec3">
+  <h2>Print Details</h2>
+  <p class="subtitle">Tell us how you want it decorated</p>
+  <div class="placement-group">
+    <label>Decoration Type</label>
+    <div class="option-grid">
+      <div class="option-card selected" data-field="printType" data-val="Screen Print"><div class="option-icon">🖨️</div>Screen Print</div>
+      <div class="option-card" data-field="printType" data-val="Embroidery"><div class="option-icon">🧵</div>Embroidery</div>
+      <div class="option-card" data-field="printType" data-val="DTG"><div class="option-icon">🎨</div>DTG</div>
+      <div class="option-card" data-field="printType" data-val="Heat Transfer"><div class="option-icon">♨️</div>Heat Transfer</div>
+    </div>
+  </div>
+  
+  <div class="placement-group">
+    <label>Number of Colors / Stitches</label>
+    <div class="option-grid">
+      <div class="option-card selected" data-field="printColors" data-val="1 Color"><div class="option-icon">1️⃣</div>1 Color</div>
+      <div class="option-card" data-field="printColors" data-val="2 Colors"><div class="option-icon">2️⃣</div>2 Colors</div>
+      <div class="option-card" data-field="printColors" data-val="3 Colors"><div class="option-icon">3️⃣</div>3 Colors</div>
+      <div class="option-card" data-field="printColors" data-val="4 Colors"><div class="option-icon">4️⃣</div>4 Colors</div>
+      <div class="option-card" data-field="printColors" data-val="Full Color"><div class="option-icon">🌈</div>Full Color</div>
+      <div class="option-card" data-field="printColors" data-val="TBD"><div class="option-icon">❓</div>TBD</div>
+    </div>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+    <div class="form-group">
+      <label>Need it by (optional)</label>
+      <input type="date" id="dueDate">
+    </div>
+  </div>
+  <div class="form-group" style="margin-top:14px">
+    <label>Notes / Art Instructions</label>
+    <textarea id="orderNotes" placeholder="Describe your design, colors, reference files, any special requests..."></textarea>
+  </div>
+  <div class="btn-row">
+    <button class="btn btn-secondary" onclick="goTo(2)">← Back</button>
+    <button class="btn btn-primary" onclick="goTo(4)">Next: Artwork &amp; Mockup →</button>
+  </div>
+</div>
+
+<!-- STEP 4: ARTWORK & MOCKUP -->
+<div class="section" id="sec4">
+  <h2>Imprints &amp; Artwork</h2>
+  <p class="subtitle" id="sec4Subtitle">Set up each print location, upload artwork, and add garments that share the same imprint</p>
+
+  <!-- Live quote preview -->
+  <div class="quote-preview" id="liveQuotePreview" style="display:none">
+    <h4>📋 Live Quote Estimate</h4>
+    <div id="liveQuoteLines"></div>
+  </div>
+
+  <!-- Imprint workspace -->
+  <div class="imprint-workspace" id="imprintWorkspace">
+    <!-- Top tab strip — injected by JS -->
+    <div class="imprint-tab-strip" id="imprintTabStrip"></div>
+    <!-- Active imprint panel — injected by JS -->
+    <div class="imprint-panel" id="imprintPanel">
+      <div style="padding:40px;text-align:center;color:rgba(255,255,255,.3);font-size:.88rem">Loading…</div>
+    </div>
+  </div>
+
+  <div id="cartDisplay" style="margin-top:16px"></div>
+  <div class="btn-row" style="margin-top:8px;flex-wrap:wrap;gap:10px">
+    <button class="btn btn-secondary" onclick="goTo(3)">← Back</button>
+    <button class="btn btn-add-cart" onclick="saveCurrentToCart()">🛒 Save Garment to Cart</button>
+    <button class="btn" style="background:rgba(255,80,80,.12);border:1.5px solid rgba(255,80,80,.3);color:rgba(255,120,120,.9);padding:9px 16px;border-radius:8px;font-size:.82rem;cursor:pointer" onclick="clearCart()">🗑 Clear Cart</button>
+    <button class="btn btn-primary" id="toStep5Btn" onclick="goToStep5FromCart()" disabled>Next: Your Info →</button>
+  </div>
+</div>
+
+<!-- STEP 4 (now 5): YOUR INFO -->
+<!-- STEP 4 (now 5): YOUR INFO -->
+<div class="section" id="sec5">
+  <h2>Your Information</h2>
+  <p class="subtitle">We'll use this to build your quote in our system</p>
+  <div class="form-grid">
+    <div class="form-group">
+      <label>First Name *</label>
+      <input type="text" id="firstName" placeholder="Jane">
+    </div>
+    <div class="form-group">
+      <label>Last Name *</label>
+      <input type="text" id="lastName" placeholder="Smith">
+    </div>
+    <div class="form-group">
+      <label>Email *</label>
+      <input type="email" id="custEmail" placeholder="jane@example.com">
+    </div>
+    <div class="form-group">
+      <label>Phone</label>
+      <input type="tel" id="custPhone" placeholder="(555) 000-0000">
+    </div>
+    <div class="form-group full">
+      <label>Company / Organization (optional)</label>
+      <input type="text" id="custCompany" placeholder="Acme Corp, Little League Team, etc.">
+    </div>
+  </div>
+  <div class="btn-row">
+    <button class="btn btn-secondary" onclick="goTo(4)">← Back</button>
+    <button class="btn btn-primary" onclick="validateAndReview()">Review Order →</button>
+  </div>
+</div>
+
+<!-- STEP 5 -->
+<div class="section" id="sec6">
+  <h2>Review Your Order</h2>
+  <p class="subtitle">Double-check everything before submitting</p>
+
+  <!-- Per-garment cards with mockups + sizes -->
+  <div id="reviewMockupsSection"></div>
+
+  <!-- Order-level summary (customer info, decoration, totals) -->
+  <div style="margin-top:20px">
+    <div style="font-size:.8rem;font-weight:700;color:var(--gray3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Order Details</div>
+    <div class="summary-card" id="summaryCard"></div>
+  </div>
+
+  <div class="btn-row" style="margin-top:24px;flex-wrap:wrap;gap:10px">
+    <button class="btn btn-secondary" onclick="goTo(5)">← Edit Info</button>
+    <button class="btn btn-secondary" onclick="addAnotherGarment()" style="background:rgba(26,111,222,.12);color:#60a5fa;border-color:rgba(26,111,222,.4)">＋ Add Another Garment / Design</button>
+    <button class="btn btn-primary" id="submitBtn" onclick="submitOrder()">✓ Submit Order Request</button>
+  </div>
+</div>
+
+<!-- SUCCESS -->
+<div class="section" id="sec7">
+  <div class="success-box">
+    <div class="success-icon">🎉</div>
+    <h2>Order Request Submitted!</h2>
+    <p>We've got it! Check your email for a confirmation. Our team will review your request and send you a detailed quote shortly.</p>
+    <button class="btn btn-primary" onclick="location.reload()">Start Another Order</button>
+  </div>
+</div>
+
+</main>
+
+<script>
+const PROXY = 'https://lbx-order-proxy.lbxprints.workers.dev';
+
+// ── Current step tracker ───────────────────────────────────────────────────
+let currentStep = 1;
+const MAX_COMPLETED_STEP = () => {
+  // derive from cart + state
+  if (cart.length > 0 || garments.some(g => g.locations.some(l => l.layers.length || l.artFiles.length))) return 4;
+  if (state.printType) return 3;
+  if (state.selectedColor && Object.values(state.quantities).some(q => q > 0)) return 2;
+  if (state.selectedStyle) return 1;
+  return 1;
+};
+
+function stepNavClick(n) {
+  const el = document.getElementById('step' + n);
+  if (!el) return;
+  // Allow going to any done step OR the next step after current
+  if (el.classList.contains('done') || el.classList.contains('active') || n === currentStep + 1) {
+    goTo(n);
+  }
+}
+
+// ── Shopping Cart ──────────────────────────────────────────────────────────
+// Each cart item: { id, style, color, quantities, printType, printColors, dueDate, notes, garmentData, mockupDataUrls }
+let cart = [];
+
+function clearCart() {
+  if (!cart.length) return;
+  if (!confirm('Clear all items from cart and start over?')) return;
+  cart = [];
+  imprints = [];
+  activeImprintId = null;
+  activeGarmentId = null;
+  garments = [];
+  state.printType = null;
+  state.printColors = null;
+  state.quantities = {};
+  state.selectedColor = null;
+  state.selectedStyle = null;
+  state.selectedStyleID = null;
+  state.dueDate = null;
+  state.notes = null;
+  renderCartDisplay();
+  const b = document.getElementById('toStep5Btn');
+  if (b) b.disabled = true;
+  persistState();
+  goTo(1);
+}
+
+function saveCurrentToCart() {
+  if (!garments.length) { alert('Add at least one garment first.'); return; }
+  if (!Object.values(state.quantities).some(q => q > 0)) { alert('Please enter quantities in Step 2 first.'); return; }
+
+  // Deep-clone garments (without File objects, keep layer positions + urls)
+  const imprintSnap = imprints.map(imp => ({
+    id: imp.id, location: imp.location,
+    garments: imp.garments.map(g => ({
+      id: g.id, style: g.style, color: g.color, mode: g.mode,
+      _bgView: g._bgView, _wrapW: g._wrapW, _wrapH: g._wrapH,
+      inkColor: g.inkColor,
+      layers: (g.layers||[]).map(l => ({...l, _wandHistory: undefined})),
+      artFiles: (g.artFiles||[]).map(f => ({...f, file: undefined})),
+      mockupFiles: (g.mockupFiles||[]).map(f => ({...f})),
+    }))
+  }));
+  // Also build flat garments for cart display
+  const garmentSnap = imprintSnap.flatMap(imp => imp.garments.map(g => ({
+    ...g, locations: [{ id: imp.id+'_loc', name: imp.location,
+      artFiles: g.artFiles, mockupFiles: g.mockupFiles, layers: g.layers,
+      selectedLayer: g.selectedLayer, inkColor: g.inkColor,
+      _bgView: g._bgView, _wrapW: g._wrapW, _wrapH: g._wrapH }]
+  })));
+
+  const existing = cart.findIndex(c => c.garmentData.some(g => garments.map(x=>x.id).includes(g.id)));
+
+  const item = {
+    id: existing >= 0 ? cart[existing].id : 'cart_' + Date.now(),
+    style: state.selectedStyleID || state.selectedStyle,
+    color: state.selectedColor,
+    quantities: {...state.quantities},
+    printType: state.printType,
+    printColors: state.printColors,
+    dueDate: state.dueDate,
+    notes: state.notes,
+    garmentData: garmentSnap,
+    imprintData: imprintSnap,
+  };
+
+  if (existing >= 0) {
+    cart[existing] = item;
+  } else {
+    cart.push(item);
+  }
+
+  persistState();
+  renderCartDisplay();
+  showToast('✓ Garment saved to cart!');
+  document.getElementById('toStep5Btn').disabled = false;
+}
+
+function removeCartItem(id) {
+  cart = cart.filter(c => c.id !== id);
+  persistState();
+  renderCartDisplay();
+  if (!cart.length) document.getElementById('toStep5Btn').disabled = true;
+}
+
+function editCartItem(id) {
+  const item = cart.find(c => c.id === id);
+  if (!item) return;
+  // Restore state from cart item
+  state.selectedStyle = item.style;
+  state.selectedStyleID = item.style;
+  state.selectedColor = item.color;
+  state.quantities = {...item.quantities};
+  state.printType = item.printType;
+  state.printColors = item.printColors;
+  if (item.imprintData && item.imprintData.length) {
+    imprints = JSON.parse(JSON.stringify(item.imprintData));
+    activeImprintId = imprints[0]?.id || null;
+    activeGarmentId = imprints[0]?.garments[0]?.id || null;
+    rebuildGarmentsFlat();
+  } else if (item.garmentData) {
+    garments = JSON.parse(JSON.stringify(item.garmentData));
+  }
+  cart = cart.filter(c => c.id !== id);
+  persistState();
+  renderCartDisplay();
+  goTo(4);
+}
+
+function renderCartDisplay() {
+  const el = document.getElementById('cartDisplay');
+  if (!el) return;
+  if (!cart.length) { el.innerHTML = ''; return; }
+
+  const items = cart.map(item => {
+    const prod = CATALOG[item.style] || {};
+    const colorData = prod.colors?.[item.color] || {};
+    const img = colorData.img || prod.img || '';
+    const total = Object.values(item.quantities).reduce((a,b)=>a+b,0);
+    const sizes = Object.entries(item.quantities).filter(([,q])=>q>0).map(([s,q])=>`${s}×${q}`).join(', ');
+
+    // Mockup thumbs from layers
+    const thumbsHtml = item.garmentData.flatMap(g => g.locations.flatMap(loc =>
+      loc.layers.filter(l => l.url || l.objectUrl).slice(0,2).map(l =>
+        `<img class="cart-mockup-thumb" src="${l.objectUrl || l.url}" alt="">`
+      )
+    )).slice(0,4).join('');
+
+    return `<div class="cart-item">
+      ${img ? `<img class="cart-item-thumb" src="${img}" alt="">` : '<div class="cart-item-thumb" style="display:flex;align-items:center;justify-content:center;font-size:1.5rem">👕</div>'}
+      <div class="cart-item-info">
+        <div class="cart-item-name">${prod.brand||''} ${prod.title||item.style}</div>
+        <div class="cart-item-sub">${item.color} · ${sizes} (${total} pcs) · ${item.printType}</div>
+        ${thumbsHtml ? `<div class="cart-mockup-thumbs">${thumbsHtml}</div>` : ''}
+      </div>
+      <div class="cart-item-actions">
+        <button class="cart-item-edit" onclick="editCartItem('${item.id}')">✏️ Edit</button>
+        <button class="cart-item-remove" onclick="removeCartItem('${item.id}')">✕</button>
+      </div>
+    </div>`;
+  }).join('');
+
+  el.innerHTML = `<div class="cart-bar">
+    <div class="cart-bar-icon">🛒</div>
+    <div class="cart-bar-info">
+      <div class="cart-bar-title">Cart — ${cart.length} garment${cart.length>1?'s':''} saved</div>
+      <div class="cart-bar-sub">All saved garments will be included in your quote</div>
+    </div>
+  </div>
+  ${items}`;
+}
+
+function goToStep5FromCart() {
+  if (!cart.length) { alert('Save at least one garment to cart first.'); return; }
+  goTo(5);
+}
+
+function showToast(msg) {
+  const t = document.getElementById('savedToast');
+  if (!t) return;
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+// ── LocalStorage persistence ────────────────────────────────────────────────
+const LS_KEY = 'lbx_portal_state_v2';
+
+function persistState() {
+  try {
+    const snap = {
+      selectedStyle: state.selectedStyle,
+      selectedStyleID: state.selectedStyleID,
+      selectedColor: state.selectedColor,
+      quantities: state.quantities,
+      printType: state.printType,
+      printColors: state.printColors,
+      dueDate: state.dueDate,
+      notes: state.notes,
+      firstName: state.firstName,
+      lastName: state.lastName,
+      email: state.email,
+      phone: state.phone,
+      company: state.company,
+      cart: cart,
+      imprints: imprints.map(imp => ({
+        id: imp.id, location: imp.location,
+        garments: imp.garments.map(g => ({
+          id: g.id, style: g.style, color: g.color, mode: g.mode,
+          _bgView: g._bgView, _wrapW: g._wrapW, _wrapH: g._wrapH,
+          inkColor: g.inkColor,
+          layers: (g.layers||[]).map(l => ({...l, _wandHistory: undefined})),
+          artFiles: (g.artFiles||[]).map(f => ({...f, file: undefined})),
+          mockupFiles: (g.mockupFiles||[]).map(f => ({...f})),
+        }))
+      })),
+    };
+    localStorage.setItem(LS_KEY, JSON.stringify(snap));
+  } catch(e) { /* quota */ }
+}
+
+function restoreState() {
+  try {
+    const raw = localStorage.getItem(LS_KEY);
+    if (!raw) return false;
+    const snap = JSON.parse(raw);
+    if (!snap || !snap.selectedStyle) return false;
+
+    state.selectedStyle    = snap.selectedStyle || null;
+    state.selectedStyleID  = snap.selectedStyleID || null;
+    state.selectedColor    = snap.selectedColor || null;
+    state.quantities       = snap.quantities || {};
+    state.printType        = snap.printType || 'Screen Print';
+    state.printColors      = snap.printColors || '1 Color';
+    state.dueDate          = snap.dueDate || '';
+    state.notes            = snap.notes || '';
+    state.firstName        = snap.firstName || '';
+    state.lastName         = snap.lastName || '';
+    state.email            = snap.email || '';
+    state.phone            = snap.phone || '';
+    state.company          = snap.company || '';
+    cart = snap.cart || [];
+    if (snap.imprints && snap.imprints.length) {
+      imprints = snap.imprints;
+      activeImprintId = imprints[0]?.id || null;
+      activeGarmentId = imprints[0]?.garments[0]?.id || null;
+      rebuildGarmentsFlat();
+    }
+
+    return true;
+  } catch(e) { return false; }
+}
+
+function applyRestoredFormFields() {
+  const setVal = (id, v) => { const el = document.getElementById(id); if (el && v) el.value = v; };
+  setVal('firstName', state.firstName);
+  setVal('lastName',  state.lastName);
+  setVal('custEmail', state.email);
+  setVal('custPhone', state.phone);
+  setVal('custCompany', state.company);
+  setVal('dueDate',   state.dueDate);
+  setVal('orderNotes', state.notes);
+
+  // Re-apply print type / colors option cards
+  document.querySelectorAll('.option-card').forEach(card => {
+    const f = card.dataset.field, v = card.dataset.val;
+    if (f && state[f]) card.classList.toggle('selected', state[f] === v);
+  });
+}
+
+
+
+// Sparse CATALOG — populated on demand as users select products
+const CATALOG = {};
+
+// Real-world printable chest widths (inches) by category — used for px↔inch scaling
+const GARMENT_CHEST_INCHES = {
+  'T-Shirts':         18,
+  'Tees':             18,
+  'T-Shirt':          18,
+  'Polo':             18,
+  'Polos':            18,
+  'Sport Shirts':     18,
+  'Woven Shirts':     18,
+  'Sweatshirts':      20,
+  'Hoodies':          20,
+  'Fleece':           20,
+  'Jackets':          21,
+  'Outerwear':        21,
+  'Vests':            19,
+  'Youth':            15,
+  'Toddler':          12,
+  'Infant':           10,
+  'Headwear':          8,
+  'Hats':              8,
+  'Bags':             12,
+  'Tote Bags':        12,
+  'Towels':           15,
+  'Aprons':           16,
+  'default':          18,
+};
+
+function getGarmentChestInches(g) {
+  const prod = CATALOG[g.style] || {};
+  const cat = prod.category || '';
+  // Try exact match first, then partial
+  if (GARMENT_CHEST_INCHES[cat]) return GARMENT_CHEST_INCHES[cat];
+  for (const key of Object.keys(GARMENT_CHEST_INCHES)) {
+    if (cat.toLowerCase().includes(key.toLowerCase()) || key.toLowerCase().includes(cat.toLowerCase())) {
+      return GARMENT_CHEST_INCHES[key];
+    }
+  }
+  return GARMENT_CHEST_INCHES['default'];
+}
+
+function getCanvasEl(gid, locId) {
+  const outer = document.getElementById(`canvas_${gid}_${locId}`);
+  if (!outer) return null;
+  return outer.querySelector('.mockup-canvas-inner') || outer;
+}
+
+// Convert canvas pixels → real inches for a given garment
+function pxToInches(px, g, locId) {
+  const canvas = getCanvasEl(g.id, locId);
+  if (!canvas) return null;
+  const r = canvas.getBoundingClientRect();
+  if (!r.width) return null;
+  const chestIn = getGarmentChestInches(g);
+  return (px / r.width) * chestIn;
+}
+
+// Convert real inches → canvas pixels for a given garment
+function inchesToPx(inches, g, locId) {
+  const canvas = getCanvasEl(g.id, locId);
+  if (!canvas) return null;
+  const r = canvas.getBoundingClientRect();
+  if (!r.width) return null;
+  const chestIn = getGarmentChestInches(g);
+  return (inches / chestIn) * r.width;
+}
+
+// Update layer.wInches whenever layer.w changes
+function syncLayerInches(layer, g, locId) {
+  const inches = pxToInches(layer.w, g, locId);
+  if (inches !== null) layer.wInches = Math.round(inches * 10) / 10;
+}
+
+// Sync layer.w from layer.wInches (when placing on a new garment)
+function syncLayerPxFromInches(layer, g, locId) {
+  if (!layer.wInches) return;
+  const px = inchesToPx(layer.wInches, g, locId);
+  if (px !== null) layer.w = Math.round(px);
+}
+
+// Full style list loaded from JSON
+let ALL_STYLES = [];
+let filteredStyles = [];
+let displayedCount = 0;
+const PAGE_SIZE = 48;
+
+let activeCat = 'all';
+let activeBrand = '';
+let activeSort = 'default';
+let activePriceRange = '';
+let activeColorFamily = '';
+
+
+let state = {
+  selectedStyle: null,
+  selectedColor: null,
+  quantities: {},
+  printType: 'Screen Print',
+  placement: 'Left Chest',
+  printColors: '1 Color',
+  dueDate: '',
+  notes: '',
+  firstName:'', lastName:'', email:'', phone:'', company:''
+};
+
+function fmt(p) { return p>0 ? '$'+p.toFixed(2) : 'Call'; }
+
+// ─── Catalog Loading ────────────────────────────────────────────────────────
+async function initCatalog() {
+  try {
+    document.getElementById('catalogStatus').textContent = 'Loading catalog...';
+    const res = await fetch('./ss_catalog.json');
+    if (!res.ok) throw new Error('Catalog fetch failed: ' + res.status);
+    ALL_STYLES = await res.json();
+
+    // Populate brand filter
+    const brands = [...new Set(ALL_STYLES.map(s => s.brand))].sort();
+    const sel = document.getElementById('brandFilter');
+    brands.forEach(b => {
+      const opt = document.createElement('option');
+      opt.value = b; opt.textContent = b;
+      sel.appendChild(opt);
+    });
+
+    applyFilters();
+  } catch(e) {
+    document.getElementById('catalogStatus').textContent = 'Failed to load catalog. Please refresh.';
+    console.error(e);
+  }
+}
+
+function applyFilters() {
+  const q = document.getElementById('searchInput').value.toLowerCase().trim();
+  const brand = document.getElementById('brandFilter').value;
+  const priceRange = document.getElementById('priceFilter')?.value || '';
+  const colorFamily = document.getElementById('colorFamilyFilter')?.value || '';
+  const sortVal = document.getElementById('sortBy')?.value || 'default';
+
+  // Parse price range
+  let priceMin = 0, priceMax = Infinity;
+  if (priceRange) {
+    const [lo, hi] = priceRange.split('-').map(Number);
+    priceMin = lo; priceMax = hi;
+  }
+
+  filteredStyles = ALL_STYLES.filter(p => {
+    if (activeCat !== 'all' && p.cat !== activeCat) return false;
+    if (brand && p.brand !== brand) return false;
+    if (q && !p.style.toLowerCase().includes(q) && !p.brand.toLowerCase().includes(q) && !p.title.toLowerCase().includes(q)) return false;
+    if (priceRange) {
+      const mp = p.minPrice || 0;
+      if (mp <= 0 || mp < priceMin || mp > priceMax) return false;
+    }
+    if (colorFamily && !(p.colorFamilies || []).includes(colorFamily)) return false;
+    return true;
+  });
+
+  // Sort
+  if (sortVal === 'price-asc') {
+    filteredStyles.sort((a,b) => (a.minPrice||0) - (b.minPrice||0));
+  } else if (sortVal === 'price-desc') {
+    filteredStyles.sort((a,b) => (b.minPrice||0) - (a.minPrice||0));
+  } else if (sortVal === 'colors-desc') {
+    filteredStyles.sort((a,b) => (b.colorCount||0) - (a.colorCount||0));
+  } else if (sortVal === 'name-asc') {
+    filteredStyles.sort((a,b) => (a.title||'').localeCompare(b.title||''));
+  } else if (sortVal === 'brand-asc') {
+    filteredStyles.sort((a,b) => (a.brand||'').localeCompare(b.brand||''));
+  }
+
+  // Update active dot indicator
+  const hasActiveFilters = brand || priceRange || colorFamily || sortVal !== 'default';
+  const dot = document.getElementById('filterActiveDot');
+  if (dot) dot.style.display = hasActiveFilters ? 'block' : 'none';
+
+  displayedCount = 0;
+  document.getElementById('productGrid').innerHTML = '';
+  document.getElementById('catalogStatus').textContent = `Showing ${Math.min(PAGE_SIZE, filteredStyles.length).toLocaleString()} of ${filteredStyles.length.toLocaleString()} styles`;
+  renderNextPage();
+}
+
+function resetFilters() {
+  const bf = document.getElementById('brandFilter');
+  const pf = document.getElementById('priceFilter');
+  const cf = document.getElementById('colorFamilyFilter');
+  const sf = document.getElementById('sortBy');
+  if (bf) bf.value = '';
+  if (pf) pf.value = '';
+  if (cf) cf.value = '';
+  if (sf) sf.value = 'default';
+  applyFilters();
+}
+
+function toggleAdvancedFilters() {
+  const panel = document.getElementById('advancedFilters');
+  const btn = document.getElementById('filterToggleBtn');
+  if (!panel) return;
+  const open = panel.style.display !== 'none';
+  panel.style.display = open ? 'none' : 'block';
+  if (btn) btn.classList.toggle('active', !open);
+}
+
+function renderNextPage() {
+  const grid = document.getElementById('productGrid');
+  const slice = filteredStyles.slice(displayedCount, displayedCount + PAGE_SIZE);
+  if (!slice.length && displayedCount === 0) {
+    grid.innerHTML = '<div class="no-results">No products found.</div>';
+    document.getElementById('loadMoreRow').style.display = 'none';
+    return;
+  }
+  slice.forEach(p => {
+    const sel = state.selectedStyle === p.style ? ' selected' : '';
+    const card = document.createElement('div');
+    card.className = 'product-card' + sel;
+    card.dataset.style = p.style;
+    card.onclick = () => selectProduct(p.style, p.id);
+    const priceStr = p.minPrice > 0 ? `From $${p.minPrice.toFixed(2)}` : '';
+    const colorsStr = p.colorCount > 0 ? `${p.colorCount} colors` : '';
+    card.innerHTML = `
+      <img src="${p.img || ''}" alt="${p.title}" loading="lazy"
+        onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22160%22 height=%22160%22%3E%3Crect fill=%22%23f4f4f4%22 width=%22160%22 height=%22160%22/%3E%3Ctext x=%2280%22 y=%2285%22 text-anchor=%22middle%22 fill=%22%23bbb%22 font-size=%2213%22%3ENo Image%3C/text%3E%3C/svg%3E'">
+      <div class="product-card-info">
+        <div class="product-brand">${p.brand}</div>
+        <div class="product-name">${p.title}</div>
+        <div class="product-style">${p.style}</div>
+        ${priceStr ? `<div class="price-badge">${priceStr}</div>` : ''}
+        ${colorsStr ? `<div class="color-count-badge">🎨 ${colorsStr}</div>` : ''}
+      </div>`;
+    grid.appendChild(card);
+  });
+  displayedCount += slice.length;
+  document.getElementById('catalogStatus').textContent = `Showing ${displayedCount.toLocaleString()} of ${filteredStyles.length.toLocaleString()} styles`;
+  document.getElementById('loadMoreRow').style.display = displayedCount < filteredStyles.length ? 'flex' : 'none';
+  document.getElementById('loadMoreBtn').textContent = `Load More (${(filteredStyles.length - displayedCount).toLocaleString()} remaining)`;
+}
+
+function loadMore() {
+  renderNextPage();
+}
+
+async function fetchProductData(styleID, styleName) {
+  if (CATALOG[styleID]) return CATALOG[styleID]; // cached by numeric ID
+  if (CATALOG[styleName]) return CATALOG[styleName]; // cached by style name
+  try {
+    const res = await fetch(`${PROXY}/ss/products?styleID=${styleID}`);
+    const products = await res.json();
+    if (!Array.isArray(products) || !products.length) return null;
+
+    // Build colors map
+    const colors = {};
+    const sizesMap = {};
+    const pricing = {};
+
+    products.forEach(p => {
+      const cn = p.colorName;
+      if (!colors[cn]) {
+        colors[cn] = {
+          hex: p.color1 || '#888',
+          img: p.colorFrontImage ? 'https://www.ssactivewear.com/' + p.colorFrontImage : '',
+          back: p.colorBackImage ? 'https://www.ssactivewear.com/' + p.colorBackImage : '',
+          direct: p.colorDirectSideImage ? 'https://www.ssactivewear.com/' + p.colorDirectSideImage : '',
+        };
+      }
+      // Collect sizes for pricing
+      if (p.sizeName && !sizesMap[p.sizeName]) {
+        const wholesale = p.piecePrice || p.customerPrice || 0;
+        const mapP = p.mapPrice || 0;
+        const retailPrice = mapP > 1 ? mapP : Math.round(wholesale * 1.9 * 100) / 100;
+        sizesMap[p.sizeName] = { order: p.sizeOrder || 99, price: retailPrice };
+      }
+    });
+
+    // Build pricing from sizes (use first color's prices)
+    const sizesSorted = Object.entries(sizesMap).sort((a,b)=>a[1].order-b[1].order);
+    sizesSorted.forEach(([sz, info]) => { pricing[sz] = info.price; });
+
+    const meta = ALL_STYLES.find(s => s.style === styleName) || {};
+    const entry = {
+      styleID: String(styleID),
+      styleName,
+      brand: products[0].brandName || meta.brand || '',
+      title: meta.title || products[0].styleName || styleName,
+      category: meta.cat || '',
+      supplier: 'S&S Activewear',
+      img: meta.img || '',
+      description: '',
+      colors,
+      pricing,
+    };
+
+    CATALOG[styleID] = entry;
+    CATALOG[styleName] = entry; // also index by style string
+    return entry;
+  } catch(e) {
+    console.error('fetchProductData error:', e);
+    return null;
+  }
+}
+
+// Alias — some code calls loadStyleDetail instead of fetchProductData
+async function loadStyleDetail(styleName) {
+  if (CATALOG[styleName]) return CATALOG[styleName];
+  const meta = ALL_STYLES.find(p => p.style === styleName || p.styleName === styleName);
+  if (!meta) return null;
+  const styleID = meta.id || meta.styleID || meta.style;
+  return fetchProductData(styleID, styleName);
+}
+
+async function selectProduct(styleName, styleID) {
+  state.selectedStyle = styleName;
+  state.selectedStyleID = styleID;
+  state.selectedColor = null;
+  state.quantities = {};
+
+  // Update card selection visually
+  document.querySelectorAll('.product-card').forEach(c => {
+    c.classList.toggle('selected', c.dataset.style === styleName);
+  });
+  document.getElementById('toStep2').disabled = false;
+  persistState();
+
+  // Show loading state immediately while data fetches
+  goTo(2);
+  document.getElementById('previewImg').src = '';
+  document.getElementById('previewBrand').textContent = 'Loading...';
+  document.getElementById('previewName').textContent = '';
+  document.getElementById('previewStyle').textContent = '';
+  document.getElementById('colorSwatches').innerHTML = '<div style="color:rgba(255,255,255,.5);font-size:.85rem">Loading colors...</div>';
+  document.getElementById('priceTableBody').innerHTML = '';
+
+  // Fetch product data then render
+  if (styleID) {
+    const data = await fetchProductData(styleID, styleName).catch(() => null);
+    if (data) renderStep2();
+  }
+}
+
+// ─── Step 1 listeners ───────────────────────────────────────────────────────
+document.getElementById('searchInput').addEventListener('input', applyFilters);
+  document.getElementById('brandFilter')?.addEventListener('change', applyFilters);
+document.getElementById('brandFilter').addEventListener('change', () => {
+  activeBrand = document.getElementById('brandFilter').value;
+  applyFilters();
+});
+document.querySelectorAll('.filter-btn').forEach(btn => btn.addEventListener('click', () => {
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  activeCat = btn.dataset.cat;
+  applyFilters();
+}));
+document.getElementById('toStep2').addEventListener('click', () => goTo(2));
+
+
+function goTo(n) {
+  currentStep = n;
+  for (let i=1;i<=7;i++) {
+    const sec = document.getElementById('sec'+i);
+    if (sec) sec.classList.toggle('active', i===n);
+    const s = document.getElementById('step'+i);
+    if (s) { s.classList.toggle('active',i===n); s.classList.toggle('done',i<n); }
+  }
+  if (n===2) renderStep2();  // async
+  if (n===4) { initGarments().then(() => { /* catalog loaded */ }); renderCartDisplay(); const b = document.getElementById('toStep5Btn'); if(b) b.disabled = cart.length === 0; }
+  if (n===5) { applyRestoredFormFields(); }
+  if (n===6) { renderSummary(); buildReviewMockups(); } // async, runs in background
+  persistState();
+  window.scrollTo(0,0);
+}
+
+// ─── Step 1 listeners (handled above) ───────────────────────────────────────
+
+// ─── Step 2 ────────────────────────────────────────────────────────────────
+function renderStep2() {
+  const p = CATALOG[state.selectedStyleID || state.selectedStyle]; if(!p) return;
+  const firstColor = state.selectedColor || Object.keys(p.colors)[0];
+  if (!state.selectedColor) { state.selectedColor = firstColor; }
+  const cd = p.colors[firstColor] || {};
+  document.getElementById('previewImg').src = cd.img || p.img || '';
+  document.getElementById('previewBrand').textContent = p.brand;
+  document.getElementById('previewName').textContent = p.title;
+  document.getElementById('previewStyle').textContent = p.styleName;
+  document.getElementById('previewDesc').textContent = p.description || '';
+  // Show piece price range under photo
+  const _ppEl = document.getElementById('previewPiecePrice');
+  if (_ppEl) {
+    const _prices = Object.values(p.pricing||{});
+    if (_prices.length) {
+      const _min = Math.min(..._prices), _max = Math.max(..._prices);
+      _ppEl.textContent = _min === _max ? fmt(_min) + ' / piece' : fmt(_min) + ' – ' + fmt(_max) + ' / piece';
+    } else { _ppEl.textContent = ''; }
+  }
+  document.getElementById('previewBadge').innerHTML =
+    `<span class="badge ${p.supplier==='SanMar'?'sanmar':'ss'}">${p.supplier}</span>`;
+  document.getElementById('priceTableBody').innerHTML =
+    Object.entries(p.pricing).map(([sz,pr])=>`<tr><td>${sz}</td><td>${fmt(pr)}/ea</td></tr>`).join('');
+
+  document.getElementById('colorSwatches').innerHTML = Object.entries(p.colors).map(([name,cd2])=>{
+    const sel = state.selectedColor===name?' selected':'';
+    return `<div class="color-swatch${sel}" style="background:${cd2.hex||'#ccc'}" title="${name}" onclick="selectColor('${name}')"></div>`;
+  }).join('');
+  document.getElementById('selectedColorLabel').textContent = state.selectedColor||'(select a color)';
+  renderPhotoStrip(p, firstColor);
+  renderQtyTable();
+}
+
+function renderPhotoStrip(p, activeColor) {
+  updateAngleStrip(p, activeColor);
+}
+
+// Build the angle photos (Front/Back/Side/Direct) for the selected color
+function updateAngleStrip(p, colorName) {
+  const cd = p.colors[colorName] || {};
+  const angles = [
+    {label:'Front',  img: cd.img    || p.img || ''},
+    {label:'Back',   img: cd.back   || ''},
+    {label:'Side',   img: cd.side   || ''},
+    {label:'Direct', img: cd.direct || ''},
+  ].filter(a => a.img);
+
+  // Build lightbox photos: all colors front-first for color browsing
+  const colorPhotos = Object.entries(p.colors).map(([n, c]) => ({name: n, img: c.img || p.img || ''}));
+  state._lbAllColors = colorPhotos;
+
+  // For angle strip, just the angles of this color
+  state._lbPhotos = angles.map(a => ({name: a.label, img: a.img}));
+  state._lbIndex  = 0;
+
+  const strip = document.getElementById('photoStrip');
+  strip.innerHTML = angles.map((a, i) => {
+    return `<div class="angle-thumb${i===0?' active':''}" onclick="thumbClick(${i})" title="Click to zoom">
+      <img src="${a.img}" alt="${a.label}" loading="lazy">
+      <span>${a.label}</span>
+    </div>`;
+  }).join('');
+}
+
+function thumbClick(angleIndex) {
+  // Update main preview image
+  const img = state._lbPhotos[angleIndex];
+  if(img) document.getElementById('previewImg').src = img.img;
+  state._lbIndex = angleIndex;
+  document.querySelectorAll('.angle-thumb').forEach((el,i) => el.classList.toggle('active', i===angleIndex));
+}
+function selectColor(name) {
+  state.selectedColor=name;
+  document.getElementById('selectedColorLabel').textContent=name;
+  const p=CATALOG[state.selectedStyleID || state.selectedStyle];
+  const cd=p.colors[name];
+  const imgSrc = cd?.img || p.img || '';
+  if(imgSrc) document.getElementById('previewImg').src=imgSrc;
+  document.querySelectorAll('.color-swatch').forEach(el=>el.classList.toggle('selected',el.title===name));
+  // rebuild angle strip for new color
+  const p2 = CATALOG[state.selectedStyleID || state.selectedStyle];
+  if(p2) updateAngleStrip(p2, name);
+  checkStep2();
+  persistState();
+}
+function renderQtyTable() {
+  const p=CATALOG[state.selectedStyleID || state.selectedStyle];
+  document.getElementById('qtyBody').innerHTML = Object.keys(p.pricing).map(sz=>{
+    const price=p.pricing[sz]||0, qty=state.quantities[sz]||'';
+    return `<tr>
+      <td><strong>${sz}</strong></td>
+      <td><input class="qty-input" type="number" min="0" value="${qty}"
+        oninput="updateQty('${sz}',this.value)"></td>
+      <td>${fmt(price)}</td>
+      <td id="sub_${sz}">${qty?fmt(price*parseInt(qty)):'—'}</td>
+    </tr>`;
+  }).join('');
+  updateTotals();
+}
+function updateQty(sz,val) {
+  const n=parseInt(val)||0;
+  if(n>0) state.quantities[sz]=n; else delete state.quantities[sz];
+  const p=CATALOG[state.selectedStyleID || state.selectedStyle];
+  const sub=document.getElementById('sub_'+sz);
+  if(sub) sub.textContent=n>0?fmt((p.pricing[sz]||0)*n):'—';
+  updateTotals(); checkStep2();
+  persistState();
+}
+function updateTotals() {
+  const t=Object.values(state.quantities).reduce((a,b)=>a+b,0);
+  document.getElementById('qtyTotal').textContent=t+' pcs';
+}
+function checkStep2() {
+  document.getElementById('toStep3').disabled=!(state.selectedColor&&Object.values(state.quantities).some(q=>q>0));
+}
+document.getElementById('toStep3').addEventListener('click',()=>goTo(3));
+
+// ─── Step 3 options ────────────────────────────────────────────────────────
+document.querySelectorAll('.option-card').forEach(card=>{
+  card.addEventListener('click',()=>{
+    const field=card.dataset.field;
+    document.querySelectorAll(`.option-card[data-field="${field}"]`).forEach(c=>c.classList.remove('selected'));
+    card.classList.add('selected');
+    state[field]=card.dataset.val;
+  });
+});
+
+// ─── Step 4 inputs ─────────────────────────────────────────────────────────
+['firstName','lastName'].forEach(id=>document.getElementById(id)?.addEventListener('input',e=>state[id]=e.target.value));
+document.getElementById('custEmail').addEventListener('input',e=>state.email=e.target.value);
+document.getElementById('custPhone').addEventListener('input',e=>state.phone=e.target.value);
+document.getElementById('custCompany').addEventListener('input',e=>state.company=e.target.value);
+
+function validateAndReview() {
+  state.firstName=(document.getElementById('firstName').value||'').trim();
+  state.lastName=(document.getElementById('lastName').value||'').trim();
+  state.email=(document.getElementById('custEmail').value||'').trim();
+  state.phone=(document.getElementById('custPhone').value||'').trim();
+  state.company=(document.getElementById('custCompany').value||'').trim();
+  if(!state.firstName||!state.lastName){alert('Please enter your full name.');return;}
+  if(!state.email||!/\S+@\S+\.\S+/.test(state.email)){alert('Please enter a valid email.');return;}
+  goTo(6);
+}
+
+// ─── Step 6 summary ────────────────────────────────────────────────────────
+function renderSummary() {
+  state.dueDate = document.getElementById('dueDate').value;
+  state.notes = document.getElementById('orderNotes').value;
+  const total = Object.values(state.quantities).reduce((a,b)=>a+b,0);
+  const sizeStr = Object.entries(state.quantities).map(([s,q])=>`${s}×${q}`).join(', ');
+
+  // Garment rows
+  const garmentRows = garments.map((g,i) => {
+    const prod = CATALOG[g.style]||{};
+    const locs = g.locations.map(l => {
+      const artCount = l.artFiles.filter(f=>!f.error).length;
+      const mockCount = l.mockupFiles.filter(f=>!f.error).length;
+      const note = artCount ? ` (${artCount} artwork file${artCount>1?'s':''})` : mockCount ? ` (${mockCount} mockup)` : '';
+      const inkNote = l.inkColor ? ` <span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${l.inkColor.hex};border:1px solid rgba(255,255,255,.3);vertical-align:middle"></span> ${l.inkColor.name}` : '';
+      return `${l.name}${note}${inkNote}`;
+    }).join(', ');
+    return `<div class="summary-row">
+      <span class="label">Garment ${i+1}</span>
+      <span class="value">${prod.brand||''} ${prod.title||g.style} · ${g.color}<br><span style="font-size:.8rem;color:var(--gray3)">${locs}</span></span>
+    </div>`;
+  }).join('');
+
+  document.getElementById('summaryCard').innerHTML = `
+    ${garmentRows}
+    <div class="summary-row"><span class="label">Sizes / Qty</span><span class="value">${sizeStr} (${total} pcs)</span></div>
+    <div class="summary-row"><span class="label">Decoration</span><span class="value">${state.printType} · ${state.printColors}</span></div>
+    ${state.dueDate?`<div class="summary-row"><span class="label">Need By</span><span class="value">${state.dueDate}</span></div>`:''}
+    ${state.notes?`<div class="summary-row"><span class="label">Notes</span><span class="value">${state.notes}</span></div>`:''}
+    <div class="summary-row" style="margin-top:8px"><span class="label">Name</span><span class="value">${state.firstName} ${state.lastName}</span></div>
+    <div class="summary-row"><span class="label">Email</span><span class="value">${state.email}</span></div>
+    ${state.phone?`<div class="summary-row"><span class="label">Phone</span><span class="value">${state.phone}</span></div>`:''}
+    ${state.company?`<div class="summary-row"><span class="label">Company</span><span class="value">${state.company}</span></div>`:''}
+  `;
+}
+
+// ─── Submit ─────────────────────────────────────────────────────────────────
+// Render a canvas mockup for a garment location and return a Blob
+async function renderLocMockupBlob(g, loc, size=600) {
+  // Make sure wrap size is current
+  // For new imprint model, loc might be virtual — find the real garment to update wrap
+  {
+    const res = findGarmentById(g.id);
+    const realG = res?.g;
+    const outerWrap = document.getElementById(`canvas_${g.id}_${loc.id}`);
+    if (outerWrap) {
+      const wrap = outerWrap.querySelector('.mockup-canvas-inner') || outerWrap;
+      const wr = wrap.getBoundingClientRect();
+      if (wr.width > 0) {
+        loc._wrapW = wr.width; loc._wrapH = wr.height || wr.width;
+        if (realG) { realG._wrapW = wr.width; realG._wrapH = wr.height || wr.width; }
+      }
+    }
+  }
+  const canvas = document.createElement('canvas');
+  canvas.width = size; canvas.height = size;
+  const ctx = canvas.getContext('2d');
+  const view = loc._bgView || getViewForLocation(loc.name);
+  const bgUrl = getGarmentImg(g, view);
+  if (bgUrl) {
+    try { const bi = await loadImageFromUrl(bgUrl); ctx.drawImage(bi,0,0,size,size); } catch(e){}
+  }
+  const wrapW = loc._wrapW || 400;
+  const wrapH = loc._wrapH || 400;
+  const scaleW = size / wrapW;
+  const scaleH = size / wrapH;
+  for (const layer of loc.layers) {
+    if (!layer.url && !layer.objectUrl) continue;
+    try {
+      const li = await loadImageFromUrl(layer.objectUrl || layer.url);
+      const dw = layer.w * scaleW;
+      const dh = dw * (li.naturalHeight/li.naturalWidth);
+      ctx.save();
+      ctx.globalAlpha = layer.opacity||1;
+      if (layer.rot) {
+        ctx.translate(layer.x*scaleW + dw/2, layer.y*scaleH + dh/2);
+        ctx.rotate((layer.rot||0)*Math.PI/180);
+        ctx.drawImage(li, -dw/2, -dh/2, dw, dh);
+      } else {
+        ctx.drawImage(li, layer.x*scaleW, layer.y*scaleH, dw, dh);
+      }
+      ctx.restore();
+    } catch(e){}
+  }
+  return new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+}
+
+// Upload a PNG Blob to Base44 CDN via the uploadMockup function
+// Returns a public https URL or null on failure
+async function uploadMockupBlob(blob, filename) {
+  try {
+    const fd = new FormData();
+    fd.append('file', blob, filename);
+    fd.append('filename', filename);
+    const r = await fetch('https://printbot-a98e71ad.base44.app/functions/uploadMockup', {
+      method: 'POST',
+      body: fd,
+    });
+    if (!r.ok) { console.warn('uploadMockup failed:', await r.text()); return null; }
+    const { url } = await r.json();
+    return url || null;
+  } catch(e) {
+    console.warn('uploadMockupBlob error:', e);
+    return null;
+  }
+}
+
+async function submitOrder() {
+  const btn=document.getElementById('submitBtn');
+  btn.disabled=true; btn.textContent='Uploading mockups...';
+
+  // Use cart items if available, otherwise use current garments
+  rebuildGarmentsFlat();
+  const allGarments = cart.length > 0
+    ? cart.flatMap(item => item.garmentData)
+    : garments;
+
+  const allQuantities = cart.length > 0
+    ? cart.reduce((acc, item) => {
+        Object.entries(item.quantities).forEach(([sz, q]) => { acc[sz] = (acc[sz]||0) + q; });
+        return acc;
+      }, {})
+    : state.quantities;
+
+  const p=CATALOG[state.selectedStyleID || state.selectedStyle] || CATALOG[allGarments[0]?.style] || {};
+  const total=Object.values(allQuantities).reduce((a,b)=>a+b,0);
+
+  // Build garment summary for notes
+  const garmentSummary = allGarments.map((g,i) => {
+    const prod = CATALOG[g.style] || {};
+    const locs = g.locations.map(l => l.name + (l.artFiles.length ? ` (${l.artFiles.length} file${l.artFiles.length>1?'s':''})` : '')).join(', ');
+    return `Garment ${i+1}: ${prod.title||g.style} / ${g.color} — ${locs}`;
+  }).join('\n');
+
+  // ── Render mockups and upload each to CDN — get back real public URLs ────
+  const mockupEntries = []; // { garment, color, location, url }
+  for (const g of allGarments) {
+    for (const loc of g.locations) {
+      let url = null;
+      if (g.mode === 'upload' && loc.mockupFiles.some(f=>f.url&&f.isImage)) {
+        // User uploaded a pre-made mockup — use its URL directly
+        const f = loc.mockupFiles.find(f=>f.url&&f.isImage);
+        url = f.url;
+      } else if (loc.layers.length > 0) {
+        try {
+          const blob = await renderLocMockupBlob(g, loc, 600);
+          if (blob) {
+            const fname = `mockup_${g.style}_${g.color.replace(/[^a-z0-9]/gi,'_')}_${loc.name.replace(/[^a-z0-9]/gi,'_')}.png`;
+            url = await uploadMockupBlob(blob, fname);
+          }
+        } catch(e) { console.warn('mockup render/upload failed:', e); }
+      }
+      if (url) mockupEntries.push({ garment: g.style, color: g.color, location: loc.name, url });
+    }
+  }
+
+  btn.textContent='Submitting...';
+
+  const payload={
+    status:'Pending',
+    product_name: allGarments.map(g=>(CATALOG[g.style]||{}).title||g.style).join(', '),
+    product_supplier: allGarments.map(g=>(CATALOG[g.style]||{}).supplier||'').filter(Boolean).join(', '),
+    product_style: allGarments.map(g=>g.style).join(', '),
+    product_style_id: allGarments.length === 1 ? (CATALOG[allGarments[0].style]?.styleID || null) : null,
+    garment_color: allGarments.map(g=>g.color).join(', '),
+    quantities: allQuantities,
+    total_qty: total,
+    placement: allGarments.flatMap(g=>g.locations.map(l=>l.name)).filter((v,i,a)=>a.indexOf(v)===i).join(', '),
+    print_type: state.printType,
+    print_colors: state.printColors,
+    customer_first_name: state.firstName,
+    customer_last_name: state.lastName,
+    customer_email: state.email,
+    customer_phone: state.phone||'',
+    customer_company: state.company||'',
+    due_date: state.dueDate||null,
+    notes: (state.notes||'') + (garmentSummary ? '\n\n--- Garments ---\n' + garmentSummary : ''),
+    mockup_url: mockupEntries[0]?.url || '',
+    artwork_urls: allGarments.flatMap(g =>
+      g.locations.flatMap(l => [
+        ...l.artFiles.filter(f=>!f.error).map(f=>f.url || f.name),
+        ...l.mockupFiles.filter(f=>!f.error).map(f=>f.url || f.name),
+      ])
+    ),
+    line_items: (() => {
+      const imprintOrder = [];
+      allGarments.forEach(g => {
+        g.locations.forEach(l => {
+          if (!imprintOrder.includes(l.name)) imprintOrder.push(l.name);
+        });
+      });
+      const getImprintInkColor = (locName) => {
+        for (const g of allGarments) {
+          const loc = g.locations.find(l => l.name === locName);
+          if (loc && loc.inkColor) return loc.inkColor;
+        }
+        return null;
+      };
+      return imprintOrder.map((locName, imprintIdx) => ({
+        imprint_num: imprintIdx + 1,
+        imprint_label: 'Imprint ' + (imprintIdx + 1),
+        placement: locName,
+        print_type: state.printType,
+        print_colors: state.printColors,
+        ink_color: getImprintInkColor(locName),
+        // Real CDN mockup URL for this imprint location
+        mockup_url: mockupEntries.find(m => m.location === locName)?.url || null,
+        garments: allGarments
+          .filter(g => g.locations.some(l => l.name === locName))
+          .map((g, gi) => {
+            const prod = CATALOG[g.style] || {};
+            const loc = g.locations.find(l => l.name === locName);
+            // Per-garment CDN mockup URL
+            const gMockup = mockupEntries.find(m => m.location===locName && m.color===g.color);
+            return {
+              garment_index: allGarments.indexOf(g) + 1,
+              product_name: prod.title || g.style,
+              product_style: g.style,
+              product_style_id: prod.styleID || null,
+              product_supplier: prod.supplier || 'S&S Activewear',
+              garment_color: g.color,
+              quantities: (() => { const ci = cart.find(c => c.garmentData && c.garmentData.some(x=>x.id===g.id)); return ci ? ci.quantities : state.quantities; })(),
+              total_qty: total,
+              artwork_files: loc ? loc.artFiles.filter(f=>!f.error).map(f=>f.url||f.name) : [],
+              mockup_url: gMockup?.url || null,
+            };
+          }),
+      }));
+    })(),
+  };
+
+  try {
+    const r=await fetch('https://printbot-a98e71ad.base44.app/functions/submitOrder',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify(payload)
+    });
+    if(r.ok){goTo(7); cart=[]; localStorage.removeItem(LS_KEY);}
+    else{throw new Error(await r.text());}
+  } catch(e) {
+    console.error(e);
+    btn.disabled=false; btn.textContent='✓ Submit Order Request';
+    alert('Something went wrong. Please try again or email us at Quotes@lbxprints.com');
+  }
+}
+
+// ══════════════════════════════════════════════════════
+// IMPRINT-BASED SYSTEM
+// ══════════════════════════════════════════════════════
+//
+// Data model:
+//   imprints = [{
+//     id,
+//     location: 'Left Chest',         // where it's printed
+//     garments: [{                     // garments sharing this imprint
+//       id, style, color, mode,
+//       artFiles:[], mockupFiles:[], layers:[], selectedLayer, inkColor,
+//       _bgView, _wrapW, _wrapH
+//     }]
+//   }]
+//
+//   activeImprintId  — which imprint tab is open
+//   activeGarmentId  — which garment chip within that imprint is active
+//
+// The old `garments` array is kept as a flat view for backwards compat
+// with submit / review code (rebuilt from imprints on demand).
+
+let imprints = [];      // new primary structure
+let garments = [];      // legacy flat view — rebuilt from imprints
+let _uid = 0;
+function uid() { return ++_uid + '_' + Date.now(); }
+
+let activeImprintId = null;
+let activeGarmentId = null;   // kept for render compat
+
+// Rebuild the flat garments[] from imprints (for submit/review/cart code)
+function rebuildGarmentsFlat() {
+  garments = imprints.flatMap(imp =>
+    imp.garments.map(g => ({
+      ...g,
+      locations: [{ id: imp.id + '_loc', name: imp.location,
+        artFiles: g.artFiles||[], mockupFiles: g.mockupFiles||[],
+        layers: g.layers||[], selectedLayer: g.selectedLayer||null,
+        inkColor: g.inkColor||null,
+        _bgView: g._bgView||null, _wrapW: g._wrapW||0, _wrapH: g._wrapH||0
+      }]
+    }))
+  );
+}
+
+// ── Imprint label helper ───────────────────────────────────────────────────
+function imprintLabel(imp, idx, printType) {
+  const isEmb = (printType||state.printType||'').toLowerCase().includes('embroid');
+  const base = isEmb ? 'Embroidery Location' : 'Imprint';
+  return base + ' ' + (idx + 1);
+}
+function imprintSublabel(imp) {
+  return imp.location || 'No location set';
+}
+
+// ── Current imprint helper ─────────────────────────────────────────────────
+function getActiveImprint() { return imprints.find(i => i.id === activeImprintId) || imprints[0]; }
+function getActiveGarmentInImprint(imp) {
+  if (!imp) return null;
+  return imp.garments.find(g => g.id === activeGarmentId) || imp.garments[0];
+}
+
+
+// ─── Common screen print + embroidery Pantone palette ──────────────────────
+// Standard colors shown by default (ROYGBIV + essentials)
+const STANDARD_COLORS = [
+  { name:'White',         hex:'#FFFFFF', pms:'White',          emb:'White' },
+  { name:'Black',         hex:'#1A1A1A', pms:'Process Black',  emb:'Black' },
+  { name:'Red',           hex:'#CC2529', pms:'PMS 186',        emb:'Red' },
+  { name:'Orange',        hex:'#F4633A', pms:'PMS 021',        emb:'Orange' },
+  { name:'Gold',          hex:'#FFCE00', pms:'PMS 116',        emb:'Gold' },
+  { name:'Yellow',        hex:'#FFD700', pms:'PMS 109',        emb:'Yellow' },
+  { name:'Kelly Green',   hex:'#009A44', pms:'PMS 354',        emb:'Kelly Green' },
+  { name:'Royal Blue',    hex:'#1034A6', pms:'PMS 286',        emb:'Royal Blue' },
+  { name:'Navy',          hex:'#001F5B', pms:'PMS 289',        emb:'Navy' },
+  { name:'Purple',        hex:'#5B2D8E', pms:'PMS 267',        emb:'Purple' },
+  { name:'Maroon',        hex:'#6B1C34', pms:'PMS 209',        emb:'Maroon' },
+  { name:'Silver',        hex:'#C0C0C0', pms:'PMS 877',        emb:'Silver' },
+];
+
+const PANTONE_COLORS = [
+  // Neutrals / White / Black
+  { name:'White',         hex:'#FFFFFF', pms:'White',       emb:'White' },
+  { name:'Black',         hex:'#1A1A1A', pms:'Process Black',emb:'Black' },
+  { name:'Warm Gray',     hex:'#9E9E8E', pms:'PMS 416',     emb:'Warm Gray' },
+  { name:'Cool Gray',     hex:'#8F9295', pms:'PMS Cool Gray 8', emb:'Steel Gray' },
+  // Reds / Pinks
+  { name:'Red',           hex:'#CC2529', pms:'PMS 186',     emb:'Red' },
+  { name:'Bright Red',    hex:'#EF3340', pms:'PMS 485',     emb:'Bright Red' },
+  { name:'Cardinal',      hex:'#9B1B30', pms:'PMS 201',     emb:'Cardinal' },
+  { name:'Maroon',        hex:'#6B1C34', pms:'PMS 209',     emb:'Maroon' },
+  { name:'Pink',          hex:'#F0779A', pms:'PMS 217',     emb:'Light Pink' },
+  { name:'Hot Pink',      hex:'#E4006D', pms:'PMS 213',     emb:'Hot Pink' },
+  { name:'Coral',         hex:'#F26649', pms:'PMS 179',     emb:'Coral' },
+  // Oranges
+  { name:'Orange',        hex:'#FA7A35', pms:'PMS 021',     emb:'Orange' },
+  { name:'Burnt Orange',  hex:'#C05131', pms:'PMS 166',     emb:'Burnt Orange' },
+  { name:'Gold',          hex:'#FFCE00', pms:'PMS 116',     emb:'Gold' },
+  // Yellows
+  { name:'Yellow',        hex:'#FFD700', pms:'PMS 109',     emb:'Yellow' },
+  { name:'Lemon',         hex:'#F5E642', pms:'PMS 102',     emb:'Lemon Yellow' },
+  // Greens
+  { name:'Lime Green',    hex:'#5DC122', pms:'PMS 375',     emb:'Lime Green' },
+  { name:'Kelly Green',   hex:'#009A44', pms:'PMS 354',     emb:'Kelly Green' },
+  { name:'Forest Green',  hex:'#2D5016', pms:'PMS 357',     emb:'Forest Green' },
+  { name:'Olive',         hex:'#6B6B2A', pms:'PMS 384',     emb:'Olive' },
+  { name:'Teal',          hex:'#007D7F', pms:'PMS 3282',    emb:'Teal' },
+  { name:'Mint',          hex:'#6ECEB2', pms:'PMS 333',     emb:'Mint Green' },
+  // Blues
+  { name:'Sky Blue',      hex:'#69B3E7', pms:'PMS 292',     emb:'Sky Blue' },
+  { name:'Carolina Blue', hex:'#4F9FD8', pms:'PMS 279',     emb:'Carolina Blue' },
+  { name:'Royal Blue',    hex:'#1034A6', pms:'PMS 286',     emb:'Royal Blue' },
+  { name:'Navy',          hex:'#001F5B', pms:'PMS 289',     emb:'Navy' },
+  { name:'Columbia Blue', hex:'#9BB7D4', pms:'PMS 277',     emb:'Columbia Blue' },
+  { name:'Cobalt',        hex:'#0047AB', pms:'PMS 287',     emb:'Cobalt Blue' },
+  // Purples / Violets
+  { name:'Purple',        hex:'#5B2D8E', pms:'PMS 267',     emb:'Purple' },
+  { name:'Violet',        hex:'#3D1A8E', pms:'PMS 2685',    emb:'Violet' },
+  { name:'Lavender',      hex:'#A99FD6', pms:'PMS 2715',    emb:'Lavender' },
+  // Browns
+  { name:'Brown',         hex:'#5C3317', pms:'PMS 4625',    emb:'Brown' },
+  { name:'Tan',           hex:'#C8A97E', pms:'PMS 7527',    emb:'Khaki' },
+  // Metallics
+  { name:'Silver',        hex:'#C0C0C0', pms:'PMS 877',     emb:'Silver' },
+  { name:'Old Gold',      hex:'#CFB53B', pms:'PMS 871',     emb:'Old Gold' },
+  { name:'Metallic Gold', hex:'#D4AF37', pms:'PMS 872',     emb:'Metallic Gold' },
+  // Athletic / Neon
+  { name:'Athletic Gold', hex:'#FFC72C', pms:'PMS 7549',    emb:'Athletic Gold' },
+  { name:'Neon Yellow',   hex:'#EFFF00', pms:'PMS 389',     emb:'Neon Yellow' },
+  { name:'Neon Green',    hex:'#39FF14', pms:'PMS 802',     emb:'Neon Green' },
+  { name:'Neon Orange',   hex:'#FF6700', pms:'PMS 165',     emb:'Neon Orange' },
+  { name:'Neon Pink',     hex:'#FF1493', pms:'PMS 812',     emb:'Neon Pink' },
+];
+
+const LOCATIONS = ['Front', 'Back', 'Left Chest', 'Right Chest', 'Full Front', 'Full Back', 'Left Sleeve', 'Right Sleeve', 'Hat Front', 'Hat Back', 'Hood', 'Hem', 'Leg', 'Custom'];
+
+async function initGarments() {
+  // Ensure product is in CATALOG before rendering (handles direct navigation / restore)
+  const styleKey = state.selectedStyleID || state.selectedStyle;
+  if (styleKey && (!CATALOG[styleKey] || !Object.keys(CATALOG[styleKey]?.colors||{}).length)) {
+    try {
+      const meta = ALL_STYLES.find(p =>
+        p.style === styleKey || p.styleName === styleKey ||
+        String(p.id) === String(styleKey) || String(p.styleID) === String(styleKey)
+      );
+      if (meta) {
+        await fetchProductData(meta.id || meta.styleID || meta.style, meta.style || meta.styleName);
+      } else {
+        // Try loading by styleKey directly
+        await loadStyleDetail(styleKey).catch(()=>{});
+      }
+    } catch(e) { console.warn('initGarments catalog load failed:', e); }
+  }
+
+  if (imprints.length === 0) {
+    addImprint('Left Chest', state.selectedStyle, state.selectedColor);
+  } else if (state._addingGarment) {
+    state._addingGarment = false;
+    const imp = getActiveImprint() || imprints[0];
+    if (imp) addGarmentToImprint(imp, state.selectedStyle, state.selectedColor);
+  } else {
+    imprints.forEach(imp => {
+      if (imp.garments[0]) {
+        imp.garments[0].style = imp.garments[0].style || state.selectedStyle;
+        imp.garments[0].color = imp.garments[0].color || state.selectedColor;
+      }
+    });
+  }
+  rebuildGarmentsFlat();
+  renderImprintWorkspace();
+}
+
+function addImprint(location, style, color) {
+  const imp = { id: uid(), location: location || 'Left Chest', garments: [] };
+  addGarmentToImprint(imp, style, color);
+  imprints.push(imp);
+  activeImprintId = imp.id;
+  rebuildGarmentsFlat();
+  renderImprintWorkspace();
+  return imp;
+}
+
+function removeImprint(impId) {
+  if (imprints.length <= 1) return;
+  imprints = imprints.filter(i => i.id !== impId);
+  if (activeImprintId === impId) activeImprintId = imprints[0]?.id || null;
+  rebuildGarmentsFlat();
+  renderImprintWorkspace();
+}
+
+function addGarmentToImprint(imp, style, color) {
+  const g = {
+    id: uid(),
+    style: style || state.selectedStyle,
+    color: color || state.selectedColor,
+    mode: 'create',
+    artFiles: [],
+    mockupFiles: [],
+    layers: [],
+    selectedLayer: null,
+    inkColor: null,
+    _bgView: null,
+    _wrapW: 0,
+    _wrapH: 0,
+  };
+  imp.garments.push(g);
+  activeGarmentId = g.id;
+  return g;
+}
+
+function removeGarmentFromImprint(impId, gid) {
+  const imp = imprints.find(i => i.id === impId);
+  if (!imp || imp.garments.length <= 1) return;
+  imp.garments = imp.garments.filter(g => g.id !== gid);
+  if (activeGarmentId === gid) activeGarmentId = imp.garments[0]?.id || null;
+  rebuildGarmentsFlat();
+  renderImprintWorkspace();
+}
+
+// Legacy shim — old code calls addGarment(style, color)
+function addGarment(style, color) {
+  // Add a new imprint with a fresh garment
+  const nextLoc = LOCATIONS[imprints.length % LOCATIONS.length] || 'Front';
+  addImprint(nextLoc, style, color);
+}
+
+// Legacy shim — old code calls removeGarment(gid)
+function removeGarment(gid) {
+  // Find and remove garment; if imprint becomes empty, remove it
+  imprints.forEach(imp => {
+    if (imp.garments.some(g => g.id === gid)) {
+      if (imp.garments.length > 1) {
+        imp.garments = imp.garments.filter(g => g.id !== gid);
+      } else if (imprints.length > 1) {
+        imprints = imprints.filter(i => i.id !== imp.id);
+      }
+    }
+  });
+  rebuildGarmentsFlat();
+  renderImprintWorkspace();
+}
+
+// Legacy location shims (no-ops or mapped)
+function addLocation(g, name) {
+  // In new model, locations = imprints. This is only called during initGarments
+  // so we just ignore — the imprint location is the name
+  return { id: uid(), name: name||'Front', artFiles:[], mockupFiles:[], layers:[], selectedLayer:null, inkColor:null };
+}
+function removeLocation(g, locId) { renderImprintWorkspace(); }
+function setActiveLocation(gid, idx) { renderImprintWorkspace(); }
+function toggleGarment(gid) {}
+function setGarmentMode(gid, mode) {
+  imprints.forEach(imp => imp.garments.forEach(g => { if (g.id === gid) g.mode = mode; }));
+  rebuildGarmentsFlat();
+  renderImprintWorkspace();
+}
+
+// ── Render everything ──────────────────────────────────────────────────────
+function renderGarmentList() {
+  rebuildGarmentsFlat();
+  renderImprintWorkspace();
+  renderLiveQuote();
+}
+
+// ── Active garment / imprint helpers for downstream code ──────────────────
+// Return the active garment's "loc" object (the imprint location data)
+function getActiveLoc() {
+  const imp = getActiveImprint();
+  if (!imp) return null;
+  const g = getActiveGarmentInImprint(imp);
+  return g ? { ...g, name: imp.location } : null;
+}
+
+function renderGarmentSidebar() { renderImprintWorkspace(); } // legacy shim
+
+function renderImprintWorkspace() {
+  const strip = document.getElementById('imprintTabStrip');
+  const panel = document.getElementById('imprintPanel');
+  if (!strip || !panel) return;
+
+  // Ensure activeImprintId is valid
+  if (!imprints.find(i => i.id === activeImprintId)) {
+    activeImprintId = imprints[0]?.id || null;
+  }
+
+  // Update subtitle based on print type
+  const subEl = document.getElementById('sec4Subtitle');
+  if (subEl) {
+    const isEmb = (state.printType||'').toLowerCase().includes('embroid');
+    subEl.textContent = isEmb
+      ? 'Set up each embroidery location, upload artwork, and add garments that share the same location'
+      : 'Set up each print location, upload artwork, and add garments that share the same imprint';
+  }
+
+  // ── Tab strip ──────────────────────────────────────────────────────────
+  strip.innerHTML = imprints.map((imp, idx) => {
+    const label = imprintLabel(imp, idx);
+    const sub = imprintSublabel(imp);
+    const isActive = imp.id === activeImprintId;
+    return `<div class="imprint-tab ${isActive?'active':''}" onclick="setActiveImprint('${imp.id}')">
+      <span class="imprint-tab-num">${idx+1}</span>
+      <span>
+        <div style="font-size:.78rem;font-weight:700">${label}</div>
+        <div style="font-size:.66rem;opacity:.55;margin-top:1px">${sub}</div>
+      </span>
+      ${imprints.length > 1 ? `<button class="imprint-tab-del" onclick="event.stopPropagation();removeImprint('${imp.id}')" title="Remove imprint">✕</button>` : ''}
+    </div>`;
+  }).join('') +
+  `<button class="imprint-tab-add" onclick="addImprintPrompt()">＋ Add ${(state.printType||'').toLowerCase().includes('embroid')?'Location':'Imprint'}</button>`;
+
+  // ── Active imprint panel ───────────────────────────────────────────────
+  const imp = imprints.find(i => i.id === activeImprintId);
+  if (!imp) { panel.innerHTML = ''; return; }
+  const impIdx = imprints.indexOf(imp);
+  const label = imprintLabel(imp, impIdx);
+
+  // Ensure activeGarmentId is valid within this imprint
+  if (!imp.garments.find(g => g.id === activeGarmentId)) {
+    activeGarmentId = imp.garments[0]?.id || null;
+  }
+  const activeG = imp.garments.find(g => g.id === activeGarmentId);
+
+  // ── Garment chip row ───────────────────────────────────────────────────
+  const garmentChips = imp.garments.map((g, gi) => {
+    const prod = CATALOG[g.style] || {};
+    const imgSrc = getGarmentImg(g, 'front');
+    const isActiveChip = g.id === activeGarmentId;
+    return `<div class="imprint-garment-chip ${isActiveChip?'active-chip':''}" onclick="setActiveGarmentInImprint('${imp.id}','${g.id}')">
+      <img src="${imgSrc}" alt="" onerror="this.style.opacity='.3';if(!this.dataset.retried){this.dataset.retried=1;loadStyleDetail('${g.style}').then(()=>setTimeout(()=>{this.src=getGarmentImg({style:'${g.style}',color:'${g.color}'},'front');this.style.opacity='';},100)).catch(()=>{})}"  >
+      <div class="imprint-garment-chip-info">
+        <div class="imprint-garment-chip-name">${prod.brand||''} ${prod.title||g.style||'Garment'+(gi+1)}</div>
+        <div class="imprint-garment-chip-color">${g.color||''}</div>
+      </div>
+      ${imp.garments.length > 1 ? `<button class="imprint-garment-chip-del" onclick="event.stopPropagation();removeGarmentFromImprint('${imp.id}','${g.id}')" title="Remove garment">✕</button>` : ''}
+    </div>`;
+  }).join('');
+
+  // ── Location selector ───────────────────────────────────────────────────
+  const locOptions = LOCATIONS.map(l => `<option value="${l}" ${l===imp.location?'selected':''}>${l}</option>`).join('');
+
+  panel.innerHTML = `
+    <div class="imprint-panel-header">
+      <div class="imprint-panel-title">
+        <h3>${label}</h3>
+        <div class="sub">Design shared across all garments below</div>
+      </div>
+    </div>
+    <div class="imprint-garments-section">
+      <div class="imprint-garments-label">📦 Garments using this ${(state.printType||'').toLowerCase().includes('embroid')?'location':'imprint'}</div>
+      <div class="imprint-garment-chips">
+        ${garmentChips}
+        <button class="add-garment-chip-btn" onclick="addGarmentToCurrentImprint()">＋ Add garment</button>
+      </div>
+    </div>
+    <div class="imprint-mockup-body" id="imprintMockupBody">
+      ${activeG ? renderGarmentMockupBody(activeG, imp) : '<p style="color:var(--gray3)">No garment selected.</p>'}
+    </div>`;
+
+  // Re-render layers on canvas
+  if (activeG && activeG.mode === 'create') {
+    requestAnimationFrame(() => {
+      // Re-read activeG fresh in case state changed during render
+      const _imp = imprints.find(i => i.id === activeImprintId) || imp;
+      const _g = _imp?.garments.find(x => x.id === activeGarmentId) || activeG;
+      const fakeG = { ..._g, locations: [{ id: _imp.id+'_loc', name: _imp.location,
+        layers: _g.layers, artFiles: _g.artFiles, mockupFiles: _g.mockupFiles,
+        selectedLayer: _g.selectedLayer, inkColor: _g.inkColor,
+        _bgView: _g._bgView, _wrapW: _g._wrapW, _wrapH: _g._wrapH }] };
+      const fakeLoc = fakeG.locations[0];
+      renderLayersForGarment(fakeG, fakeLoc);
+    });
+  }
+}
+
+function renderActiveGarmentPanel() { renderImprintWorkspace(); } // legacy shim
+
+// ── New: render just the mockup body for one garment within an imprint ──────
+function renderGarmentMockupBody(g, imp) {
+  // g = garment object from imp.garments; imp = the imprint
+  // "loc" concept is flattened — all data is directly on g
+  const loc = {
+    id: imp.id + '_loc',
+    name: imp.location,
+    artFiles: g.artFiles || [],
+    mockupFiles: g.mockupFiles || [],
+    layers: g.layers || [],
+    selectedLayer: g.selectedLayer || null,
+    inkColor: g.inkColor || null,
+    _bgView: g._bgView || null,
+    _wrapW: g._wrapW || 0,
+    _wrapH: g._wrapH || 0,
+  };
+  const prod = CATALOG[g.style] || CATALOG[state.selectedStyleID] || CATALOG[state.selectedStyle] || {};
+
+  // If prod has no colors, kick off background load then patch images in-place
+  if (!Object.keys(prod.colors||{}).length && g.style) {
+    loadStyleDetail(g.style).then(p => {
+      if (!p) return;
+      // Patch bg image directly (avoid losing canvas layer state)
+      const _locId = imp.id + '_loc';
+      const bgImg = document.getElementById('bg_' + g.id + '_' + _locId);
+      if (bgImg) {
+        const view = g._bgView || getViewForLocation(imp.location);
+        const freshSrc = getGarmentImg(g, view);
+        if (freshSrc) bgImg.src = freshSrc;
+      }
+      // Re-render fully only if bg is still missing (chips also need update)
+      setTimeout(() => renderImprintWorkspace(), 80);
+    }).catch(()=>{});
+  }
+
+  // Location selector at top of mockup body
+  const locOptions2 = LOCATIONS.map(l => `<option value="${l}" ${l===imp.location?'selected':''}>${l}</option>`).join('');
+  const locationSelectorHtml = `<div class="imprint-location-row">
+    <span class="imprint-location-label">📍 Print Location:</span>
+    <select class="imprint-location-select" onchange="setImprintLocation('${imp.id}',this.value)">${locOptions2}</select>
+  </div>`;
+
+  // Art files
+  const artHtml = renderArtFilesHtml(loc.artFiles, g.id, loc.id);
+
+  // Reuse art
+  const reusePool = getReusableArt(g.id, loc.id);
+  let reuseHtml = '';
+  if (reusePool.length) {
+    const items = reusePool.map((f,i) => {
+      const used = loc.artFiles.some(x=>x.name===f.name&&x.url===f.url);
+      const thumb = f.isImage&&(f.objectUrl||f.url)
+        ? `<img src="${f.objectUrl||f.url}" alt="">`
+        : `<div class="icon">${extIcon(f.name.split('.').pop().toUpperCase())}</div>`;
+      return `<div class="reuse-art-item ${used?'used':''}" onclick="reuseArtFile('${g.id}','${loc.id}',${i})" title="${f.name}">${thumb}<span>${f.name}</span>${used?'<span class="used-badge">✓</span>':''}</div>`;
+    }).join('');
+    reuseHtml = `<button class="reuse-art-btn" onclick="toggleReusePanel('${g.id}','${loc.id}')">📂 Reuse artwork (${reusePool.length})</button>
+      <div class="reuse-art-panel" id="reusePanel_${g.id}_${loc.id}"><div style="font-size:.78rem;color:var(--gray3);font-weight:600;margin-bottom:6px">Artwork from other garments:</div><div class="reuse-art-grid">${items}</div></div>`;
+  }
+
+  // Mode toggle
+  const modeBtns = `<div class="mockup-mode-toggle" style="margin-top:14px">
+    <button class="mode-btn ${g.mode==='create'?'active':''}" onclick="setGarmentMode('${g.id}','create')">🎨 Create mockup</button>
+    <button class="mode-btn ${g.mode==='upload'?'active':''}" onclick="setGarmentMode('${g.id}','upload')">✅ I have a mockup</button>
+  </div>`;
+
+  // Mockup creator panel
+  const bgView = loc._bgView || getViewForLocation(loc.name);
+  const hasLayers = loc.layers.length > 0;
+  const selLayer = loc.layers.find(l=>l.id===loc.selectedLayer);
+
+  const mockupCreator = g.mode==='create' ? `
+    <div class="mockup-studio" style="margin-top:16px">
+      <!-- Canvas area -->
+      <div class="mockup-canvas-area">
+        <div class="view-tabs">
+          <button class="view-tab ${bgView==='front'?'active':''}" onclick="setLocBgView('${g.id}','${loc.id}','front')">👕 Front</button>
+          <button class="view-tab ${bgView==='back'?'active':''}" onclick="setLocBgView('${g.id}','${loc.id}','back')">👕 Back</button>
+          <button class="view-tab ${bgView==='left'?'active':''}" onclick="setLocBgView('${g.id}','${loc.id}','left')">◀ Left</button>
+          <button class="view-tab ${bgView==='right'?'active':''}" onclick="setLocBgView('${g.id}','${loc.id}','right')">▶ Right</button>
+        </div>
+        <div class="mockup-canvas-wrap" id="canvas_${g.id}_${loc.id}">
+          <div class="mockup-canvas-inner">
+            <img id="bg_${g.id}_${loc.id}" class="mockup-bg" src="${getGarmentImg(g, bgView)}" alt="Garment">
+            <div id="artNotice_${g.id}_${loc.id}" style="position:absolute;inset:0;display:${hasLayers?'none':'flex'};align-items:center;justify-content:center;pointer-events:none">
+              <div style="background:rgba(0,0,0,.55);color:#fff;font-size:.8rem;text-align:center;padding:12px 18px;border-radius:10px;line-height:1.6">
+                ⬆️ Upload artwork above<br><span style="opacity:.7;font-size:.72rem">to position it on the mockup</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- Right panel -->
+      <div class="mockup-sidebar">
+        <!-- Layers -->
+        <div class="mockup-panel">
+          <h4>🎨 Layers</h4>
+          <div id="layerList_${g.id}_${loc.id}">
+            ${!hasLayers ? '<p style="font-size:.78rem;color:var(--gray3)">Upload artwork to add layers.</p>' : ''}
+          </div>
+        </div>
+        <!-- Ink Color Picker -->
+        <div class="mockup-panel ink-picker-wrap">
+          <div class="ink-picker-label">🎨 Ink Color</div>
+          <div id="inkSwatches_${g.id}_${loc.id}" class="ink-swatches">${renderInkSwatchesHtml(g.id, loc.id, loc.inkColor)}</div>
+          <div class="ink-selected-row" id="inkSelectedRow_${g.id}_${loc.id}">
+            <div class="ink-selected-dot" id="inkDot_${g.id}_${loc.id}" style="background:${loc.inkColor?.hex||'transparent'}"></div>
+            <span class="ink-selected-name" id="inkName_${g.id}_${loc.id}">${loc.inkColor?.name||'No color selected'}</span>
+            <span class="ink-selected-pms" id="inkPms_${g.id}_${loc.id}">${loc.inkColor?.pms||''}</span>
+          </div>
+          <div style="margin-top:4px">
+            <button onclick="clearInkColor('${g.id}','${loc.id}')" style="font-size:.7rem;padding:3px 10px;border-radius:6px;border:1px solid var(--gray2);background:rgba(255,255,255,.08);color:var(--gray3);cursor:pointer">✕ Clear color</button>
+          </div>
+        </div>
+        <!-- Controls for selected layer -->
+        <div class="mockup-panel" id="layerCtrl_${g.id}_${loc.id}" style="display:${selLayer?'flex':'none'}">
+          <h4>⚙️ Layer Controls</h4>
+          <div class="slider-row">
+            <div class="slider-row-top">
+              <label>Size</label>
+              <span class="val" id="ctrlSizeVal_${g.id}_${loc.id}">${selLayer ? (() => { const in_ = pxToInches(selLayer.w, g, loc.id); return in_ ? in_.toFixed(1)+'"' : Math.round(selLayer.w)+'px'; })() : '—'}</span>
+            </div>
+            <input type="range" min="20" max="400" value="${selLayer?selLayer.w:120}" id="ctrlSize_${g.id}_${loc.id}"
+              oninput="resizeSelectedLayer('${g.id}','${loc.id}',this.value)">
+          </div>
+          <div class="slider-row">
+            <div class="slider-row-top">
+              <label>Rotate</label>
+              <span class="val" id="ctrlRotVal_${g.id}_${loc.id}">${selLayer?Math.round(selLayer.rot||0):0}°</span>
+            </div>
+            <input type="range" min="-180" max="180" value="${selLayer?selLayer.rot||0:0}" id="ctrlRot_${g.id}_${loc.id}"
+              oninput="rotateSelectedLayer('${g.id}','${loc.id}',this.value)">
+          </div>
+          <div class="slider-row">
+            <div class="slider-row-top">
+              <label>Opacity</label>
+              <span class="val" id="ctrlOpacityVal_${g.id}_${loc.id}">${selLayer?Math.round((selLayer.opacity||1)*100):100}%</span>
+            </div>
+            <input type="range" min="10" max="100" value="${selLayer?Math.round((selLayer.opacity||1)*100):100}" id="ctrlOpacity_${g.id}_${loc.id}"
+              oninput="opacitySelectedLayer('${g.id}','${loc.id}',this.value)">
+          </div>
+        </div>
+        <!-- BG Remove / Magic Wand -->
+        ${selLayer ? `
+        <div class="mockup-panel" style="gap:6px">
+          <h4>🪄 Background Removal</h4>
+          <button class="bg-remove-btn${selLayer._wandActive?" active-wand":""}" id="bgRemoveBtn_${g.id}_${loc.id}_${selLayer.id}"
+            onclick="toggleWandMode('${g.id}','${loc.id}','${selLayer.id}')">
+            ${selLayer._wandActive ? '🪄 Click image to pick color…' : '🪄 Magic Wand'}
+          </button>
+          <div class="wand-tolerance-row">
+            <label>Tolerance</label>
+            <input type="range" min="0" max="120" value="${selLayer._wandTolerance||32}" id="wandTol_${g.id}_${loc.id}"
+              oninput="setWandTolerance('${g.id}','${loc.id}','${selLayer.id}',this.value)">
+            <span class="val" id="wandTolVal_${g.id}_${loc.id}">${selLayer._wandTolerance||32}</span>
+          </div>
+          ${selLayer._wandHistory?.length ? `<button class="wand-undo-btn" onclick="undoWand('${g.id}','${loc.id}','${selLayer.id}')">↩ Undo last removal</button>` : ''}
+        </div>` : ''}
+      </div>
+    </div>` : '';
+
+  // Mockup upload
+  const mockupUpload = g.mode==='upload' ? `
+    <div style="margin-top:14px">
+      <div class="drop-zone" onclick="document.getElementById('mInput_${g.id}_${loc.id}').click()">
+        <input type="file" id="mInput_${g.id}_${loc.id}" multiple accept=".png,.jpg,.jpeg,.pdf" style="display:none"
+          onchange="handleMockupFileInput(event,'${g.id}','${loc.id}')">
+        <div class="drop-zone-icon">🖼️</div>
+        <div class="drop-zone-label">Drop mockup images here</div>
+        <div class="drop-zone-sub">PNG · JPEG · PDF</div>
+      </div>
+      ${renderMockupFilesHtml(loc.mockupFiles, g.id, loc.id)}
+    </div>` : '';
+
+  // Return the full HTML — renderImprintWorkspace injects this into imprintMockupBody
+  return `${locationSelectorHtml}
+    <!-- Style + color selectors -->
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px">
+      <div style="flex:2;min-width:160px">
+        <label style="font-size:.78rem;font-weight:600;color:var(--gray4);display:block;margin-bottom:4px">Style</label>
+        <select style="width:100%;padding:8px 10px;border:1.5px solid var(--gray2);border-radius:8px;font-size:.82rem;background:rgba(255,255,255,.08);color:#f0f0f0"
+          onchange="setGarmentStyle('${g.id}',this.value)">
+          ${Object.keys(prod.colors||{}).length
+            ? `<option value="${g.style}" selected>${prod.brand||''} ${prod.title||g.style} (${g.style})</option>`
+            : `<option value="${g.style}" selected>${g.style}</option>`}
+        </select>
+      </div>
+      <div style="flex:1;min-width:120px">
+        <label style="font-size:.78rem;font-weight:600;color:var(--gray4);display:block;margin-bottom:4px">Color</label>
+        <select style="width:100%;padding:8px 10px;border:1.5px solid var(--gray2);border-radius:8px;font-size:.82rem;background:rgba(255,255,255,.08);color:#f0f0f0"
+          onchange="setGarmentColor('${g.id}',this.value)">
+          ${Object.keys(prod.colors||{}).map(col =>
+            `<option value="${col}" ${col===g.color?'selected':''}>${col}</option>`
+          ).join('')}
+        </select>
+      </div>
+    </div>
+
+    <!-- Artwork upload -->
+    <div style="background:rgba(255,255,255,.04);border:1px solid var(--glass-border);border-radius:10px;padding:14px;margin-bottom:4px">
+      <div style="font-size:.8rem;font-weight:700;color:var(--gray4);margin-bottom:8px">📎 Artwork for <em>${loc.name}</em></div>
+      <div class="drop-zone" onclick="document.getElementById('input_${g.id}_${loc.id}').click()">
+        <input type="file" id="input_${g.id}_${loc.id}" multiple
+          accept=".ai,.psd,.eps,.pdf,.png,.jpg,.jpeg,.svg,.tif,.tiff" style="display:none"
+          onchange="handleArtFileInput(event,'${g.id}','${loc.id}')">
+        <div class="drop-zone-icon">📎</div>
+        <div class="drop-zone-label">Drop artwork here or click to browse</div>
+        <div class="drop-zone-sub">.AI · .PSD · .EPS · .PDF · PNG · JPEG</div>
+      </div>
+      ${artHtml}
+      ${reuseHtml}
+    </div>
+
+    ${modeBtns}
+    ${mockupCreator}
+    ${mockupUpload}
+  `;
+}
+
+
+function setActiveImprint(impId) {
+  activeImprintId = impId;
+  const imp = imprints.find(i => i.id === impId);
+  if (imp && !imp.garments.find(g => g.id === activeGarmentId)) {
+    activeGarmentId = imp.garments[0]?.id || null;
+  }
+  renderImprintWorkspace();
+}
+
+function setActiveGarmentInImprint(impId, gid) {
+  activeImprintId = impId;
+  activeGarmentId = gid;
+  renderImprintWorkspace();
+}
+
+function addGarmentToCurrentImprint() {
+  const imp = getActiveImprint();
+  if (!imp) return;
+  // Show a small inline picker or just clone the main style/color
+  const g = addGarmentToImprint(imp, state.selectedStyle, state.selectedColor);
+  activeGarmentId = g.id;
+  rebuildGarmentsFlat();
+  renderImprintWorkspace();
+  // Scroll to the chips row
+  setTimeout(() => {
+    const body = document.getElementById('imprintMockupBody');
+    if (body) body.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }, 100);
+}
+
+function addImprintPrompt() {
+  // Reuse the location modal to pick the new imprint's print location
+  const impId = document.getElementById('locModalImpId');
+  if (impId) impId.value = '';
+  const sel = document.getElementById('locModalSelect');
+  if (sel) sel.value = '';
+  const custom = document.getElementById('customLocInput');
+  if (custom) { custom.value = ''; custom.style.display = 'none'; }
+  const modal = document.getElementById('locModal');
+  if (modal) { modal.style.display = 'flex'; modal.dataset.mode = 'new_imprint'; }
+  else {
+    // Fallback: prompt
+    const loc = prompt('Print location for new imprint (e.g. Back, Full Front, Left Sleeve):');
+    if (loc && loc.trim()) addImprint(loc.trim(), state.selectedStyle, state.selectedColor);
+  }
+}
+
+// ── Wire garment color/style change inside imprint panel ──────────────────
+function setImprintGarmentStyle(gid, newStyle) {
+  imprints.forEach(imp => imp.garments.forEach(g => {
+    if (g.id === gid) {
+      g.style = newStyle;
+      if (!CATALOG[newStyle]) loadStyleDetail(newStyle);
+    }
+  }));
+  rebuildGarmentsFlat();
+  renderImprintWorkspace();
+}
+function setImprintGarmentColor(gid, newColor) {
+  imprints.forEach(imp => imp.garments.forEach(g => { if (g.id === gid) g.color = newColor; }));
+  rebuildGarmentsFlat();
+  renderImprintWorkspace();
+}
+function setImprintLocation(impId, loc) {
+  const imp = imprints.find(i => i.id === impId);
+  if (!imp) return;
+  imp.location = loc;
+  rebuildGarmentsFlat();
+  renderImprintWorkspace();
+}
+
+function removeActiveGarment() {
+  if (garments.length <= 1) return;
+  garments = garments.filter(g => g.id !== activeGarmentId);
+  activeGarmentId = garments[0]?.id || null;
+  renderGarmentList();
+}
+
+function renderLiveQuote() {
+  const panel = document.getElementById('liveQuotePreview');
+  const linesEl = document.getElementById('liveQuoteLines');
+  if (!panel || !linesEl) return;
+
+  const totalQty = Object.values(state.quantities||{}).reduce((s,v)=>s+(parseInt(v)||0),0);
+  if (!totalQty) { panel.style.display='none'; return; }
+
+  const prod = CATALOG[state.selectedStyle] || {};
+  const pricing = prod.pricing || {};
+  let lines = [];
+  let subtotal = 0;
+
+  // Garment cost
+  const sizes = Object.entries(state.quantities||{}).filter(([,v])=>parseInt(v)>0);
+  sizes.forEach(([sz,qty]) => {
+    const price = pricing[sz] || Object.values(pricing)[0] || 0;
+    const ext = price * parseInt(qty);
+    subtotal += ext;
+    lines.push(`<div class="quote-line"><span class="ql">${sz} × ${qty}</span><span class="qr">${fmt(ext)}</span></div>`);
+  });
+
+  // Printing estimate
+  const printColors = parseInt(state.printColors) || 1;
+  const printEst = printColors * 0.85 * totalQty;
+  subtotal += printEst;
+  lines.push(`<div class="quote-line"><span class="ql">Print est. (${printColors} color${printColors>1?'s':''})</span><span class="qr">~${fmt(printEst)}</span></div>`);
+
+  lines.push(`<div class="quote-line"><span class="ql">Estimated Total</span><span class="qr">~${fmt(subtotal)}</span></div>`);
+
+  linesEl.innerHTML = lines.join('');
+  panel.style.display = 'block';
+}
+
+// ── Core lookup: finds a garment by id across all imprints ──────────────────
+// Returns { g, loc, imp } where loc is a virtual object matching the new model.
+// locId is expected to be imp.id + '_loc' (or can be null for just the garment).
+function findGarmentById(gid, locId) {
+  for (const imp of imprints) {
+    const g = imp.garments.find(x => x.id === gid);
+    if (!g) continue;
+    // Build the virtual loc from the garment's own data
+    const resolvedLocId = locId || (imp.id + '_loc');
+    const loc = {
+      id: resolvedLocId,
+      name: imp.location,
+      artFiles: g.artFiles || [],
+      mockupFiles: g.mockupFiles || [],
+      layers: g.layers || [],
+      selectedLayer: g.selectedLayer || null,
+      inkColor: g.inkColor || null,
+      _bgView: g._bgView || null,
+      _wrapW: g._wrapW || 0,
+      _wrapH: g._wrapH || 0,
+    };
+    return { g, loc, imp };
+  }
+  // Fallback: search flat garments array (old model compatibility)
+  const g = garments.find(x => x.id === gid);
+  if (!g) return null;
+  const loc = locId
+    ? (g.locations || []).find(l => l.id === locId) || g.locations?.[0]
+    : g.locations?.[0];
+  return loc ? { g, loc, imp: null } : null;
+}
+
+function getLayerForArtFile(gid, locId, fileId) {
+  const res = findGarmentById(gid);
+  const layers = res ? res.g.layers : (garments.find(x=>x.id===gid)?.locations.find(l=>l.id===locId)?.layers || []);
+  return layers.find(l=>l.fileId===fileId) || null;
+}
+function reAddLayerToCanvas(gid, locId, fileId) {
+  const res = findGarmentById(gid); if(!res) return;
+  const {g, loc} = res;
+  const entry = loc.artFiles.find(f=>f.id===fileId); if(!entry) return;
+  if (loc.layers.some(l=>l.fileId===fileId)) return; // already on canvas
+  addLayerToLocCentered(loc, entry, null);
+  renderGarmentList();
+}
+
+function renderArtFilesHtml(artFiles, gid, locId) {
+  if (!artFiles.length) return '';
+  return '<div style="display:flex;flex-direction:column;gap:8px;margin-top:10px">' +
+    artFiles.map((f, i) => {
+      const ext = f.name.split('.').pop().toUpperCase();
+      const thumb = f.isImage && f.objectUrl
+        ? `<img class="art-file-thumb" src="${f.objectUrl}" alt="">`
+        : `<div class="art-file-thumb non-image">${extIcon(ext)}</div>`;
+      const size = f.file ? (f.file.size/1024).toFixed(0)+' KB' : '';
+      const status = f.uploading
+        ? `<div class="art-status">Reading...</div>`
+        : f.error
+          ? `<div class="art-status error">${f.error}</div>`
+          : `<div class="art-status done">✓ Ready</div>`;
+      // Show "Add to canvas" button when image art file has no active layer
+      const onCanvas = getLayerForArtFile(gid, locId, f.id);
+      const reAddBtn = (f.isImage && !f.uploading && !f.error && !onCanvas)
+        ? `<button onclick="reAddLayerToCanvas('${gid}','${locId}','${f.id}')"
+            style="font-size:.7rem;padding:3px 8px;border-radius:5px;border:1px solid rgba(99,200,99,.45);background:rgba(34,197,94,.1);color:#86efac;cursor:pointer;white-space:nowrap;margin-top:4px">
+            📌 Add to canvas</button>`
+        : '';
+      return `<div class="art-file" style="flex-wrap:wrap">
+        ${thumb}
+        <div class="art-file-info" style="min-width:0">
+          <div class="art-file-name">${f.name}</div>
+          <div class="art-file-meta">${ext}${size?' · '+size:''}</div>
+          ${status}
+          ${reAddBtn}
+        </div>
+        <button class="art-file-remove" onclick="removeArtFileFromLoc('${gid}','${locId}',${i})" title="Remove">✕</button>
+      </div>`;
+    }).join('') + '</div>';
+}
+
+function renderMockupFilesHtml(files, gid, locId) {
+  if (!files.length) return '';
+  return '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:10px">' +
+    files.map((f, i) => {
+      const thumb = f.isImage && f.url
+        ? `<img style="width:80px;height:80px;object-fit:contain;border:1px solid var(--gray2);border-radius:6px;background:var(--gray1)" src="${f.url}" alt="">`
+        : `<div style="width:80px;height:80px;display:flex;align-items:center;justify-content:center;border:1px solid var(--gray2);border-radius:6px;font-size:1.5rem">📄</div>`;
+      return `<div style="position:relative">
+        ${thumb}
+        <button onclick="removeMockupFileFromLoc('${gid}','${locId}',${i})"
+          style="position:absolute;top:-4px;right:-4px;background:var(--accent);border:none;color:#fff;width:18px;height:18px;border-radius:50%;cursor:pointer;font-size:.7rem;display:flex;align-items:center;justify-content:center">✕</button>
+        <div style="font-size:.68rem;color:var(--gray3);text-align:center;width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${f.name}</div>
+      </div>`;
+    }).join('') + '</div>';
+}
+
+function getGarmentImg(g, view) {
+  const prod = CATALOG[g.style];
+  if (!prod) return '';
+  const colorData = prod.colors?.[g.color];
+  let img = colorData?.img || prod.img || '';
+  if (!img) return '';
+  if (view === 'back') {
+    img = img.replace('_f_fm.jpg','_b_fm.jpg').replace('_f_fm.','_b_fm.').replace('/f/','/b/');
+  } else if (view === 'left') {
+    img = img.replace('_f_fm.jpg','_l_fm.jpg').replace('_f_fm.','_l_fm.').replace('/f/','/l/');
+  } else if (view === 'right') {
+    img = img.replace('_f_fm.jpg','_r_fm.jpg').replace('_f_fm.','_r_fm.').replace('/f/','/r/');
+  }
+  return img;
+}
+
+function getViewForLocation(locName) {
+  const backLocs = ['Back', 'Full Back'];
+  return backLocs.includes(locName) ? 'back' : 'front';
+}
+
+function setLocBgView(gid, locId, view) {
+  const res = findGarmentById(gid); if(!res) return;
+  const {g, loc} = res;
+  loc._bgView = view;
+  g._bgView = view; // sync to real garment
+  // Update the bg image immediately without full re-render
+  const bgImg = document.getElementById(`bg_${gid}_${locId}`);
+  if (bgImg) bgImg.src = getGarmentImg(g, view);
+  // Re-render garment list to update button states
+  renderGarmentList();
+}
+
+function setGarmentStyle(gid, style) {
+  const res = findGarmentById(gid);
+  if (res) {
+    res.g.style = style;
+    const colors = Object.keys(CATALOG[style]?.colors || {});
+    res.g.color = colors[0] || '';
+  } else {
+    const g = garments.find(x=>x.id===gid);
+    if (g) { g.style = style; const colors = Object.keys(CATALOG[style]?.colors||{}); g.color = colors[0]||''; }
+  }
+  renderGarmentList();
+}
+
+function setGarmentColor(gid, color) {
+  const res = findGarmentById(gid);
+  if (res) { res.g.color = color; }
+  else { const g = garments.find(x=>x.id===gid); if (g) g.color = color; }
+  renderGarmentList();
+}
+
+// ── Add location menu ─────────────────────────────────────────────────────
+function showAddLocationMenu(gid) {
+  const g = garments.find(x=>x.id===gid);
+  if (!g) return;
+  const existing = g.locations.map(l=>l.name);
+  const available = LOCATIONS.filter(l => !existing.includes(l));
+
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.innerHTML = `
+    <div class="modal-box" style="max-width:360px">
+      <h3 style="margin-bottom:4px">Add Print Locations</h3>
+      <p style="font-size:.82rem;color:var(--gray3);margin-bottom:14px">Select one or more locations to add</p>
+      <div id="locPickerGrid" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px">
+        ${available.map(l => `
+          <label style="display:flex;align-items:center;gap:8px;padding:8px 10px;border:1.5px solid var(--gray2);border-radius:8px;cursor:pointer;font-size:.85rem;font-weight:500;transition:all .15s" id="locLbl_${l.replace(/[^a-z]/gi,'_')}">
+            <input type="checkbox" value="${l}" style="accent-color:var(--accent);width:16px;height:16px"
+              onchange="this.closest('label').style.borderColor=this.checked?'var(--accent)':'var(--gray2)';this.closest('label').style.background=this.checked?'#fff8f0':''"
+            > ${l}
+          </label>`).join('')}
+        <label style="display:flex;align-items:center;gap:8px;padding:8px 10px;border:1.5px dashed var(--gray2);border-radius:8px;cursor:pointer;font-size:.85rem;font-weight:500;grid-column:1/-1" id="locLblCustom">
+          <input type="checkbox" value="_custom_" id="customLocChk" style="accent-color:var(--accent);width:16px;height:16px"
+            onchange="document.getElementById('customLocInput').style.display=this.checked?'block':'none';this.closest('label').style.borderColor=this.checked?'var(--accent)':'var(--gray2)'">
+          ✏️ Custom location…
+        </label>
+        <input type="text" id="customLocInput" placeholder="e.g. Left Chest, Back Collar…"
+          style="display:none;grid-column:1/-1;padding:8px 10px;border:1.5px solid var(--accent);border-radius:8px;font-size:.85rem;margin-top:-4px">
+      </div>
+      <div class="modal-btn-row">
+        <button class="btn btn-secondary" onclick="this.closest('.modal-overlay').remove()">Cancel</button>
+        <button class="btn btn-primary" onclick="confirmAddLocations('${gid}', this.closest('.modal-overlay'))">Add Selected</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click', e => { if(e.target===overlay) overlay.remove(); });
+}
+
+function confirmAddLocations(gid, overlay) {
+  const g = garments.find(x=>x.id===gid);
+  if (!g) { overlay.remove(); return; }
+  const checks = overlay.querySelectorAll('input[type=checkbox]:checked');
+  const customInput = overlay.querySelector('#customLocInput');
+  let added = 0;
+  checks.forEach(chk => {
+    if (chk.value === '_custom_') {
+      const names = customInput.value.split(',').map(s=>s.trim()).filter(Boolean);
+      names.forEach(name => { addLocation(g, name); added++; });
+    } else {
+      addLocation(g, chk.value);
+      added++;
+    }
+  });
+  overlay.remove();
+  if (added > 0) {
+    g.activeLocIdx = g.locations.length - 1;
+    renderGarmentList();
+  }
+}
+
+function addLocationToGarment(gid, name) {
+  const g = garments.find(x=>x.id===gid);
+  if (!g) return;
+  addLocation(g, name);
+  g.activeLocIdx = g.locations.length - 1;
+  renderGarmentList();
+}
+
+function removeLocationById(gid, locId) {
+  // In new model, removing a location = removing that imprint from imprints[]
+  // Find which imprint this locId belongs to (locId = imp.id + '_loc')
+  const impId = locId.replace('_loc', '');
+  if (imprints.length > 1) removeImprint(impId);
+}
+
+// ── Art file handling per-location ────────────────────────────────────────
+function handleArtFileInput(e, gid, locId) {
+  const files = [...e.target.files];
+  e.target.value = '';
+  if (files.length) showArtworkWarning(files, fs => processArtFiles(fs, gid, locId));
+}
+function handleMockupFileInput(e, gid, locId) {
+  const files = [...e.target.files];
+  e.target.value = '';
+  processMockupFiles(files, gid, locId);
+}
+
+function processArtFiles(files, gid, locId) {
+  const res = findGarmentById(gid); if(!res) return;
+  const {g, loc} = res;
+  files.forEach(file => {
+    const isImage = file.type.startsWith('image/');
+    const entry = { id:uid(), file, name:file.name, url:null, objectUrl:isImage?URL.createObjectURL(file):null, isImage, uploading:true, error:null };
+    loc.artFiles.push(entry);
+    readArtFile(entry, gid, locId);
+  });
+  renderGarmentList();
+}
+
+async function readArtFile(entry, gid, locId) {
+  try {
+    await new Promise((res,rej) => {
+      const reader = new FileReader();
+      reader.onload = e => { entry.url = e.target.result; entry.uploading = false; res(); };
+      reader.onerror = rej;
+      reader.readAsDataURL(entry.file);
+    });
+    // Auto-add image as mockup layer
+    if (entry.isImage && entry.url) {
+      // Use new model — findGarmentById looks in imprints[]
+      const res2 = findGarmentById(gid);
+      const loc = res2 ? res2.loc : null;
+      if (loc) {
+        // Check if this artwork already has a real-world size set on another garment
+        let inheritInches = null;
+        for (const imp of imprints) {
+          for (const gg of imp.garments) {
+            const existing = (gg.layers||[]).find(ly => ly.fileId === entry.id && ly.wInches);
+            if (existing) { inheritInches = existing.wInches; break; }
+          }
+          if (inheritInches) break;
+        }
+        addLayerToLocCentered(loc, entry, inheritInches);
+      }
+    }
+  } catch(err) {
+    entry.uploading = false;
+    entry.error = 'Could not read file';
+    console.error('readArtFile error:', err);
+  }
+  renderGarmentList();
+}
+
+function removeArtFileFromLoc(gid, locId, idx) {
+  const res = findGarmentById(gid); if(!res) return;
+  const {g, loc} = res;
+  const f = loc.artFiles[idx];
+  if (f?.objectUrl) URL.revokeObjectURL(f.objectUrl);
+  loc.layers = loc.layers.filter(l=>l.fileId!==f?.id);
+  loc.artFiles.splice(idx,1);
+  renderGarmentList();
+}
+
+function processMockupFiles(files, gid, locId) {
+  const res = findGarmentById(gid); if(!res) return;
+  const {g, loc} = res;
+  files.forEach(file => {
+    const isImage = file.type.startsWith('image/');
+    const entry = { id:uid(), file, name:file.name, url:null, isImage, error:null, uploading:true };
+    loc.mockupFiles.push(entry);
+    readMockupFile(entry, gid, locId);
+  });
+  renderGarmentList();
+}
+
+async function readMockupFile(entry, gid, locId) {
+  try {
+    await new Promise((res,rej) => {
+      const reader = new FileReader();
+      reader.onload = e => { entry.url = e.target.result; entry.uploading = false; res(); };
+      reader.onerror = rej;
+      reader.readAsDataURL(entry.file);
+    });
+  } catch { entry.uploading = false; entry.error = 'Could not read file'; }
+  renderGarmentList();
+}
+
+function removeMockupFileFromLoc(gid, locId, idx) {
+  const res = findGarmentById(gid); if(!res) return;
+  const {g, loc} = res;
+  loc.mockupFiles.splice(idx,1);
+  renderGarmentList();
+}
+
+// ── Layer system ──────────────────────────────────────────────────────────
+function addLayerToLoc(loc, fileEntry) {
+  loc.layers.push({
+    id: uid(), fileId: fileEntry.id,
+    url: fileEntry.url, objectUrl: fileEntry.objectUrl,
+    name: fileEntry.name, x:100, y:80, w:120, opacity:1, rot:0
+  });
+}
+
+function addLayerToLocCentered(loc, fileEntry, inheritWInches) {
+  // If we have an existing real-world size from another garment, start with a placeholder w
+  const layer = { id: uid(), fileId: fileEntry.id, url: fileEntry.url, objectUrl: fileEntry.objectUrl, name: fileEntry.name, x:100, y:80, w:120, opacity:1, rot:0 };
+  if (inheritWInches) layer.wInches = inheritWInches;
+  loc.layers.push(layer);
+  // After render we'll reposition to center (and apply real-world size if available)
+  requestAnimationFrame(() => {
+    // Find garment using new model (loc.id = imp.id + '_loc')
+    const impId = loc.id.replace('_loc', '');
+    const imp = imprints.find(i => i.id === impId);
+    // Fallback: search flat garments array
+    const g = imp?.garments.find(gg => gg.artFiles === loc.artFiles)
+           || garments.find(gg => gg.locations?.some(l => l === loc))
+           || imp?.garments[0];
+    if (!g) return;
+    const gId = g.id;
+    const wrap = document.getElementById(`canvas_${gId}_${loc.id}`);
+    if (!wrap) return;
+    const r = wrap.getBoundingClientRect();
+    if (r.width > 0) {
+      // If we have real-world inches, convert to px for this garment's scale
+      if (layer.wInches) {
+        const px = inchesToPx(layer.wInches, g, loc.id);
+        if (px) layer.w = Math.round(px);
+      } else {
+        // Default: 40% of canvas width, then record inches
+        layer.w = Math.round(r.width * 0.4);
+        syncLayerInches(layer, g, loc.id);
+      }
+      layer.x = Math.round((r.width - layer.w) / 2);
+      layer.y = Math.round((r.height - layer.w) / 2);
+      loc._wrapW = r.width;
+      loc._wrapH = r.height;
+      // Sync back to real garment in imprints
+      if (imp) {
+        const realG = imp.garments.find(gg => gg.id === gId);
+        if (realG) { realG._wrapW = r.width; realG._wrapH = r.height; realG.layers = loc.layers; }
+      }
+      renderLayersForGarment(g, loc);
+    }
+  });
+}
+
+
+
+// ─── Canvas-based ink colorization ───────────────────────────────────────
+// Maps each pixel's luminance to the target ink color.
+// Transparent pixels stay transparent — works perfectly with PNGs.
+// Result is cached per (layerId, hex) so we don't re-process needlessly.
+
+function parseHexRgb(hex) {
+  const h = hex.replace('#','');
+  return [
+    parseInt(h.slice(0,2),16),
+    parseInt(h.slice(2,4),16),
+    parseInt(h.slice(4,6),16)
+  ];
+}
+
+// Cache: layerId → { hex, blobUrl }
+const _inkCache = {};
+
+function getInkFilter(hex) { return ''; } // kept for compatibility, unused
+
+async function applyInkColorToLayer(layer, inkHex) {
+  // Cache hit?
+  if (_inkCache[layer.id] && _inkCache[layer.id].hex === inkHex && _inkCache[layer.id].blobUrl) {
+    return _inkCache[layer.id].blobUrl;
+  }
+  // Prefer objectUrl (blob:) then fall back to url (data: base64)
+  const src = layer.objectUrl || layer.url;
+  if (!src) return null;
+
+  return new Promise(resolve => {
+    const img = new Image();
+    // Do NOT set crossOrigin on blob: or data: URLs — causes canvas tainting
+    img.onload = () => {
+      try {
+        const canvas = document.createElement('canvas');
+        canvas.width = img.naturalWidth || img.width;
+        canvas.height = img.naturalHeight || img.height;
+        const ctx = canvas.getContext('2d', { willReadFrequently: true });
+        ctx.drawImage(img, 0, 0);
+        let data;
+        try {
+          data = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        } catch(e) {
+          // Canvas tainted — can't read pixels (shouldn't happen with blob/data URLs)
+          resolve(null); return;
+        }
+        const d = data.data;
+        const [ir, ig, ib] = parseHexRgb(inkHex);
+
+        for (let i = 0; i < d.length; i += 4) {
+          if (d[i+3] < 10) continue; // skip fully/nearly transparent pixels
+          // Luminance: 0=black, 255=white
+          const lum = (d[i]*0.299 + d[i+1]*0.587 + d[i+2]*0.114) / 255;
+          // Screen print logic: dark pixels → ink color, light pixels → transparent
+          // t=1 means fully black → full ink color, t=0 means white → invisible
+          const t = 1 - lum;
+          d[i]   = ir;
+          d[i+1] = ig;
+          d[i+2] = ib;
+          // Alpha driven entirely by darkness of original pixel
+          d[i+3] = Math.round(d[i+3] * t);
+        }
+
+        ctx.putImageData(data, 0, 0);
+        canvas.toBlob(blob => {
+          if (!blob) { resolve(null); return; }
+          if (_inkCache[layer.id]?.blobUrl) URL.revokeObjectURL(_inkCache[layer.id].blobUrl);
+          const url = URL.createObjectURL(blob);
+          _inkCache[layer.id] = { hex: inkHex, blobUrl: url };
+          resolve(url);
+        }, 'image/png');
+      } catch(e) {
+        resolve(null);
+      }
+    };
+    img.onerror = () => resolve(null);
+    img.src = src;
+  });
+}
+
+// Clear ink cache entry when layer is deleted
+function clearInkCache(layerId) {
+  if (_inkCache[layerId]?.blobUrl) URL.revokeObjectURL(_inkCache[layerId].blobUrl);
+  delete _inkCache[layerId];
+}
+
+// ─── Ink Color System ──────────────────────────────────────────────────────
+
+function hexToRgbCss(hex) {
+  // Convert hex to the format browsers use in style.backgroundColor: "rgb(r, g, b)"
+  const [r,g,b] = parseHexRgb(hex);
+  return `rgb(${r}, ${g}, ${b})`;
+}
+
+function inkSwatchHtml(gid, locId, p, activeColor) {
+  const isActive = activeColor && activeColor.hex === p.hex;
+  return `<div class="ink-swatch${isActive?' active':''}"
+    style="background:${p.hex}"
+    data-hex="${p.hex}"
+    title="${p.name}&#10;${p.pms}"
+    onclick="setInkColor('${gid}','${locId}','${p.hex}','${p.name}','${p.pms}','${p.emb}')"></div>`;
+}
+
+function renderInkSwatchesHtml(gid, locId, activeColor) {
+  // Standard colors row
+  const standardSwatches = STANDARD_COLORS.map(p => inkSwatchHtml(gid, locId, p, activeColor)).join('');
+  
+  // Full palette grouped by color family
+  const groups = [
+    { label:'Neutrals', names:['White','Black','Warm Gray','Cool Gray'] },
+    { label:'Reds & Pinks', names:['Red','Bright Red','Cardinal','Maroon','Pink','Hot Pink','Coral'] },
+    { label:'Oranges & Yellows', names:['Orange','Burnt Orange','Gold','Yellow','Lemon','Athletic Gold'] },
+    { label:'Greens', names:['Lime Green','Kelly Green','Forest Green','Olive','Teal','Mint'] },
+    { label:'Blues', names:['Sky Blue','Carolina Blue','Royal Blue','Navy','Columbia Blue','Cobalt'] },
+    { label:'Purples & Browns', names:['Purple','Violet','Lavender','Brown','Tan'] },
+    { label:'Metallics', names:['Silver','Old Gold','Metallic Gold'] },
+    { label:'Neons', names:['Neon Yellow','Neon Green','Neon Orange','Neon Pink'] },
+  ];
+  
+  const fullPalette = groups.map(grp => {
+    const swatches = grp.names.map(name => {
+      const p = PANTONE_COLORS.find(x=>x.name===name);
+      return p ? inkSwatchHtml(gid, locId, p, activeColor) : '';
+    }).join('');
+    return `<div class="ink-group"><div class="ink-section-label">${grp.label}</div><div class="ink-swatches" style="margin-bottom:0">${swatches}</div></div>`;
+  }).join('');
+  
+  const panelId = 'inkFullPanel_'+gid+'_'+locId;
+  
+  return `
+    <div class="ink-section-label" style="margin-top:0">Standard Colors</div>
+    <div class="ink-swatches" style="margin-bottom:4px">${standardSwatches}</div>
+    <button class="ink-expand-btn" onclick="toggleInkFullPalette('${panelId}',this)">🎨 More Pantone colors ▾</button>
+    <div class="ink-full-palette" id="${panelId}">${fullPalette}</div>`;
+}
+
+function toggleInkFullPalette(panelId, btn) {
+  const panel = document.getElementById(panelId);
+  if (!panel) return;
+  panel.classList.toggle('open');
+  btn.textContent = panel.classList.contains('open') ? '🎨 Less ▴' : '🎨 More Pantone colors ▾';
+}
+
+function setInkColor(gid, locId, hex, name, pms, emb) {
+  const res = findGarmentById(gid);
+  const g = res?.g || garments.find(x => x.id === gid);
+  const loc = res ? { id: locId, layers: g.layers, inkColor: g.inkColor, selectedLayer: g.selectedLayer } : g?.locations.find(l => l.id === locId);
+  if (!loc) return;
+  const colorObj = { hex, name, pms, emb };
+  if (res) res.g.inkColor = colorObj;
+  // Clear ink cache for all layers in this location so we re-colorize
+  loc.layers.forEach(l => clearInkCache(l.id));
+  loc.inkColor = colorObj;
+  // Update active class on swatches without rebuilding (preserves open/closed palette state)
+  const swatchWrap = document.getElementById(`inkSwatches_${gid}_${locId}`);
+  if (swatchWrap) {
+    swatchWrap.querySelectorAll('.ink-swatch').forEach(s => {
+      s.classList.toggle('active', s.getAttribute('data-hex') === hex);
+    });
+  }
+  // Update selected row
+  const dot = document.getElementById(`inkDot_${gid}_${locId}`);
+  const nameEl = document.getElementById(`inkName_${gid}_${locId}`);
+  const pmsEl = document.getElementById(`inkPms_${gid}_${locId}`);
+  if (dot) dot.style.background = hex;
+  if (nameEl) nameEl.textContent = name;
+  if (pmsEl) pmsEl.textContent = pms;
+  // Re-render layers with new ink overlay
+  if (res) {
+    const fakeLoc = { id: locId, name: res.imp.location, layers: res.g.layers, selectedLayer: res.g.selectedLayer, inkColor: res.g.inkColor, _bgView: res.g._bgView, _wrapW: res.g._wrapW||0, _wrapH: res.g._wrapH||0 };
+    renderLayersForGarment(res.g, fakeLoc);
+  } else if (g && loc) { renderLayersForGarment(g, loc); }
+}
+
+
+function clearInkColor(gid, locId) {
+  const res = findGarmentById(gid);
+  const g = res?.g || garments.find(x => x.id === gid);
+  const loc = res ? { id: locId, layers: g.layers, inkColor: g.inkColor, selectedLayer: g.selectedLayer } : g?.locations.find(l => l.id === locId);
+  if (!loc) return;
+  if (res) res.g.inkColor = null;
+  loc.inkColor = null;
+  const swatchWrap = document.getElementById(`inkSwatches_${gid}_${locId}`);
+  if (swatchWrap) swatchWrap.innerHTML = renderInkSwatchesHtml(gid, locId, null);
+  const dot = document.getElementById(`inkDot_${gid}_${locId}`);
+  const nameEl = document.getElementById(`inkName_${gid}_${locId}`);
+  const pmsEl = document.getElementById(`inkPms_${gid}_${locId}`);
+  if (dot) dot.style.background = 'transparent';
+  if (nameEl) nameEl.textContent = 'No color selected';
+  if (pmsEl) pmsEl.textContent = '';
+  if (res) {
+    const fakeLoc = { id: locId, name: res.imp.location, layers: res.g.layers, selectedLayer: res.g.selectedLayer, inkColor: null, _bgView: res.g._bgView, _wrapW: res.g._wrapW||0, _wrapH: res.g._wrapH||0 };
+    renderLayersForGarment(res.g, fakeLoc);
+  } else if (g && loc) { renderLayersForGarment(g, loc); }
+}
+
+function renderLayersForGarment(g, loc) {
+  const outerWrap = document.getElementById(`canvas_${g.id}_${loc.id}`);
+  if (!outerWrap) return;
+  // Use inner div if present (new layout), else outer
+  const wrap = outerWrap.querySelector('.mockup-canvas-inner') || outerWrap;
+  // Always keep wrap size in sync — used by thumbnail renderer
+  const wr = wrap.getBoundingClientRect();
+  if (wr.width > 0) {
+    loc._wrapW = wr.width; loc._wrapH = wr.height || wr.width;
+    // Sync back to real garment in imprints model
+    const _impId = loc.id.replace('_loc', '');
+    const _imp = imprints.find(i => i.id === _impId);
+    if (_imp) { const _rg = _imp.garments.find(x => x.id === g.id); if (_rg) { _rg._wrapW = wr.width; _rg._wrapH = wr.height || wr.width; } }
+  }
+  // Update background image — respect user's chosen view button
+  const bgImg = document.getElementById(`bg_${g.id}_${loc.id}`);
+  if (bgImg) {
+    const view = loc._bgView || getViewForLocation(loc.name);
+    bgImg.src = getGarmentImg(g, view);
+  }
+  wrap.querySelectorAll('.mockup-layer').forEach(el=>el.remove());
+  loc.layers.forEach(layer => {
+    const div = document.createElement('div');
+    div.className = 'mockup-layer' + (loc.selectedLayer===layer.id?' selected':'');
+    div.style.cssText = `left:${layer.x}px;top:${layer.y}px;width:${layer.w}px;position:absolute;cursor:move;user-select:none;touch-action:none`;
+    div.dataset.id = layer.id;
+    div.style.transform = `rotate(${layer.rot||0}deg)`;
+    const inkHex = loc.inkColor?.hex || null;
+    // Use canvas colorization — respects PNG transparency perfectly
+    const cachedInkUrl = (inkHex && _inkCache[layer.id]?.hex === inkHex) ? _inkCache[layer.id].blobUrl : null;
+    const imgSrc = cachedInkUrl || layer.objectUrl || layer.url;
+    div.innerHTML = `<img id="layerImg_${layer.id}" src="${imgSrc}" style="width:100%;opacity:${layer.opacity};display:block;pointer-events:none" draggable="false">
+      <div class="resize-handle" data-resize="${layer.id}"></div>
+      <div class="rotate-handle" data-rotate="${layer.id}">↻</div>`;
+    // Async: apply ink color via canvas if needed
+    if (inkHex && !cachedInkUrl) {
+      applyInkColorToLayer(layer, inkHex).then(url => {
+        if (!url) return;
+        const imgEl = document.getElementById('layerImg_' + layer.id);
+        if (imgEl) imgEl.src = url;
+      });
+    }
+    div.addEventListener('click', e => {
+      if (e.target.dataset.resize || e.target.dataset.rotate) return;
+      if (layer._wandActive) {
+        // Wand mode: pick color at click point relative to the layer image
+        const imgEl = div.querySelector('img');
+        if (imgEl) {
+          const rect = imgEl.getBoundingClientRect();
+          const cx = e.clientX - rect.left;
+          const cy = e.clientY - rect.top;
+          wandPickColor(g.id, loc.id, layer.id, cx, cy);
+        }
+        e.stopPropagation();
+        return;
+      }
+      selectLayerInLoc(g, loc, layer.id);
+    });
+    div.addEventListener('touchend', e => {
+      if (layer._wandActive && e.changedTouches.length) {
+        const imgEl = div.querySelector('img');
+        if (imgEl) {
+          const rect = imgEl.getBoundingClientRect();
+          const t = e.changedTouches[0];
+          wandPickColor(g.id, loc.id, layer.id, t.clientX - rect.left, t.clientY - rect.top);
+        }
+        e.stopPropagation();
+        e.preventDefault();
+        return;
+      }
+    }, {passive:false});
+    div.addEventListener('mousedown', e => { if(!e.target.dataset.resize && !e.target.dataset.rotate && !layer._wandActive) startDragLayer(e, g, loc, layer); });
+    div.addEventListener('touchstart', e => { if(!e.target.dataset.resize && !e.target.dataset.rotate) startDragLayerTouch(e, g, loc, layer); }, {passive:false});
+    div.querySelector('[data-resize]').addEventListener('mousedown', e=>{e.stopPropagation();startResizeLayer(e,g,loc,layer);});
+    div.querySelector('[data-resize]').addEventListener('touchstart', e=>{e.stopPropagation();startResizeLayerTouch(e,g,loc,layer);},{passive:false});
+    div.querySelector('[data-rotate]').addEventListener('mousedown', e=>{e.stopPropagation();startRotateLayer(e,g,loc,layer);});
+    div.querySelector('[data-rotate]').addEventListener('touchstart', e=>{e.stopPropagation();startRotateLayerTouch(e,g,loc,layer);},{passive:false});
+    wrap.appendChild(div);
+  });
+  // Layer list
+  const listEl = document.getElementById(`layerList_${g.id}_${loc.id}`);
+  if (listEl) {
+    listEl.innerHTML = loc.layers.length
+      ? loc.layers.map(l=>`
+          <div class="layer-item${loc.selectedLayer===l.id?' active':''}" onclick="selectLayerInLoc_byId('${g.id}','${loc.id}','${l.id}')">
+            <img class="layer-thumb" src="${l.objectUrl||l.url}" alt="">
+            <span class="layer-name">${l.name}</span>
+            <button class="layer-delete" onclick="event.stopPropagation();deleteLayerFromLoc('${g.id}','${loc.id}','${l.id}')">✕</button>
+          </div>`).join('')
+      : '<p style="font-size:.82rem;color:var(--gray3)">Upload an image to add layers.</p>';
+  }
+  const ctrlEl = document.getElementById(`layerCtrl_${g.id}_${loc.id}`);
+  if (ctrlEl) ctrlEl.style.display = loc.selectedLayer ? 'block' : 'none';
+  const mockupWrap = document.getElementById(`mockupWrap_${g.id}_${loc.id}`);
+  if (mockupWrap) mockupWrap.style.display = 'block';
+  // Hide/show the "upload artwork" notice
+  const noticeEl = document.getElementById(`artNotice_${g.id}_${loc.id}`);
+  if (noticeEl) noticeEl.style.display = loc.layers.length ? 'none' : 'flex';
+  // Deselect on blank canvas tap — attach to outerWrap (stable element)
+  if (!outerWrap._deselectBound) {
+    outerWrap._deselectBound = true;
+    outerWrap.addEventListener('click', e => {
+      const isCanvas = e.target === outerWrap || e.target === wrap || e.target.classList.contains('mockup-bg');
+      if (isCanvas) {
+        loc.selectedLayer = null;
+        const _rr = findGarmentById(g.id); if (_rr) _rr.g.selectedLayer = null;
+        renderLayersForGarment(g, loc);
+      }
+    });
+    outerWrap.addEventListener('touchend', e => {
+      const isCanvas = e.target === outerWrap || e.target === wrap || e.target.classList.contains('mockup-bg');
+      if (isCanvas) {
+        loc.selectedLayer = null;
+        const _rr = findGarmentById(g.id); if (_rr) _rr.g.selectedLayer = null;
+        renderLayersForGarment(g, loc);
+      }
+    });
+  }
+}
+
+function selectLayerInLoc(g, loc, id) {
+  loc.selectedLayer=id;
+  // Sync to real garment object in imprints[]
+  const res = findGarmentById(g.id);
+  if (res) res.g.selectedLayer = id;
+  renderLayersForGarment(g,loc);
+}
+function selectLayerInLoc_byId(gid, locId, lid) {
+  const res=findGarmentById(gid);
+  if(!res) return;
+  const {g, loc} = res;
+  // sync selectedLayer onto real garment object
+  res.g.selectedLayer = lid;
+  loc.selectedLayer = lid;
+  renderLayersForGarment(g, loc);
+}
+function deleteLayerFromLoc(gid, locId, lid) {
+  const res=findGarmentById(gid);
+  if(!res) return;
+  const {g, loc} = res;
+  clearInkCache(lid);
+  res.g.layers = res.g.layers.filter(l=>l.id!==lid);
+  loc.layers = res.g.layers;
+  if(res.g.selectedLayer===lid) res.g.selectedLayer=null;
+  if(loc.selectedLayer===lid) loc.selectedLayer=null;
+  renderLayersForGarment(g,loc);
+  renderGarmentList();
+}
+function resizeSelectedLayer(gid,locId,val) {
+  const res=findGarmentById(gid); if(!res) return;
+  const {g, loc} = res;
+  const l=loc.layers.find(x=>x.id===loc.selectedLayer); if(!l) return;
+  l.w=parseInt(val);
+  res.g.layers = loc.layers;
+  syncLayerInches(l, g, locId);
+  const inLabel = l.wInches ? l.wInches.toFixed(1) + '"' : Math.round(l.w) + 'px';
+  const el = document.getElementById(`ctrlSizeVal_${gid}_${locId}`); if(el) el.textContent = inLabel;
+  renderLayersForGarment(g,loc);
+}
+function opacitySelectedLayer(gid,locId,val) {
+  const res=findGarmentById(gid); if(!res) return;
+  const {g, loc} = res;
+  const l=loc.layers.find(x=>x.id===loc.selectedLayer); if(!l) return;
+  l.opacity=val/100;
+  res.g.layers = loc.layers;
+  const el = document.getElementById(`ctrlOpacityVal_${gid}_${locId}`); if(el) el.textContent=val+'%';
+  renderLayersForGarment(g,loc);
+}
+
+
+function rotateSelectedLayer(gid,locId,val) {
+  const res=findGarmentById(gid); if(!res) return;
+  const {g, loc} = res;
+  const l=loc.layers.find(x=>x.id===loc.selectedLayer); if(!l) return;
+  l.rot=parseInt(val);
+  res.g.layers = loc.layers;
+  const valEl=document.getElementById('ctrlRotVal_'+gid+'_'+locId);
+  if(valEl) valEl.textContent=l.rot+'°';
+  // update transform live without full re-render
+  const wrap=document.getElementById('canvas_'+gid+'_'+locId);
+  const el=wrap?.querySelector('.mockup-layer[data-id="'+l.id+'"]');
+  if(el) el.style.transform='rotate('+l.rot+'deg)';
+}
+
+// ── Drag / resize for per-garment layers ──────────────────────────────────
+let _drag=null, _resize=null;
+function startDragLayer(e,g,loc,layer){
+  e.preventDefault();
+  // Select without re-rendering DOM (re-render destroys the element mid-drag)
+  if (loc.selectedLayer !== layer.id) {
+    loc.selectedLayer = layer.id;
+    // Update classes without full re-render
+    const outerEl = document.getElementById(`canvas_${g.id}_${loc.id}`);
+    if (outerEl) {
+      outerEl.querySelectorAll('.mockup-layer').forEach(el => el.classList.toggle('selected', el.dataset.id === layer.id));
+    }
+    // Show/hide controls
+    const ctrlEl = document.getElementById(`layerCtrl_${g.id}_${loc.id}`);
+    if (ctrlEl) ctrlEl.style.display = 'block';
+  }
+  _drag={g,loc,layer,startX:e.clientX-layer.x,startY:e.clientY-layer.y};
+  document.addEventListener('mousemove',onDragLayer);
+  document.addEventListener('mouseup',stopDragLayer);
+}
+function onDragLayer(e){
+  if(!_drag) return;
+  const {g,loc,layer}=_drag;
+  const outerWrap=document.getElementById(`canvas_${g.id}_${loc.id}`);
+  if(!outerWrap) return;
+  const wrap=outerWrap.querySelector('.mockup-canvas-inner')||outerWrap;
+  const r=wrap.getBoundingClientRect();
+  layer.x=Math.max(0,Math.min(e.clientX-_drag.startX,r.width-layer.w));
+  layer.y=Math.max(0,Math.min(e.clientY-_drag.startY,r.height-20));
+  if(_drag.loc){_drag.loc._wrapW=r.width;_drag.loc._wrapH=r.height;}
+  const el=wrap.querySelector(`.mockup-layer[data-id="${layer.id}"]`);
+  if(el){el.style.left=layer.x+'px';el.style.top=layer.y+'px';}
+}
+function stopDragLayer(){_drag=null;document.removeEventListener('mousemove',onDragLayer);document.removeEventListener('mouseup',stopDragLayer);}
+function startDragLayerTouch(e,g,loc,layer){
+  e.preventDefault();
+  if (loc.selectedLayer !== layer.id) {
+    loc.selectedLayer = layer.id;
+    const outerEl = document.getElementById(`canvas_${g.id}_${loc.id}`);
+    if (outerEl) outerEl.querySelectorAll('.mockup-layer').forEach(el => el.classList.toggle('selected', el.dataset.id === layer.id));
+    const ctrlEl = document.getElementById(`layerCtrl_${g.id}_${loc.id}`);
+    if (ctrlEl) ctrlEl.style.display = 'block';
+  }
+  const t=e.touches[0];
+  _drag={g,loc,layer,startX:t.clientX-layer.x,startY:t.clientY-layer.y};
+  document.addEventListener('touchmove',onDragLayerTouch,{passive:false});
+  document.addEventListener('touchend',stopDragLayerTouch);
+}
+function onDragLayerTouch(e){
+  e.preventDefault();if(!_drag)return;
+  const t=e.touches[0],{g,loc,layer}=_drag;
+  const outerWrap=document.getElementById(`canvas_${g.id}_${loc.id}`);if(!outerWrap)return;
+  const wrap=outerWrap.querySelector('.mockup-canvas-inner')||outerWrap;
+  const r=wrap.getBoundingClientRect();
+  layer.x=Math.max(0,Math.min(t.clientX-_drag.startX,r.width-layer.w));
+  layer.y=Math.max(0,Math.min(t.clientY-_drag.startY,r.height-20));
+  if(_drag.loc){_drag.loc._wrapW=t.clientX?r.width:r.width;_drag.loc._wrapH=r.height;}
+  const el=wrap.querySelector(`.mockup-layer[data-id="${layer.id}"]`);
+  if(el){el.style.left=layer.x+'px';el.style.top=layer.y+'px';}
+}
+function stopDragLayerTouch(){_drag=null;document.removeEventListener('touchmove',onDragLayerTouch);document.removeEventListener('touchend',stopDragLayerTouch);}
+function startResizeLayer(e,g,loc,layer){
+  e.preventDefault();
+  _resize={g,loc,layer,startX:e.clientX,startW:layer.w};
+  document.addEventListener('mousemove',onResizeLayer);
+  document.addEventListener('mouseup',stopResizeLayer);
+}
+function onResizeLayer(e){
+  if(!_resize)return;
+  const{g,loc,layer}=_resize;
+  layer.w=Math.max(30,_resize.startW+(e.clientX-_resize.startX));
+  syncLayerInches(layer, g, loc.id);
+  const el=document.getElementById(`canvas_${g.id}_${loc.id}`)?.querySelector(`.mockup-layer[data-id="${layer.id}"]`);
+  if(el){
+    el.style.width=layer.w+'px';
+    const sv=document.getElementById(`ctrlSize_${g.id}_${loc.id}`);
+    const svv=document.getElementById(`ctrlSizeVal_${g.id}_${loc.id}`);
+    if(sv)sv.value=layer.w;
+    const inLabel = layer.wInches ? ' ('+layer.wInches.toFixed(1)+'")' : '';
+    if(svv)svv.textContent=Math.round(layer.w)+'px'+inLabel;
+  }
+}
+function stopResizeLayer(){if(_resize){_resize.layer.w=Math.round(_resize.layer.w);renderLayersForGarment(_resize.g,_resize.loc);}_resize=null;document.removeEventListener('mousemove',onResizeLayer);document.removeEventListener('mouseup',stopResizeLayer);}
+function startResizeLayerTouch(e,g,loc,layer){
+  e.preventDefault();
+  const t=e.touches[0];
+  _resize={g,loc,layer,startX:t.clientX,startW:layer.w};
+  document.addEventListener('touchmove',onResizeLayerTouch,{passive:false});
+  document.addEventListener('touchend',stopResizeLayerTouch);
+}
+function onResizeLayerTouch(e){
+  e.preventDefault();if(!_resize)return;
+  const t=e.touches[0],{g,loc,layer}=_resize;
+  layer.w=Math.max(30,_resize.startW+(t.clientX-_resize.startX));
+  const el=document.getElementById(`canvas_${g.id}_${loc.id}`)?.querySelector(`.mockup-layer[data-id="${layer.id}"]`);
+  if(el){el.style.width=layer.w+'px';}
+}
+function stopResizeLayerTouch(){if(_resize){_resize.layer.w=Math.round(_resize.layer.w);renderLayersForGarment(_resize.g,_resize.loc);}_resize=null;document.removeEventListener('touchmove',onResizeLayerTouch);document.removeEventListener('touchend',stopResizeLayerTouch);}
+
+
+// ── Rotate layer ─────────────────────────────────────────────────────────
+let _rotState = null;
+function _getLayerCenter(wrap, layer) {
+  const r = wrap.getBoundingClientRect();
+  return { cx: r.left + layer.x + layer.w/2, cy: r.top + layer.y + layer.w/2 };
+}
+function startRotateLayer(e, g, loc, layer) {
+  e.preventDefault();
+  const wrap = document.getElementById(`canvas_${g.id}_${loc.id}`);
+  const {cx,cy} = _getLayerCenter(wrap, layer);
+  _rotState = { g, loc, layer, cx, cy };
+  document.addEventListener('mousemove', onRotateLayer);
+  document.addEventListener('mouseup', stopRotateLayer);
+}
+function onRotateLayer(e) {
+  if (!_rotState) return;
+  const {g,loc,layer,cx,cy} = _rotState;
+  const angle = Math.atan2(e.clientY - cy, e.clientX - cx) * 180 / Math.PI + 90;
+  layer.rot = Math.round(angle);
+  const el = document.getElementById(`canvas_${g.id}_${loc.id}`)?.querySelector(`.mockup-layer[data-id="${layer.id}"]`);
+  if (el) el.style.transform = `rotate(${layer.rot}deg)`;
+}
+function stopRotateLayer() {
+  if (_rotState) renderLayersForGarment(_rotState.g, _rotState.loc);
+  _rotState = null;
+  document.removeEventListener('mousemove', onRotateLayer);
+  document.removeEventListener('mouseup', stopRotateLayer);
+}
+function startRotateLayerTouch(e, g, loc, layer) {
+  e.preventDefault();
+  const wrap = document.getElementById(`canvas_${g.id}_${loc.id}`);
+  const {cx,cy} = _getLayerCenter(wrap, layer);
+  _rotState = { g, loc, layer, cx, cy };
+  document.addEventListener('touchmove', onRotateLayerTouch, {passive:false});
+  document.addEventListener('touchend', stopRotateLayerTouch);
+}
+function onRotateLayerTouch(e) {
+  e.preventDefault();
+  if (!_rotState) return;
+  const t = e.touches[0];
+  const {g,loc,layer,cx,cy} = _rotState;
+  const angle = Math.atan2(t.clientY - cy, t.clientX - cx) * 180 / Math.PI + 90;
+  layer.rot = Math.round(angle);
+  const el = document.getElementById(`canvas_${g.id}_${loc.id}`)?.querySelector(`.mockup-layer[data-id="${layer.id}"]`);
+  if (el) el.style.transform = `rotate(${layer.rot}deg)`;
+}
+function stopRotateLayerTouch() {
+  if (_rotState) renderLayersForGarment(_rotState.g, _rotState.loc);
+  _rotState = null;
+  document.removeEventListener('touchmove', onRotateLayerTouch);
+  document.removeEventListener('touchend', stopRotateLayerTouch);
+}
+
+
+// ── Background Removal ────────────────────────────────────────────────────
+// ── Magic Wand Background Removal ────────────────────────────────────────
+
+// Toggle wand mode on/off for a layer
+function toggleWandMode(gid, locId, lid) {
+  const g = garments.find(x=>x.id===gid);
+  const loc = g?.locations.find(l=>l.id===locId);
+  const layer = loc?.layers.find(l=>l.id===lid);
+  if (!layer) return;
+  layer._wandActive = !layer._wandActive;
+  // Update cursor on the canvas wrap
+  const wrap = document.getElementById('canvas_'+gid+'_'+locId);
+  if (wrap) {
+    if (layer._wandActive) wrap.classList.add('layer-wand-cursor');
+    else wrap.classList.remove('layer-wand-cursor');
+  }
+  renderLayersForGarment(g, loc);
+}
+
+function setWandTolerance(gid, locId, lid, val) {
+  const g = garments.find(x=>x.id===gid);
+  const loc = g?.locations.find(l=>l.id===locId);
+  const layer = loc?.layers.find(l=>l.id===lid);
+  if (layer) layer._wandTolerance = parseInt(val);
+  const valEl = document.getElementById('wandTolVal_'+gid+'_'+locId);
+  if (valEl) valEl.textContent = val;
+}
+
+// Called when user clicks on the canvas image while wand mode is active
+async function wandPickColor(gid, locId, lid, clickX, clickY) {
+  const g = garments.find(x=>x.id===gid);
+  const loc = g?.locations.find(l=>l.id===locId);
+  const layer = loc?.layers.find(l=>l.id===lid);
+  if (!layer || !layer._wandActive) return;
+
+  // Show busy state
+  const btn = document.getElementById('bgRemoveBtn_'+gid+'_'+locId+'_'+lid);
+  if (btn) { btn.disabled=true; btn.textContent='⏳ Removing…'; }
+
+  try {
+    await applyWandRemoval(layer, clickX, clickY);
+    // Clear ink cache so colorization re-runs on the updated image
+    clearInkCache(layer.id);
+  } catch(e) {
+    console.warn('wand failed:', e);
+  }
+
+  if (btn) { btn.disabled=false; }
+  renderLayersForGarment(g, loc);
+}
+
+async function applyWandRemoval(layer, clickX, clickY) {
+  return new Promise(resolve => {
+    const img = new Image();
+    img.onload = () => {
+      const W = img.naturalWidth, H = img.naturalHeight;
+      const canvas = document.createElement('canvas');
+      canvas.width = W; canvas.height = H;
+      const ctx = canvas.getContext('2d', { willReadFrequently: true });
+      ctx.drawImage(img, 0, 0);
+
+      let data;
+      try { data = ctx.getImageData(0, 0, W, H); }
+      catch(e) { resolve(); return; }
+      const d = data.data;
+
+      // Map click coordinates (CSS pixels on the rendered img element) → actual image pixels
+      // clickX/Y are relative to the layer <img> element
+      const imgEl = document.getElementById('layerImg_' + layer.id);
+      const scaleX = imgEl ? W / imgEl.offsetWidth : 1;
+      const scaleY = imgEl ? H / imgEl.offsetHeight : 1;
+      const px = Math.round(clickX * scaleX);
+      const py = Math.round(clickY * scaleY);
+      const idx = (Math.max(0,Math.min(H-1,py)) * W + Math.max(0,Math.min(W-1,px))) * 4;
+
+      const targetR = d[idx], targetG = d[idx+1], targetB = d[idx+2];
+      const tol = layer._wandTolerance ?? 32;
+
+      // Save snapshot for undo BEFORE modifying
+      if (!layer._wandHistory) layer._wandHistory = [];
+      layer._wandHistory.push(layer.objectUrl); // save current blob URL
+
+      // Global select-by-color (like PS "Select by Color" / magic wand with contiguous=off)
+      // Removes ALL pixels within tolerance of the picked color — not just flood-fill
+      for (let i = 0; i < d.length; i += 4) {
+        if (d[i+3] < 5) continue;
+        const dr = Math.abs(d[i]   - targetR);
+        const dg = Math.abs(d[i+1] - targetG);
+        const db = Math.abs(d[i+2] - targetB);
+        // Use max-channel distance (same as PS default magic wand)
+        if (Math.max(dr, dg, db) <= tol) {
+          d[i+3] = 0;
+        }
+      }
+
+      // Edge softening pass — anti-alias the cutout boundary
+      const d2 = new Uint8ClampedArray(d);
+      for (let y = 1; y < H-1; y++) {
+        for (let x = 1; x < W-1; x++) {
+          const i = (y * W + x) * 4;
+          if (d2[i+3] === 0) continue;
+          const neighbors = [
+            ((y-1)*W+x)*4, ((y+1)*W+x)*4,
+            (y*W+(x-1))*4, (y*W+(x+1))*4,
+            ((y-1)*W+(x-1))*4, ((y-1)*W+(x+1))*4,
+            ((y+1)*W+(x-1))*4, ((y+1)*W+(x+1))*4
+          ];
+          const transCount = neighbors.filter(ni => d2[ni+3] === 0).length;
+          if (transCount >= 2) d2[i+3] = Math.round(d2[i+3] * (1 - transCount * 0.12));
+        }
+      }
+      for (let i = 0; i < d.length; i += 4) d[i+3] = d2[i+3];
+
+      ctx.putImageData(data, 0, 0);
+      canvas.toBlob(blob => {
+        if (blob) {
+          // Replace layer source with the new de-backgrounded blob
+          if (layer.objectUrl && layer.objectUrl.startsWith('blob:')) {
+            // Don't revoke old url yet — it's saved in _wandHistory for undo
+          }
+          layer.objectUrl = URL.createObjectURL(blob);
+        }
+        resolve();
+      }, 'image/png');
+    };
+    img.onerror = resolve;
+    img.src = layer.objectUrl || layer.url;
+  });
+}
+
+function undoWand(gid, locId, lid) {
+  const g = garments.find(x=>x.id===gid);
+  const loc = g?.locations.find(l=>l.id===locId);
+  const layer = loc?.layers.find(l=>l.id===lid);
+  if (!layer || !layer._wandHistory?.length) return;
+  // Revoke current objectUrl and restore previous
+  if (layer.objectUrl && layer.objectUrl.startsWith('blob:')) URL.revokeObjectURL(layer.objectUrl);
+  layer.objectUrl = layer._wandHistory.pop();
+  clearInkCache(layer.id);
+  renderLayersForGarment(g, loc);
+}
+
+// ── Artwork quality warning modal ─────────────────────────────────────────
+function showArtworkWarning(files, cb) {
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.innerHTML = `<div class="modal-box">
+    <h3>⚠️ Artwork Quality Notice</h3>
+    <p>For the best print results, please submit artwork in one of these formats:</p>
+    <ul>
+      <li><strong>.AI / .PSD / .EPS</strong> — vector or layered files (preferred)</li>
+      <li><strong>High-res PNG or JPEG</strong> — at least 300 DPI at the actual printed size</li>
+      <li><strong>.PDF</strong> — print-quality, not screen-export</li>
+    </ul>
+    <p>⚠️ <strong>If your artwork doesn't meet quality standards, an artwork redraw fee may be required.</strong></p>
+    <div class="modal-btn-row">
+      <button class="btn btn-secondary" id="modalCancel">Cancel</button>
+      <button class="btn btn-primary" id="modalOk">I Understand — Upload</button>
+    </div>
+  </div>`;
+  document.body.appendChild(overlay);
+  overlay.querySelector('#modalCancel').onclick = () => overlay.remove();
+  overlay.querySelector('#modalOk').onclick = () => { overlay.remove(); cb(files); };
+  overlay.onclick = e => { if(e.target===overlay) overlay.remove(); };
+}
+
+function extIcon(ext) {
+  const map={AI:'🎨',PSD:'🎨',EPS:'🎨',PDF:'📄',SVG:'🖼️',TIFF:'🖼️',TIF:'🖼️'};
+  return map[ext]||'📎';
+}
+
+// ── Review screen — capture mockup snapshots ──────────────────────────────
+async function buildReviewMockups() {
+  const section = document.getElementById('reviewMockupsSection');
+  if (!section) return;
+  section.innerHTML = '<div style="font-size:.82rem;color:var(--gray3);padding:8px 0">Generating previews…</div>';
+  await new Promise(r => setTimeout(r, 50));
+
+  const EDITOR_SIZE = 700;
+  const THUMB_SIZE  = 150;
+  const wrapper = document.createElement('div');
+  wrapper.className = 'review-garments';
+
+  for (let gi = 0; gi < garments.length; gi++) {
+    const g    = garments[gi];
+    const prod = CATALOG[g.style] || {};
+
+    // ── Build mockup thumbnails ──────────────────────────────────────────────
+    const thumbsEl = document.createElement('div');
+    thumbsEl.className = 'review-garment-mockups';
+
+    for (const loc of g.locations) {
+      const item = document.createElement('div');
+      item.className = 'review-mockup-item';
+
+      if (g.mode === 'upload' && loc.mockupFiles.some(f => f.url && f.isImage)) {
+        const f = loc.mockupFiles.find(f => f.url && f.isImage);
+        item.innerHTML = `<img class="review-mockup-img" src="${f.url}" onclick="openLightboxAt([{name:'${loc.name}',img:'${f.url}'}],0)">
+          <div class="review-mockup-label">${loc.name}</div>`;
+      } else if (loc.layers.length > 0) {
+        // Use renderLocMockupBlob for pixel-perfect match with the editor
+        item.innerHTML = `<div class="review-mockup-img" style="display:flex;align-items:center;justify-content:center;font-size:.7rem;color:rgba(255,255,255,.3)">Rendering…</div><div class="review-mockup-label">${loc.name}</div>`;
+        (async () => {
+          try {
+            const blob = await renderLocMockupBlob(g, loc, 400);
+            const dataUrl = await new Promise(res => { const fr = new FileReader(); fr.onload = () => res(fr.result); fr.readAsDataURL(blob); });
+            item.innerHTML = `<img class="review-mockup-img" src="${dataUrl}" onclick="openLightboxAt([{name:'${loc.name}',img:'${dataUrl}'}],0)"><div class="review-mockup-label">${loc.name}</div>`;
+          } catch(e) { item.innerHTML = `<div class="review-mockup-img" style="display:flex;align-items:center;justify-content:center;font-size:.7rem;color:rgba(255,255,255,.3)">Preview unavailable</div><div class="review-mockup-label">${loc.name}</div>`; }
+        })();
+      } else {
+        item.innerHTML = `<div class="review-mockup-img" style="display:flex;align-items:center;justify-content:center;font-size:.7rem;color:rgba(255,255,255,.3)">No artwork</div><div class="review-mockup-label">${loc.name}</div>`;
+      }
+      thumbsEl.appendChild(item);
+    }
+
+    // ── Build details column ─────────────────────────────────────────────────
+    const sizes  = Object.entries(state.quantities).filter(([,q])=>q>0);
+    const qtyChips = sizes.map(([sz,q])=>
+      `<div class="review-qty-chip">${sz}<span>×${q}</span></div>`).join('');
+    const qtyEditHtml = renderReviewQtySection(g.style);
+    const locChips = g.locations.map(l => {
+      const art = l.artFiles.filter(f=>!f.error).length;
+      return `<div class="review-loc-chip">${l.name}${art?` · ${art} file${art>1?'s':''}`:''}</div>`;
+    }).join('');
+
+    const detailsEl = document.createElement('div');
+    detailsEl.className = 'review-garment-details';
+    detailsEl.innerHTML = `
+      <div class="review-detail-section">
+        <div id="reviewQtyWrap_${g.style}" class="review-qty-grid-wrap">
+          <div class="review-detail-label">Sizes &amp; Quantities</div>
+          ${qtyEditHtml}
+        </div>
+      </div>
+      <div class="review-detail-section">
+        <div class="review-detail-label">Print Locations</div>
+        <div class="review-locations">${locChips}</div>
+      </div>
+      <div class="review-detail-section">
+        <div class="review-detail-label">Decoration</div>
+        <div style="font-size:.82rem;color:var(--black)">${state.printType} · ${state.printColors} color${state.printColors>1?'s':''}</div>
+      </div>`;
+
+    // ── Assemble card ────────────────────────────────────────────────────────
+    const card = document.createElement('div');
+    card.className = 'review-garment-card';
+    card.innerHTML = `
+      <div class="review-garment-header">
+        <div class="review-garment-num">Garment ${gi+1}</div>
+        <div>
+          <div class="review-garment-title">${prod.brand||''} ${prod.title||g.style} (${g.style})</div>
+          <div class="review-garment-subtitle">Color: ${g.color}</div>
+        </div>
+      </div>`;
+    const body = document.createElement('div');
+    body.className = 'review-garment-body';
+    body.appendChild(thumbsEl);
+    body.appendChild(detailsEl);
+    card.appendChild(body);
+    wrapper.appendChild(card);
+  }
+
+  section.innerHTML = '';
+  section.appendChild(wrapper);
+}
+
+function loadImageFromUrl(url) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => resolve(img);
+    img.onerror = () => reject(new Error('load failed'));
+    img.src = url;
+  });
+}
+
+function drawImageOnCanvas(ctx, url, x, y, w, h) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      ctx.drawImage(img, x, y, w, h);
+      resolve();
+    };
+    img.onerror = () => {
+      // Try without crossOrigin (for data: URLs and same-origin)
+      const img2 = new Image();
+      img2.onload = () => { ctx.drawImage(img2, x, y, w, h); resolve(); };
+      img2.onerror = reject;
+      img2.src = url;
+    };
+    img.src = url;
+  });
+}
+
+// pulse animation
+const styleEl = document.createElement('style');
+styleEl.textContent = '@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}';
+document.head.appendChild(styleEl);
+
+
+
+// ── Lightbox ─────────────────────────────────────────────────────────────────
+function openLightboxAt(photos, index) {
+  if(!photos || !photos.length) return;
+  state._lbPhotos = photos;
+  state._lbIndex  = index || 0;
+  _lbShow();
+}
+function _lbShow() {
+  const photos = state._lbPhotos;
+  const i = state._lbIndex;
+  if(!photos || i < 0 || i >= photos.length) return;
+  document.getElementById('lightbox-img').src     = photos[i].img;
+  document.getElementById('lightbox-caption').textContent = photos[i].name + ' (' + (i+1) + ' / ' + photos.length + ')';
+  document.getElementById('lightbox').classList.add('open');
+  document.body.style.overflow='hidden';
+}
+function closeLightbox() {
+  document.getElementById('lightbox').classList.remove('open');
+  document.body.style.overflow='';
+}
+function lbNav(dir) {
+  const photos = state._lbPhotos;
+  state._lbIndex = (state._lbIndex + dir + photos.length) % photos.length;
+  _lbShow();
+}
+// Keyboard nav
+document.addEventListener('keydown', e => {
+  const lb = document.getElementById('lightbox');
+  if(!lb.classList.contains('open')) return;
+  if(e.key==='Escape') closeLightbox();
+  if(e.key==='ArrowRight') lbNav(1);
+  if(e.key==='ArrowLeft')  lbNav(-1);
+});
+// Also open lightbox from thumbnails via middle-click safety
+
+
+// ── Reuse Artwork from other garments ────────────────────────────────────────
+
+function getReusableArt(excludeGid, excludeLocId) {
+  // Collect all art files across all imprints/garments except the current one
+  const pool = [];
+  imprints.forEach(imp => {
+    const locId = imp.id + '_loc';
+    imp.garments.forEach(g => {
+      if (g.id === excludeGid) return; // skip current garment
+      (g.artFiles||[]).forEach(f => {
+        if (!f.error && f.url) pool.push({ ...f, _fromGarment: g.id, _fromLoc: imp.location });
+      });
+    });
+  });
+  // Deduplicate by name+url combo
+  const seen = new Set();
+  return pool.filter(f => {
+    const key = f.name + '|' + f.url.slice(0,60);
+    if (seen.has(key)) return false;
+    seen.add(key); return true;
+  });
+}
+
+function toggleReusePanel(gid, locId) {
+  const panel = document.getElementById(`reusePanel_${gid}_${locId}`);
+  if (!panel) return;
+  panel.classList.toggle('open');
+}
+
+function reuseArtFile(gid, locId, poolIndex) {
+  const res = findGarmentById(gid); if (!res) return;
+  const {g, loc} = res;
+  const pool = getReusableArt(gid, locId);
+  const src  = pool[poolIndex]; if (!src) return;
+
+  // Check if already added (by name)
+  if (loc.artFiles.some(f => f.name === src.name && f.url === src.url)) {
+    alert('That file is already added to this location.');
+    return;
+  }
+
+  // Clone the file entry (no File object needed — url already loaded)
+  const entry = {
+    id: uid(),
+    file: null,
+    name: src.name,
+    url: src.url,
+    objectUrl: src.objectUrl || src.url,
+    isImage: src.isImage,
+    uploading: false,
+    error: null,
+  };
+  loc.artFiles.push(entry);
+
+  // Auto-add as mockup layer if image
+  if (entry.isImage) {
+    let inheritInches = null;
+    for (const gg of garments) {
+      for (const ll of gg.locations) {
+        const existing = ll.layers.find(ly => ly.fileId === entry.id && ly.wInches);
+        if (existing) { inheritInches = existing.wInches; break; }
+      }
+      if (inheritInches) break;
+    }
+    addLayerToLocCentered(loc, entry, inheritInches);
+  }
+
+  renderGarmentList();
+}
+
+
+// ── Review page: inline quantity editing ─────────────────────────────────────
+
+function openReviewQtyEditor(style) {
+  // Inline edit: replace the chips row with input fields for each size
+  const wrap = document.getElementById('reviewQtyWrap_' + style);
+  if (!wrap) return;
+  const p = CATALOG[style] || {};
+  const sizes = Object.keys(p.pricing || {});
+
+  const inputs = sizes.map(sz => {
+    const cur = state.quantities[sz] || '';
+    return `<div class="review-qty-edit-row">
+      <label>${sz}</label>
+      <input id="rqInput_${style}_${sz}" type="number" min="0" value="${cur}" placeholder="0">
+    </div>`;
+  }).join('');
+
+  wrap.innerHTML = `
+    <div class="review-detail-label">Sizes &amp; Quantities <span style="font-weight:400;color:#1a6fde;font-size:.7rem">(editing)</span></div>
+    <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px">${inputs}</div>
+    <button class="btn review-qty-done" onclick="saveReviewQty('${style}')">✓ Done</button>
+  `;
+}
+
+function saveReviewQty(style) {
+  const p = CATALOG[style] || {};
+  const sizes = Object.keys(p.pricing || {});
+  sizes.forEach(sz => {
+    const el = document.getElementById('rqInput_' + style + '_' + sz);
+    if (!el) return;
+    const n = parseInt(el.value) || 0;
+    if (n > 0) state.quantities[sz] = n;
+    else delete state.quantities[sz];
+  });
+  // Re-render the whole review so all cards update (totals, chips, etc.)
+  renderSummary();
+  buildReviewMockups();
+}
+
+function renderReviewQtySection(style) {
+  const p = CATALOG[style] || {};
+  const sizes = Object.keys(p.pricing || {});
+  const chips = sizes
+    .filter(sz => state.quantities[sz] > 0)
+    .map(sz => `<div class="review-qty-chip">${sz}<span>×${state.quantities[sz]}</span></div>`)
+    .join('');
+  const total = Object.values(state.quantities).reduce((a, b) => a + b, 0);
+  return `<div class="review-qty-chips-row">${chips || '<span style="font-size:.8rem;color:var(--gray3)">No quantities yet</span>'}</div>
+    <div class="review-qty-total">${total} pcs total &nbsp;·&nbsp; <a href="#" style="color:#1a6fde;font-size:.72rem;font-weight:600" onclick="event.preventDefault();openReviewQtyEditor('${style}')">✏️ Edit quantities</a></div>`;
+}
+
+
+document.addEventListener('DOMContentLoaded', async () => {
+  await initCatalog();
+  const restored = restoreState();
+  if (restored && state.selectedStyle) {
+    // Load the product into CATALOG if not already present
+    if (!CATALOG[state.selectedStyle]) {
+      try {
+        const prod = ALL_STYLES.find(p => p.style === state.selectedStyle || p.styleName === state.selectedStyle);
+        if (prod) await loadStyleDetail(prod.style || state.selectedStyle);
+      } catch(e) {}
+    }
+    // Re-select the product card visually
+    if (state.selectedStyle) {
+      document.querySelectorAll('.product-card').forEach(c => {
+        c.classList.toggle('selected', c.dataset.style === state.selectedStyle);
+      });
+      document.getElementById('toStep2').disabled = false;
+    }
+    applyRestoredFormFields();
+    renderCartDisplay();
+    if (cart.length > 0) {
+      const b = document.getElementById('toStep5Btn');
+      if (b) b.disabled = false;
+    }
+    showToast('✓ Session restored');
+  } else {
+    goTo(1);
+  }
+});
+</script>
+
+<div id="savedToast">✓ Garment saved to cart!</div>
+
+<!-- Lightbox -->
+<div id="lightbox" onclick="if(event.target===this)closeLightbox()">
+  <button id="lightbox-close" onclick="closeLightbox()">&#x2715;</button>
+  <button id="lightbox-prev" onclick="lbNav(-1)">&#8249;</button>
+  <img id="lightbox-img" src="" alt="">
+  <button id="lightbox-next" onclick="lbNav(1)">&#8250;</button>
+  <div id="lightbox-caption"></div>
+</div>
+</body>
+</html>
