@@ -2487,6 +2487,15 @@ function renderGarmentMockupBody(g, imp) {
           </div>
         </div>
       </div>
+      <script>
+      // If bg image already loaded from cache, onload won't fire — force layer render
+      (function(){
+        const bgEl = document.getElementById('bg_${g.id}_${loc.id}');
+        if (bgEl && bgEl.complete && bgEl.naturalWidth > 0) {
+          requestAnimationFrame(() => onGarmentImgLoad('${g.id}','${loc.id}',bgEl));
+        }
+      })();
+      </script>
       <!-- Right panel -->
       <div class="mockup-sidebar">
         <!-- Layers -->
@@ -3354,12 +3363,15 @@ function renderLayersForGarment(g, loc) {
   const layerHost = document.getElementById(`layerHost_${g.id}_${loc.id}`) || inner;
   // Wrap dims come from the inner div (which is sized by the img)
   const wr = inner.getBoundingClientRect();
+  // Fallback: use bgImg offsetHeight if getBoundingClientRect returns 0 height
+  const bgEl2 = document.getElementById(`bg_${g.id}_${loc.id}`);
+  const wrH = wr.height > 0 ? wr.height : (bgEl2 ? bgEl2.offsetHeight : 0) || wr.width;
   if (wr.width > 0) {
-    loc._wrapW = wr.width; loc._wrapH = wr.height || wr.width;
+    loc._wrapW = wr.width; loc._wrapH = wrH || wr.width;
     const _impId = loc.id.replace('_loc', '');
     const _imp = imprints.find(i => i.id === _impId);
-    if (_imp) { const _rg = _imp.garments.find(x => x.id === g.id); if (_rg) { _rg._wrapW = wr.width; _rg._wrapH = wr.height || wr.width; } }
-    g._wrapW = wr.width; g._wrapH = wr.height || wr.width;
+    if (_imp) { const _rg = _imp.garments.find(x => x.id === g.id); if (_rg) { _rg._wrapW = wr.width; _rg._wrapH = wrH || wr.width; } }
+    g._wrapW = wr.width; g._wrapH = wrH || wr.width;
   }
   // Update background image
   const bgImg = document.getElementById(`bg_${g.id}_${loc.id}`);
@@ -3372,7 +3384,7 @@ function renderLayersForGarment(g, loc) {
   // ── Print area overlay ────────────────────────────────────────────────
   layerHost.querySelectorAll('.print-area-overlay').forEach(el=>el.remove());
   if (loc.layers.length > 0 || loc.selectedLayer) {
-    const wr2 = wrap.getBoundingClientRect();
+    const wr2 = inner.getBoundingClientRect();
     if (wr2.width > 0) {
       const chestIn = getGarmentChestInches(g);
       const locName = loc.name || 'Front';
@@ -3589,7 +3601,8 @@ function onDragLayer(e){
   layer.x=Math.max(0,Math.min(e.clientX-_drag.startX,r.width-layer.w));
   layer.y=Math.max(0,Math.min(e.clientY-_drag.startY,r.height-20));
   if(_drag.loc){_drag.loc._wrapW=r.width;_drag.loc._wrapH=r.height;}
-  const el=wrap.querySelector(`.mockup-layer[data-id="${layer.id}"]`);
+  const lh=document.getElementById(`layerHost_${g.id}_${loc.id}`)||wrap;
+  const el=lh.querySelector(`.mockup-layer[data-id="${layer.id}"]`);
   if(el){el.style.left=layer.x+'px';el.style.top=layer.y+'px';}
 }
 function stopDragLayer(){_drag=null;document.removeEventListener('mousemove',onDragLayer);document.removeEventListener('mouseup',stopDragLayer);}
@@ -3615,8 +3628,9 @@ function onDragLayerTouch(e){
   const r=wrap.getBoundingClientRect();
   layer.x=Math.max(0,Math.min(t.clientX-_drag.startX,r.width-layer.w));
   layer.y=Math.max(0,Math.min(t.clientY-_drag.startY,r.height-20));
-  if(_drag.loc){_drag.loc._wrapW=t.clientX?r.width:r.width;_drag.loc._wrapH=r.height;}
-  const el=wrap.querySelector(`.mockup-layer[data-id="${layer.id}"]`);
+  if(_drag.loc){_drag.loc._wrapW=r.width;_drag.loc._wrapH=r.height;}
+  const lh=document.getElementById(`layerHost_${g.id}_${loc.id}`)||wrap;
+  const el=lh.querySelector(`.mockup-layer[data-id="${layer.id}"]`);
   if(el){el.style.left=layer.x+'px';el.style.top=layer.y+'px';}
 }
 function stopDragLayerTouch(){_drag=null;document.removeEventListener('touchmove',onDragLayerTouch);document.removeEventListener('touchend',stopDragLayerTouch);}
@@ -3631,7 +3645,8 @@ function onResizeLayer(e){
   const{g,loc,layer}=_resize;
   layer.w=Math.max(30,_resize.startW+(e.clientX-_resize.startX));
   syncLayerInches(layer, g, loc.id);
-  const el=document.getElementById(`canvas_${g.id}_${loc.id}`)?.querySelector(`.mockup-layer[data-id="${layer.id}"]`);
+  const _lh1=document.getElementById(`layerHost_${g.id}_${loc.id}`)||document.getElementById(`canvas_${g.id}_${loc.id}`);
+  const el=_lh1?.querySelector(`.mockup-layer[data-id="${layer.id}"]`);
   if(el){
     el.style.width=layer.w+'px';
     const sv=document.getElementById(`ctrlSize_${g.id}_${loc.id}`);
@@ -3652,7 +3667,8 @@ function onResizeLayerTouch(e){
   e.preventDefault();if(!_resize)return;
   const t=e.touches[0],{g,loc,layer}=_resize;
   layer.w=Math.max(30,_resize.startW+(t.clientX-_resize.startX));
-  const el=document.getElementById(`canvas_${g.id}_${loc.id}`)?.querySelector(`.mockup-layer[data-id="${layer.id}"]`);
+  const _lh2=document.getElementById(`layerHost_${g.id}_${loc.id}`)||document.getElementById(`canvas_${g.id}_${loc.id}`);
+  const el=_lh2?.querySelector(`.mockup-layer[data-id="${layer.id}"]`);
   if(el){el.style.width=layer.w+'px';}
 }
 function stopResizeLayerTouch(){if(_resize){_resize.layer.w=Math.round(_resize.layer.w);renderLayersForGarment(_resize.g,_resize.loc);}_resize=null;document.removeEventListener('touchmove',onResizeLayerTouch);document.removeEventListener('touchend',stopResizeLayerTouch);}
@@ -3666,7 +3682,7 @@ function _getLayerCenter(wrap, layer) {
 }
 function startRotateLayer(e, g, loc, layer) {
   e.preventDefault();
-  const wrap = document.getElementById(`canvas_${g.id}_${loc.id}`);
+  const wrap = document.getElementById(`layerHost_${g.id}_${loc.id}`) || document.getElementById(`canvas_${g.id}_${loc.id}`);
   const {cx,cy} = _getLayerCenter(wrap, layer);
   _rotState = { g, loc, layer, cx, cy };
   document.addEventListener('mousemove', onRotateLayer);
@@ -3688,7 +3704,7 @@ function stopRotateLayer() {
 }
 function startRotateLayerTouch(e, g, loc, layer) {
   e.preventDefault();
-  const wrap = document.getElementById(`canvas_${g.id}_${loc.id}`);
+  const wrap = document.getElementById(`layerHost_${g.id}_${loc.id}`) || document.getElementById(`canvas_${g.id}_${loc.id}`);
   const {cx,cy} = _getLayerCenter(wrap, layer);
   _rotState = { g, loc, layer, cx, cy };
   document.addEventListener('touchmove', onRotateLayerTouch, {passive:false});
