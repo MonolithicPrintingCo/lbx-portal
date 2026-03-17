@@ -2764,6 +2764,7 @@ function findGarmentById(gid, locId) {
       _bgView: g._bgView || null,
       _wrapW: g._wrapW || 0,
       _wrapH: g._wrapH || 0,
+      _magicType: g._magicType || 'screenprint',
     };
     return { g, loc, imp };
   }
@@ -4250,8 +4251,9 @@ let _magicCtx = { gid: null, locId: null, type: 'screenprint', blobUrl: null };
 
 function setMagicType(gid, locId, type) {
   const res = findGarmentById(gid); if (!res) return;
-  res.loc._magicType = type;
+  // Write directly to g (the real stored object) so it persists across re-renders
   if (res.g) res.g._magicType = type;
+  res.loc._magicType = type;
   renderGarmentList();
 }
 
