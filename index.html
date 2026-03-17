@@ -199,24 +199,6 @@
   .review-mockup-label{font-size:.75rem;color:var(--gray3);margin-top:4px}
   .review-uploaded-mockup{width:160px;height:160px;object-fit:contain;border:1.5px solid var(--gray2);border-radius:var(--radius);background:rgba(255,255,255,.06)}
 
-  /* ── Review page cards ───────────────────────────────── */
-  .review-garment-card{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12);border-radius:14px;overflow:hidden;margin-bottom:16px}
-  .review-garment-header{display:flex;align-items:center;gap:12px;padding:12px 16px;background:rgba(255,255,255,.05);border-bottom:1px solid rgba(255,255,255,.1)}
-  .review-garment-num{background:var(--accent);color:#fff;font-size:.7rem;font-weight:800;border-radius:50%;width:24px;height:24px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
-  .review-garment-title{font-size:.9rem;font-weight:700;color:#f0f0f0}
-  .review-garment-subtitle{font-size:.78rem;color:var(--gray3);margin-top:2px}
-  .review-garment-body{display:flex;gap:16px;padding:14px 16px;flex-wrap:wrap}
-  .review-garment-mockups{display:flex;gap:10px;flex-wrap:wrap;flex-shrink:0}
-  .review-garment-details{flex:1;min-width:200px;display:flex;flex-direction:column;gap:12px}
-  .review-detail-section{display:flex;flex-direction:column;gap:4px}
-  .review-detail-label{font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:rgba(255,255,255,.4);margin-bottom:2px}
-  .review-locations{display:flex;flex-wrap:wrap;gap:6px}
-  .review-loc-chip{background:rgba(26,111,222,.15);border:1px solid rgba(26,111,222,.35);color:#90c2ff;font-size:.75rem;font-weight:600;padding:3px 9px;border-radius:20px}
-  .summary-card{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:14px 16px;display:flex;flex-direction:column;gap:8px}
-  .summary-row{display:flex;justify-content:space-between;font-size:.82rem;gap:12px}
-  .summary-row .lbl{color:var(--gray3);font-weight:600}
-  .summary-row .val{color:#f0f0f0;font-weight:500;text-align:right}
-
 
   /* ── Garment Sidebar ─────────────────────────────────── */
   .garment-workspace{display:flex;gap:0;border:1px solid var(--glass-border);border-radius:14px;overflow:hidden;margin-bottom:16px}
@@ -831,7 +813,6 @@ const PROXY = 'https://lbx-order-proxy.lbxprints.workers.dev';
 
 // ── Current step tracker ───────────────────────────────────────────────────
 let currentStep = 1;
-let maxStep = 1; // highest step ever visited
 const MAX_COMPLETED_STEP = () => {
   // derive from cart + state
   if (cart.length > 0 || garments.some(g => g.locations.some(l => l.layers.length || l.artFiles.length))) return 4;
@@ -844,8 +825,8 @@ const MAX_COMPLETED_STEP = () => {
 function stepNavClick(n) {
   const el = document.getElementById('step' + n);
   if (!el) return;
-  // Allow going to any step that has been visited (done or active), or max reached
-  if (n <= maxStep) {
+  // Allow going to any done step OR the next step after current
+  if (el.classList.contains('done') || el.classList.contains('active') || n === currentStep + 1) {
     goTo(n);
   }
 }
@@ -1459,7 +1440,6 @@ document.getElementById('toStep2').addEventListener('click', () => goTo(2));
 
 function goTo(n) {
   currentStep = n;
-  if (n > maxStep) maxStep = n;
   for (let i=1;i<=7;i++) {
     const sec = document.getElementById('sec'+i);
     if (sec) sec.classList.toggle('active', i===n);
@@ -1639,22 +1619,21 @@ function renderSummary() {
       return `${l.name}${note}${inkNote}`;
     }).join(', ');
     return `<div class="summary-row">
-      <span class="lbl">Garment ${i+1}</span>
-      <span class="val">${prod.brand||''} ${prod.title||g.style} · ${g.color}<br><span style="font-size:.78rem;color:var(--gray3)">${locs}</span></span>
+      <span class="label">Garment ${i+1}</span>
+      <span class="value">${prod.brand||''} ${prod.title||g.style} · ${g.color}<br><span style="font-size:.8rem;color:var(--gray3)">${locs}</span></span>
     </div>`;
   }).join('');
 
   document.getElementById('summaryCard').innerHTML = `
     ${garmentRows}
-    <hr style="border:none;border-top:1px solid rgba(255,255,255,.08);margin:4px 0">
-    <div class="summary-row"><span class="lbl">Sizes / Qty</span><span class="val">${sizeStr} &nbsp;·&nbsp; ${total} pcs</span></div>
-    <div class="summary-row"><span class="lbl">Decoration</span><span class="val">${state.printType} · ${state.printColors} color${state.printColors>1?'s':''}</span></div>
-    ${state.dueDate?`<div class="summary-row"><span class="lbl">Need By</span><span class="val">${state.dueDate}</span></div>`:''}
-    ${state.notes?`<div class="summary-row"><span class="lbl">Notes</span><span class="val">${state.notes}</span></div>`:''}
-    <hr style="border:none;border-top:1px solid rgba(255,255,255,.08);margin:4px 0">
-    <div class="summary-row"><span class="lbl">Contact</span><span class="val">${state.firstName} ${state.lastName}${state.company?' · '+state.company:''}</span></div>
-    <div class="summary-row"><span class="lbl">Email</span><span class="val">${state.email}</span></div>
-    ${state.phone?`<div class="summary-row"><span class="lbl">Phone</span><span class="val">${state.phone}</span></div>`:''}
+    <div class="summary-row"><span class="label">Sizes / Qty</span><span class="value">${sizeStr} (${total} pcs)</span></div>
+    <div class="summary-row"><span class="label">Decoration</span><span class="value">${state.printType} · ${state.printColors}</span></div>
+    ${state.dueDate?`<div class="summary-row"><span class="label">Need By</span><span class="value">${state.dueDate}</span></div>`:''}
+    ${state.notes?`<div class="summary-row"><span class="label">Notes</span><span class="value">${state.notes}</span></div>`:''}
+    <div class="summary-row" style="margin-top:8px"><span class="label">Name</span><span class="value">${state.firstName} ${state.lastName}</span></div>
+    <div class="summary-row"><span class="label">Email</span><span class="value">${state.email}</span></div>
+    ${state.phone?`<div class="summary-row"><span class="label">Phone</span><span class="value">${state.phone}</span></div>`:''}
+    ${state.company?`<div class="summary-row"><span class="label">Company</span><span class="value">${state.company}</span></div>`:''}
   `;
 }
 
@@ -1731,7 +1710,7 @@ async function uploadMockupBlob(blob, filename) {
 
 async function submitOrder() {
   const btn=document.getElementById('submitBtn');
-  btn.disabled=true; btn.textContent='Submitting...';
+  btn.disabled=true; btn.textContent='Uploading mockups...';
 
   // Use cart items if available, otherwise use current garments
   rebuildGarmentsFlat();
@@ -1756,9 +1735,29 @@ async function submitOrder() {
     return `Garment ${i+1}: ${prod.title||g.style} / ${g.color} — ${locs}`;
   }).join('\n');
 
-  // ── Use data-URL previews from review page for mockup_url (already generated)
-  // Real CDN uploads happen in the background AFTER submit succeeds
-  const mockupEntries = []; // populated after submit for background upload
+  // ── Render mockups and upload each to CDN — get back real public URLs ────
+  const mockupEntries = []; // { garment, color, location, url }
+  for (const g of allGarments) {
+    for (const loc of g.locations) {
+      let url = null;
+      if (g.mode === 'upload' && loc.mockupFiles.some(f=>f.url&&f.isImage)) {
+        // User uploaded a pre-made mockup — use its URL directly
+        const f = loc.mockupFiles.find(f=>f.url&&f.isImage);
+        url = f.url;
+      } else if (loc.layers.length > 0) {
+        try {
+          const blob = await renderLocMockupBlob(g, loc, 600);
+          if (blob) {
+            const fname = `mockup_${g.style}_${g.color.replace(/[^a-z0-9]/gi,'_')}_${loc.name.replace(/[^a-z0-9]/gi,'_')}.png`;
+            url = await uploadMockupBlob(blob, fname);
+          }
+        } catch(e) { console.warn('mockup render/upload failed:', e); }
+      }
+      if (url) mockupEntries.push({ garment: g.style, color: g.color, location: loc.name, url });
+    }
+  }
+
+  btn.textContent='Submitting...';
 
   const payload={
     status:'Pending',
@@ -1779,7 +1778,7 @@ async function submitOrder() {
     customer_company: state.company||'',
     due_date: state.dueDate||null,
     notes: (state.notes||'') + (garmentSummary ? '\n\n--- Garments ---\n' + garmentSummary : ''),
-    mockup_url: '', // filled in by background upload
+    mockup_url: mockupEntries[0]?.url || '',
     artwork_urls: allGarments.flatMap(g =>
       g.locations.flatMap(l => [
         ...l.artFiles.filter(f=>!f.error).map(f=>f.url || f.name),
@@ -1807,13 +1806,15 @@ async function submitOrder() {
         print_type: state.printType,
         print_colors: state.printColors,
         ink_color: getImprintInkColor(locName),
-        mockup_url: null, // filled in by background upload
+        // Real CDN mockup URL for this imprint location
+        mockup_url: mockupEntries.find(m => m.location === locName)?.url || null,
         garments: allGarments
           .filter(g => g.locations.some(l => l.name === locName))
           .map((g, gi) => {
             const prod = CATALOG[g.style] || {};
             const loc = g.locations.find(l => l.name === locName);
-            const gMockup = null; // filled in by background upload
+            // Per-garment CDN mockup URL
+            const gMockup = mockupEntries.find(m => m.location===locName && m.color===g.color);
             return {
               garment_index: allGarments.indexOf(g) + 1,
               product_name: prod.title || g.style,
@@ -1824,7 +1825,7 @@ async function submitOrder() {
               quantities: (() => { const ci = cart.find(c => c.garmentData && c.garmentData.some(x=>x.id===g.id)); return ci ? ci.quantities : state.quantities; })(),
               total_qty: total,
               artwork_files: loc ? loc.artFiles.filter(f=>!f.error).map(f=>f.url||f.name) : [],
-              mockup_url: null,
+              mockup_url: gMockup?.url || null,
             };
           }),
       }));
@@ -1837,51 +1838,13 @@ async function submitOrder() {
       headers:{'Content-Type':'application/json'},
       body:JSON.stringify(payload)
     });
-    if(r.ok){
-      const resp = await r.json();
-      const orderId = resp?.id;
-      goTo(7);
-      cart=[]; localStorage.removeItem(LS_KEY);
-      // ── Background: render + upload mockups and patch the order ──────────
-      if (orderId) {
-        uploadMockupsInBackground(orderId, allGarments).catch(e => console.warn('bg mockup upload:', e));
-      }
-    }
+    if(r.ok){goTo(7); cart=[]; localStorage.removeItem(LS_KEY);}
     else{throw new Error(await r.text());}
   } catch(e) {
     console.error(e);
     btn.disabled=false; btn.textContent='✓ Submit Order Request';
     alert('Something went wrong. Please try again or email us at Quotes@lbxprints.com');
   }
-}
-
-// ── Background mockup upload after order is submitted ────────────────────────
-async function uploadMockupsInBackground(orderId, allGarments) {
-  const entries = [];
-  for (const g of allGarments) {
-    for (const loc of g.locations) {
-      let url = null;
-      if (g.mode === 'upload' && loc.mockupFiles.some(f=>f.url&&f.isImage)) {
-        url = loc.mockupFiles.find(f=>f.url&&f.isImage).url;
-      } else if (loc.layers.length > 0) {
-        try {
-          const blob = await renderLocMockupBlob(g, loc, 600);
-          if (blob) {
-            const fname = `mockup_${g.style}_${g.color.replace(/[^a-z0-9]/gi,'_')}_${loc.name.replace(/[^a-z0-9]/gi,'_')}.png`;
-            url = await uploadMockupBlob(blob, fname);
-          }
-        } catch(e) { console.warn('bg mockup render failed:', e); }
-      }
-      if (url) entries.push({ garment: g.style, color: g.color, location: loc.name, url });
-    }
-  }
-  if (!entries.length) return;
-  // Patch the order with mockup URLs
-  await fetch('https://printbot-a98e71ad.base44.app/functions/submitOrder', {
-    method: 'PATCH',
-    headers: {'Content-Type':'application/json'},
-    body: JSON.stringify({ id: orderId, mockup_url: entries[0]?.url, mockup_entries: entries }),
-  }).catch(e => console.warn('mockup patch failed:', e));
 }
 
 // ══════════════════════════════════════════════════════
