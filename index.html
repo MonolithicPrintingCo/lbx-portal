@@ -2487,15 +2487,6 @@ function renderGarmentMockupBody(g, imp) {
           </div>
         </div>
       </div>
-      <script>
-      // If bg image already loaded from cache, onload won't fire — force layer render
-      (function(){
-        const bgEl = document.getElementById('bg_${g.id}_${loc.id}');
-        if (bgEl && bgEl.complete && bgEl.naturalWidth > 0) {
-          requestAnimationFrame(() => onGarmentImgLoad('${g.id}','${loc.id}',bgEl));
-        }
-      })();
-      </script>
       <!-- Right panel -->
       <div class="mockup-sidebar">
         <!-- Layers -->
@@ -3363,6 +3354,12 @@ function renderLayersForGarment(g, loc) {
   const layerHost = document.getElementById(`layerHost_${g.id}_${loc.id}`) || inner;
   // Wrap dims come from the inner div (which is sized by the img)
   const wr = inner.getBoundingClientRect();
+  // If image already loaded from cache but dims aren't ready yet, retry after paint
+  const bgImgEl = document.getElementById(`bg_${g.id}_${loc.id}`);
+  if (wr.width === 0 && bgImgEl && bgImgEl.complete && bgImgEl.naturalWidth > 0) {
+    requestAnimationFrame(() => renderLayersForGarment(g, loc));
+    return;
+  }
   // Fallback: use bgImg offsetHeight if getBoundingClientRect returns 0 height
   const bgEl2 = document.getElementById(`bg_${g.id}_${loc.id}`);
   const wrH = wr.height > 0 ? wr.height : (bgEl2 ? bgEl2.offsetHeight : 0) || wr.width;
