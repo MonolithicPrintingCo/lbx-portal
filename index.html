@@ -249,6 +249,23 @@
   .bg-remove-btn:disabled{opacity:.4;cursor:not-allowed}
   .bg-remove-btn .spin{display:inline-block;animation:spin .8s linear infinite}
   .bg-remove-btn.active-wand{border-color:#f39c12;background:rgba(243,156,18,.18);color:#f9ca24;animation:wand-pulse 1s ease-in-out infinite alternate}
+  .magic-render-btn{display:flex;align-items:center;justify-content:center;gap:7px;padding:9px 14px;border-radius:9px;border:1.5px solid rgba(255,215,0,.5);background:linear-gradient(135deg,rgba(255,215,0,.15),rgba(255,140,0,.1));color:#ffd700;font-size:.82rem;font-weight:700;cursor:pointer;transition:all .25s;width:100%;letter-spacing:.02em}
+  .magic-render-btn:hover{background:linear-gradient(135deg,rgba(255,215,0,.28),rgba(255,140,0,.2));border-color:#ffd700;box-shadow:0 0 16px rgba(255,215,0,.25)}
+  .magic-render-btn:disabled{opacity:.45;cursor:not-allowed}
+  .magic-render-btn .spin{display:inline-block;animation:spin .8s linear infinite}
+  /* Magic render modal */
+  #magicRenderModal{position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:20px}
+  #magicRenderModal .modal-card{background:#1a1a2e;border-radius:16px;padding:20px;max-width:520px;width:100%;display:flex;flex-direction:column;gap:14px;border:1.5px solid rgba(255,215,0,.25);box-shadow:0 8px 48px rgba(0,0,0,.6)}
+  #magicRenderModal h3{color:#ffd700;margin:0;font-size:1.05rem;display:flex;align-items:center;gap:8px}
+  #magicRenderModal .render-type-row{display:flex;gap:8px}
+  #magicRenderModal .rtype-btn{flex:1;padding:9px 6px;border-radius:8px;border:1.5px solid rgba(255,255,255,.15);background:rgba(255,255,255,.06);color:#ccc;font-size:.8rem;font-weight:600;cursor:pointer;text-align:center;transition:all .18s}
+  #magicRenderModal .rtype-btn.active{border-color:#ffd700;background:rgba(255,215,0,.14);color:#ffd700}
+  #magicRenderModal .render-preview{width:100%;aspect-ratio:1/1;border-radius:10px;overflow:hidden;background:#111;position:relative;display:flex;align-items:center;justify-content:center}
+  #magicRenderModal .render-preview img{width:100%;height:100%;object-fit:contain}
+  #magicRenderModal .modal-actions{display:flex;gap:8px}
+  #magicRenderModal .modal-close-btn{flex:1;padding:9px;border-radius:8px;border:1.5px solid rgba(255,255,255,.2);background:rgba(255,255,255,.07);color:#ccc;font-size:.82rem;cursor:pointer}
+  #magicRenderModal .modal-dl-btn{flex:2;padding:9px;border-radius:8px;border:1.5px solid rgba(255,215,0,.5);background:linear-gradient(135deg,rgba(255,215,0,.2),rgba(255,140,0,.15));color:#ffd700;font-size:.82rem;font-weight:700;cursor:pointer}
+
   @keyframes wand-pulse{from{box-shadow:0 0 0 0 rgba(243,156,18,.4)}to{box-shadow:0 0 0 6px rgba(243,156,18,0)}}
   .wand-tolerance-row{display:flex;align-items:center;gap:6px;margin-top:5px}
   .wand-tolerance-row label{font-size:.71rem;color:rgba(255,255,255,.45);white-space:nowrap}
@@ -1087,31 +1104,92 @@ function applyRestoredFormFields() {
 const CATALOG = {};
 
 // Real-world printable chest widths (inches) by category — used for px↔inch scaling
+// These are the FULL garment chest width at size Adult L (reference size for mockup scaling)
 const GARMENT_CHEST_INCHES = {
-  'T-Shirts':         18,
-  'Tees':             18,
-  'T-Shirt':          18,
-  'Polo':             18,
-  'Polos':            18,
-  'Sport Shirts':     18,
-  'Woven Shirts':     18,
-  'Sweatshirts':      20,
-  'Hoodies':          20,
-  'Fleece':           20,
-  'Jackets':          21,
-  'Outerwear':        21,
-  'Vests':            19,
-  'Youth':            15,
-  'Toddler':          12,
-  'Infant':           10,
-  'Headwear':          8,
+  'T-Shirts':         20,   // Adult L tee chest ~20" across
+  'Tees':             20,
+  'T-Shirt':          20,
+  'Polo':             20,
+  'Polos':            20,
+  'Sport Shirts':     20,
+  'Woven Shirts':     20,
+  'Sweatshirts':      22,   // Adult L crew/hoodie chest ~22"
+  'Hoodies':          22,
+  'Fleece':           22,
+  'Jackets':          22,
+  'Outerwear':        22,
+  'Vests':            20,
+  'Youth':            16,
+  'Toddler':          13,
+  'Infant':           11,
+  'Headwear':          8,   // hat panel width ~8"
   'Hats':              8,
-  'Bags':             12,
-  'Tote Bags':        12,
-  'Towels':           15,
-  'Aprons':           16,
-  'default':          18,
+  'Bags':             14,
+  'Tote Bags':        14,
+  'Towels':           16,
+  'Aprons':           18,
+  'default':          20,
 };
+
+// Industry-standard print areas per location.
+// w/h = printable width/height in inches.
+// cx/cy = center of print area as fraction of garment chest width (0=left edge, 1=right edge)
+//         cy is fraction of garment HEIGHT (approx chest width * 1.4 for tees)
+// These match standard screen print / DTG maximums used by most contract printers.
+const PRINT_AREAS = {
+  'Front':        { w: 12,  h: 16,  cx: 0.50, cy: 0.30 }, // full front
+  'Full Front':   { w: 12,  h: 16,  cx: 0.50, cy: 0.30 },
+  'Back':         { w: 12,  h: 16,  cx: 0.50, cy: 0.35 }, // full back
+  'Full Back':    { w: 12,  h: 16,  cx: 0.50, cy: 0.35 },
+  'Left Chest':   { w:  4,  h:  4,  cx: 0.25, cy: 0.17 }, // ~4"x4" left chest pocket area
+  'Right Chest':  { w:  4,  h:  4,  cx: 0.75, cy: 0.17 },
+  'Left Sleeve':  { w:  3,  h:  3,  cx: 0.12, cy: 0.28 },
+  'Right Sleeve': { w:  3,  h:  3,  cx: 0.88, cy: 0.28 },
+  'Hood':         { w:  6,  h:  4,  cx: 0.50, cy: 0.08 },
+  'Hem':          { w:  4,  h:  2,  cx: 0.50, cy: 0.88 },
+  'Leg':          { w:  4,  h:  4,  cx: 0.25, cy: 0.40 },
+  'Hat Front':    { w:  3.5,h:  2.5,cx: 0.50, cy: 0.40 }, // structured hat front panel
+  'Hat Back':     { w:  2.5,h:  2,  cx: 0.50, cy: 0.40 },
+  'Custom':       { w: 10,  h: 12,  cx: 0.50, cy: 0.30 },
+};
+
+// Returns print area for a given location name, falling back to Front
+function getPrintArea(locationName) {
+  if (!locationName) return PRINT_AREAS['Front'];
+  // Exact match
+  if (PRINT_AREAS[locationName]) return PRINT_AREAS[locationName];
+  // Partial match
+  for (const key of Object.keys(PRINT_AREAS)) {
+    if (locationName.toLowerCase().includes(key.toLowerCase())) return PRINT_AREAS[key];
+  }
+  return PRINT_AREAS['Front'];
+}
+
+// Returns the bounding box of the print area in canvas pixels
+// { x, y, w, h } — all in pixels, relative to the canvas element
+function getPrintAreaPx(canvasRect, garmentChestIn, locationName) {
+  const area = getPrintArea(locationName);
+  const pxPerInch = canvasRect.width / garmentChestIn;
+  // Garment height ≈ chest * 1.4 for tees/hoodies (aspect ratio of image is 1:1 canvas)
+  // But canvas is square, so garmentH = canvasRect.height
+  const garmentHeightIn = garmentChestIn * (canvasRect.height / canvasRect.width);
+
+  const areaW = area.w * pxPerInch;
+  const areaH = area.h * pxPerInch;
+  const centerX = area.cx * canvasRect.width;
+  const centerY = area.cy * canvasRect.height;
+
+  return {
+    x: Math.round(centerX - areaW / 2),
+    y: Math.round(centerY - areaH / 2),
+    w: Math.round(areaW),
+    h: Math.round(areaH),
+    // Also return the recommended DEFAULT artwork size (80% of print area width)
+    defaultArtW: Math.round(areaW * 0.8),
+    defaultArtX: Math.round(centerX - areaW * 0.4),
+    defaultArtY: Math.round(centerY - areaW * 0.4), // square-ish default
+  };
+}
 
 function getGarmentChestInches(g) {
   const prod = CATALOG[g.style] || {};
@@ -1152,10 +1230,25 @@ function inchesToPx(inches, g, locId) {
   return (inches / chestIn) * r.width;
 }
 
-// Update layer.wInches whenever layer.w changes
+// Update layer.wInches (and hInches via aspect ratio) whenever layer.w changes
 function syncLayerInches(layer, g, locId) {
   const inches = pxToInches(layer.w, g, locId);
-  if (inches !== null) layer.wInches = Math.round(inches * 10) / 10;
+  if (inches !== null) {
+    layer.wInches = Math.round(inches * 10) / 10;
+    // Compute height in inches using the artwork's natural aspect ratio
+    if (layer._naturalW && layer._naturalH && layer._naturalW > 0) {
+      layer.hInches = Math.round(layer.wInches * (layer._naturalH / layer._naturalW) * 10) / 10;
+    }
+  }
+}
+
+// Format W x H label for a layer
+function layerSizeLabel(layer) {
+  if (layer.wInches) {
+    const h = layer.hInches ? ` × ${layer.hInches.toFixed(1)}"` : '';
+    return `${layer.wInches.toFixed(1)}"${h}`;
+  }
+  return Math.round(layer.w) + 'px';
 }
 
 // Sync layer.w from layer.wInches (when placing on a new garment)
@@ -2342,9 +2435,9 @@ function renderGarmentMockupBody(g, imp) {
           <div class="slider-row">
             <div class="slider-row-top">
               <label>Size</label>
-              <span class="val" id="ctrlSizeVal_${g.id}_${loc.id}">${selLayer ? (() => { const in_ = pxToInches(selLayer.w, g, loc.id); return in_ ? in_.toFixed(1)+'"' : Math.round(selLayer.w)+'px'; })() : '—'}</span>
+              <span class="val" id="ctrlSizeVal_${g.id}_${loc.id}">${selLayer ? layerSizeLabel(selLayer) : '—'}</span>
             </div>
-            <input type="range" min="20" max="400" value="${selLayer?selLayer.w:120}" id="ctrlSize_${g.id}_${loc.id}"
+            <input type="range" min="20" max="${(() => { const pa = getPrintAreaPx({width:loc._wrapW||400,height:loc._wrapH||400}, getGarmentChestInches(g), loc.name||'Front'); return pa.w; })()}" value="${selLayer?selLayer.w:120}" id="ctrlSize_${g.id}_${loc.id}"
               oninput="resizeSelectedLayer('${g.id}','${loc.id}',this.value)">
           </div>
           <div class="slider-row">
@@ -2380,6 +2473,23 @@ function renderGarmentMockupBody(g, imp) {
           </div>
           ${selLayer._wandHistory?.length ? `<button class="wand-undo-btn" onclick="undoWand('${g.id}','${loc.id}','${selLayer.id}')">↩ Undo last removal</button>` : ''}
         </div>` : ''}
+        <!-- ✨ Magic Render -->
+        <div class="mockup-panel" style="gap:6px">
+          <h4>✨ Magic Render</h4>
+          <p style="font-size:.75rem;color:var(--gray4);margin:0 0 4px">See your design as it would look printed or embroidered on the actual garment.</p>
+          <div style="display:flex;gap:6px;margin-bottom:6px">
+            <button class="rtype-btn${(loc._magicType||'screenprint')==='screenprint'?' active':''}" style="flex:1;padding:7px 4px;border-radius:7px;border:1.5px solid ${(loc._magicType||'screenprint')==='screenprint'?'#ffd700':'rgba(255,255,255,.15)'};background:${(loc._magicType||'screenprint')==='screenprint'?'rgba(255,215,0,.14)':'rgba(255,255,255,.06)'};color:${(loc._magicType||'screenprint')==='screenprint'?'#ffd700':'#ccc'};font-size:.78rem;font-weight:600;cursor:pointer"
+              onclick="setMagicType('${g.id}','${loc.id}','screenprint')">🖨 Screen Print</button>
+            <button class="rtype-btn${(loc._magicType||'screenprint')==='embroidery'?' active':''}" style="flex:1;padding:7px 4px;border-radius:7px;border:1.5px solid ${(loc._magicType||'screenprint')==='embroidery'?'#ffd700':'rgba(255,255,255,.15)'};background:${(loc._magicType||'screenprint')==='embroidery'?'rgba(255,215,0,.14)':'rgba(255,255,255,.06)'};color:${(loc._magicType||'screenprint')==='embroidery'?'#ffd700':'#ccc'};font-size:.78rem;font-weight:600;cursor:pointer"
+              onclick="setMagicType('${g.id}','${loc.id}','embroidery')">🧵 Embroidery</button>
+            <button class="rtype-btn${(loc._magicType||'screenprint')==='dtg'?' active':''}" style="flex:1;padding:7px 4px;border-radius:7px;border:1.5px solid ${(loc._magicType||'screenprint')==='dtg'?'#ffd700':'rgba(255,255,255,.15)'};background:${(loc._magicType||'screenprint')==='dtg'?'rgba(255,215,0,.14)':'rgba(255,255,255,.06)'};color:${(loc._magicType||'screenprint')==='dtg'?'#ffd700':'#ccc'};font-size:.78rem;font-weight:600;cursor:pointer"
+              onclick="setMagicType('${g.id}','${loc.id}','dtg')">🎨 DTG</button>
+          </div>
+          <button class="magic-render-btn" id="magicRenderBtn_${g.id}_${loc.id}"
+            onclick="doMagicRender('${g.id}','${loc.id}')">
+            ✨ Generate Magic Render
+          </button>
+        </div>
       </div>
     </div>` : '';
 
@@ -2809,6 +2919,17 @@ async function readArtFile(entry, gid, locId) {
       reader.onerror = rej;
       reader.readAsDataURL(entry.file);
     });
+    // Probe natural dimensions for W×H inch display
+    if (entry.isImage && entry.url) {
+      try {
+        await new Promise(res2 => {
+          const probe = new Image();
+          probe.onload = () => { entry._naturalW = probe.naturalWidth; entry._naturalH = probe.naturalHeight; res2(); };
+          probe.onerror = res2;
+          probe.src = entry.url;
+        });
+      } catch(e) {}
+    }
     // Auto-add image as mockup layer
     if (entry.isImage && entry.url) {
       // Use new model — findGarmentById looks in imprints[]
@@ -2825,6 +2946,9 @@ async function readArtFile(entry, gid, locId) {
           if (inheritInches) break;
         }
         addLayerToLocCentered(loc, entry, inheritInches);
+        // Patch any existing layer that was created before url was ready
+        const existing = loc.layers.find(l => l.fileId === entry.id);
+        if (existing && !existing.url) existing.url = entry.url;
       }
     }
   } catch(err) {
@@ -2886,8 +3010,11 @@ function addLayerToLoc(loc, fileEntry) {
 }
 
 function addLayerToLocCentered(loc, fileEntry, inheritWInches) {
+  // Guard: never add the same file twice to the same loc
+  if (loc.layers.some(l => l.fileId === fileEntry.id)) return;
   // If we have an existing real-world size from another garment, start with a placeholder w
-  const layer = { id: uid(), fileId: fileEntry.id, url: fileEntry.url, objectUrl: fileEntry.objectUrl, name: fileEntry.name, x:100, y:80, w:120, opacity:1, rot:0 };
+  const layer = { id: uid(), fileId: fileEntry.id, url: fileEntry.url, objectUrl: fileEntry.objectUrl, name: fileEntry.name, x:100, y:80, w:120, opacity:1, rot:0,
+    _naturalW: fileEntry._naturalW||0, _naturalH: fileEntry._naturalH||0 };
   if (inheritWInches) layer.wInches = inheritWInches;
   loc.layers.push(layer);
   // After render we'll reposition to center (and apply real-world size if available)
@@ -2905,17 +3032,27 @@ function addLayerToLocCentered(loc, fileEntry, inheritWInches) {
     if (!wrap) return;
     const r = wrap.getBoundingClientRect();
     if (r.width > 0) {
-      // If we have real-world inches, convert to px for this garment's scale
+      const chestIn = getGarmentChestInches(g);
+      // Find imprint location name for this loc
+      const impId2 = loc.id.replace('_loc', '');
+      const imp2 = imprints.find(i => i.id === impId2);
+      const locName = imp2?.location || loc.name || 'Front';
+      const pa = getPrintAreaPx(r, chestIn, locName);
+
       if (layer.wInches) {
+        // Inherit size from another garment — convert inches to px
         const px = inchesToPx(layer.wInches, g, loc.id);
         if (px) layer.w = Math.round(px);
+        // Center within print area
+        layer.x = Math.round(pa.x + (pa.w - layer.w) / 2);
+        layer.y = Math.round(pa.y + (pa.h - layer.w) / 2);
       } else {
-        // Default: 40% of canvas width, then record inches
-        layer.w = Math.round(r.width * 0.4);
+        // Default: use print area default size (80% of print area width)
+        layer.w = pa.defaultArtW;
+        layer.x = pa.defaultArtX;
+        layer.y = pa.defaultArtY;
         syncLayerInches(layer, g, loc.id);
       }
-      layer.x = Math.round((r.width - layer.w) / 2);
-      layer.y = Math.round((r.height - layer.w) / 2);
       loc._wrapW = r.width;
       loc._wrapH = r.height;
       // Sync back to real garment in imprints
@@ -2954,59 +3091,63 @@ async function applyInkColorToLayer(layer, inkHex) {
   if (_inkCache[layer.id] && _inkCache[layer.id].hex === inkHex && _inkCache[layer.id].blobUrl) {
     return _inkCache[layer.id].blobUrl;
   }
-  // Prefer objectUrl (blob:) then fall back to url (data: base64)
-  const src = layer.objectUrl || layer.url;
+  // Prefer data URL (always available after readArtFile) over blob URL (can expire)
+  const src = layer.url || layer.objectUrl;
   if (!src) return null;
 
-  return new Promise(resolve => {
+  try {
     const img = new Image();
-    // Do NOT set crossOrigin on blob: or data: URLs — causes canvas tainting
-    img.onload = () => {
-      try {
-        const canvas = document.createElement('canvas');
-        canvas.width = img.naturalWidth || img.width;
-        canvas.height = img.naturalHeight || img.height;
-        const ctx = canvas.getContext('2d', { willReadFrequently: true });
-        ctx.drawImage(img, 0, 0);
-        let data;
-        try {
-          data = ctx.getImageData(0, 0, canvas.width, canvas.height);
-        } catch(e) {
-          // Canvas tainted — can't read pixels (shouldn't happen with blob/data URLs)
-          resolve(null); return;
-        }
-        const d = data.data;
-        const [ir, ig, ib] = parseHexRgb(inkHex);
+    // For data: URLs we don't need crossOrigin; for blob: URLs we also don't
+    await new Promise((res, rej) => {
+      img.onload = res;
+      img.onerror = rej;
+      img.src = src;
+    });
+    // Ensure fully decoded
+    try { await img.decode(); } catch(e) {}
 
-        for (let i = 0; i < d.length; i += 4) {
-          if (d[i+3] < 10) continue; // skip fully/nearly transparent pixels
-          // Luminance: 0=black, 255=white
-          const lum = (d[i]*0.299 + d[i+1]*0.587 + d[i+2]*0.114) / 255;
-          // Screen print logic: dark pixels → ink color, light pixels → transparent
-          // t=1 means fully black → full ink color, t=0 means white → invisible
-          const t = 1 - lum;
-          d[i]   = ir;
-          d[i+1] = ig;
-          d[i+2] = ib;
-          // Alpha driven entirely by darkness of original pixel
-          d[i+3] = Math.round(d[i+3] * t);
-        }
+    const W = img.naturalWidth || img.width;
+    const H = img.naturalHeight || img.height;
+    if (!W || !H) { console.warn('applyInkColor: zero size image'); return null; }
 
-        ctx.putImageData(data, 0, 0);
-        canvas.toBlob(blob => {
-          if (!blob) { resolve(null); return; }
-          if (_inkCache[layer.id]?.blobUrl) URL.revokeObjectURL(_inkCache[layer.id].blobUrl);
-          const url = URL.createObjectURL(blob);
-          _inkCache[layer.id] = { hex: inkHex, blobUrl: url };
-          resolve(url);
-        }, 'image/png');
-      } catch(e) {
-        resolve(null);
-      }
-    };
-    img.onerror = () => resolve(null);
-    img.src = src;
-  });
+    const canvas = document.createElement('canvas');
+    canvas.width = W;
+    canvas.height = H;
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    ctx.drawImage(img, 0, 0);
+
+    let data;
+    try {
+      data = ctx.getImageData(0, 0, W, H);
+    } catch(e) {
+      console.warn('applyInkColor: canvas tainted', e);
+      return null;
+    }
+
+    const d = data.data;
+    const [ir, ig, ib] = parseHexRgb(inkHex);
+    for (let i = 0; i < d.length; i += 4) {
+      if (d[i+3] < 10) continue; // skip transparent pixels
+      d[i]   = ir;
+      d[i+1] = ig;
+      d[i+2] = ib;
+      // alpha unchanged
+    }
+    ctx.putImageData(data, 0, 0);
+
+    return await new Promise(resolve => {
+      canvas.toBlob(blob => {
+        if (!blob) { resolve(null); return; }
+        if (_inkCache[layer.id]?.blobUrl) URL.revokeObjectURL(_inkCache[layer.id].blobUrl);
+        const url = URL.createObjectURL(blob);
+        _inkCache[layer.id] = { hex: inkHex, blobUrl: url };
+        resolve(url);
+      }, 'image/png');
+    });
+  } catch(e) {
+    console.warn('applyInkColorToLayer failed:', e);
+    return null;
+  }
 }
 
 // Clear ink cache entry when layer is deleted
@@ -3146,6 +3287,26 @@ function renderLayersForGarment(g, loc) {
     bgImg.src = getGarmentImg(g, view);
   }
   wrap.querySelectorAll('.mockup-layer').forEach(el=>el.remove());
+  // ── Print area overlay ────────────────────────────────────────────────
+  wrap.querySelectorAll('.print-area-overlay').forEach(el=>el.remove());
+  if (loc.layers.length > 0 || loc.selectedLayer) {
+    const wr2 = wrap.getBoundingClientRect();
+    if (wr2.width > 0) {
+      const chestIn = getGarmentChestInches(g);
+      const locName = loc.name || 'Front';
+      const pa = getPrintAreaPx(wr2, chestIn, locName);
+      const overlay = document.createElement('div');
+      overlay.className = 'print-area-overlay';
+      overlay.style.cssText = `position:absolute;left:${pa.x}px;top:${pa.y}px;width:${pa.w}px;height:${pa.h}px;border:1.5px dashed rgba(255,255,255,0.28);border-radius:3px;pointer-events:none;box-sizing:border-box;z-index:1`;
+      // Label
+      const label = document.createElement('div');
+      const pa2 = getPrintArea(locName);
+      label.style.cssText = `position:absolute;top:-18px;left:0;font-size:9px;color:rgba(255,255,255,0.4);white-space:nowrap;font-family:sans-serif;letter-spacing:.03em`;
+      label.textContent = `Max print area: ${pa2.w}" × ${pa2.h}"`;
+      overlay.appendChild(label);
+      wrap.appendChild(overlay);
+    }
+  }
   loc.layers.forEach(layer => {
     const div = document.createElement('div');
     div.className = 'mockup-layer' + (loc.selectedLayer===layer.id?' selected':'');
@@ -3153,18 +3314,26 @@ function renderLayersForGarment(g, loc) {
     div.dataset.id = layer.id;
     div.style.transform = `rotate(${layer.rot||0}deg)`;
     const inkHex = loc.inkColor?.hex || null;
-    // Use canvas colorization — respects PNG transparency perfectly
-    const cachedInkUrl = (inkHex && _inkCache[layer.id]?.hex === inkHex) ? _inkCache[layer.id].blobUrl : null;
-    const imgSrc = cachedInkUrl || layer.objectUrl || layer.url;
+    // If we already have a cached colorized version, use it immediately to avoid flash
+    const cachedInkSrc = (inkHex && _inkCache[layer.id]?.hex === inkHex && _inkCache[layer.id]?.blobUrl)
+      ? _inkCache[layer.id].blobUrl : null;
+    const imgSrc = cachedInkSrc || layer.objectUrl || layer.url;
     div.innerHTML = `<img id="layerImg_${layer.id}" src="${imgSrc}" style="width:100%;opacity:${layer.opacity};display:block;pointer-events:none" draggable="false">
       <div class="resize-handle" data-resize="${layer.id}"></div>
       <div class="rotate-handle" data-rotate="${layer.id}">↻</div>`;
-    // Async: apply ink color via canvas if needed
-    if (inkHex && !cachedInkUrl) {
+    if (inkHex && !cachedInkSrc) {
+      // Not cached yet — colorize async, then update src AND preserve opacity
+      const _layerId = layer.id;
+      const _opacity = layer.opacity;
       applyInkColorToLayer(layer, inkHex).then(url => {
         if (!url) return;
-        const imgEl = document.getElementById('layerImg_' + layer.id);
-        if (imgEl) imgEl.src = url;
+        // Find the img inside THIS layer's div (use div reference, not getElementById,
+        // to avoid picking up a stale element from a prior render cycle)
+        const imgEl = div.querySelector('img');
+        if (imgEl) {
+          imgEl.src = url;
+          imgEl.style.opacity = _opacity; // re-assert opacity after src swap
+        }
       });
     }
     div.addEventListener('click', e => {
@@ -3280,8 +3449,7 @@ function resizeSelectedLayer(gid,locId,val) {
   l.w=parseInt(val);
   res.g.layers = loc.layers;
   syncLayerInches(l, g, locId);
-  const inLabel = l.wInches ? l.wInches.toFixed(1) + '"' : Math.round(l.w) + 'px';
-  const el = document.getElementById(`ctrlSizeVal_${gid}_${locId}`); if(el) el.textContent = inLabel;
+  const el = document.getElementById(`ctrlSizeVal_${gid}_${locId}`); if(el) el.textContent = layerSizeLabel(l);
   renderLayersForGarment(g,loc);
 }
 function opacitySelectedLayer(gid,locId,val) {
@@ -3387,8 +3555,7 @@ function onResizeLayer(e){
     const sv=document.getElementById(`ctrlSize_${g.id}_${loc.id}`);
     const svv=document.getElementById(`ctrlSizeVal_${g.id}_${loc.id}`);
     if(sv)sv.value=layer.w;
-    const inLabel = layer.wInches ? ' ('+layer.wInches.toFixed(1)+'")' : '';
-    if(svv)svv.textContent=Math.round(layer.w)+'px'+inLabel;
+    if(svv)svv.textContent=layerSizeLabel(layer);
   }
 }
 function stopResizeLayer(){if(_resize){_resize.layer.w=Math.round(_resize.layer.w);renderLayersForGarment(_resize.g,_resize.loc);}_resize=null;document.removeEventListener('mousemove',onResizeLayer);document.removeEventListener('mouseup',stopResizeLayer);}
@@ -3965,5 +4132,245 @@ document.addEventListener('DOMContentLoaded', async () => {
   <button id="lightbox-next" onclick="lbNav(1)">&#8250;</button>
   <div id="lightbox-caption"></div>
 </div>
+
+<!-- ✨ Magic Render Modal -->
+<div id="magicRenderModal" style="display:none" onclick="if(event.target===this)closeMagicModal()">
+  <div class="modal-card">
+    <h3>✨ Magic Render</h3>
+    <div id="magicRenderTypeRow" class="render-type-row"></div>
+    <div class="render-preview" id="magicRenderPreview">
+      <div style="color:#555;font-size:.85rem">Generating…</div>
+    </div>
+    <div class="modal-actions">
+      <button class="modal-close-btn" onclick="closeMagicModal()">✕ Close</button>
+      <button class="modal-dl-btn" id="magicDlBtn" onclick="downloadMagicRender()">⬇ Download</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ─── Magic Render ──────────────────────────────────────────────────────────
+
+let _magicCtx = { gid: null, locId: null, type: 'screenprint', dataUrl: null };
+
+function setMagicType(gid, locId, type) {
+  const res = findGarmentById(gid); if (!res) return;
+  res.g.locations ? (res.loc._magicType = type) : null;
+  res.loc._magicType = type;
+  renderGarmentList();
+}
+
+async function doMagicRender(gid, locId) {
+  const res = findGarmentById(gid); if (!res) return;
+  const { g, loc } = res;
+  if (!loc.layers.length) { alert('Add artwork first!'); return; }
+
+  const btn = document.getElementById(`magicRenderBtn_${gid}_${locId}`);
+  if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spin">⏳</span> Rendering…'; }
+
+  const type = loc._magicType || 'screenprint';
+  _magicCtx = { gid, locId, type, dataUrl: null };
+
+  const modal = document.getElementById('magicRenderModal');
+  const preview = document.getElementById('magicRenderPreview');
+  preview.innerHTML = '<div style="color:#888;font-size:.85rem">🎨 Rendering…</div>';
+  modal.style.display = 'flex';
+
+  try {
+    const blob = await buildMagicRenderBlob(g, loc, type, 900);
+    const url = URL.createObjectURL(blob);
+    _magicCtx.dataUrl = url;
+    preview.innerHTML = `<img src="${url}" alt="Magic render">`;
+  } catch(e) {
+    preview.innerHTML = `<div style="color:#e74c3c;font-size:.82rem;padding:16px">Render failed: ${e.message}</div>`;
+    console.error('Magic render error:', e);
+  }
+
+  if (btn) { btn.disabled = false; btn.innerHTML = '✨ Generate Magic Render'; }
+}
+
+function closeMagicModal() {
+  document.getElementById('magicRenderModal').style.display = 'none';
+}
+
+function downloadMagicRender() {
+  if (!_magicCtx.dataUrl) return;
+  const a = document.createElement('a');
+  a.href = _magicCtx.dataUrl;
+  a.download = `magic-render-${_magicCtx.type}.png`;
+  a.click();
+}
+
+// ─── Core magic render compositor ────────────────────────────────────────
+async function buildMagicRenderBlob(g, loc, type, size = 900) {
+  const canvas = document.createElement('canvas');
+  canvas.width = size; canvas.height = size;
+  const ctx = canvas.getContext('2d');
+
+  // 1. Draw garment background
+  const view = loc._bgView || getViewForLocation(loc.name);
+  const bgUrl = getGarmentImg(g, view);
+  if (bgUrl) {
+    const bi = await loadImageFromUrl(bgUrl);
+    ctx.drawImage(bi, 0, 0, size, size);
+  }
+
+  const wrapW = loc._wrapW || 400;
+  const wrapH = loc._wrapH || 400;
+  const scaleW = size / wrapW;
+  const scaleH = size / wrapH;
+
+  // 2. For each layer, apply the print simulation
+  for (const layer of loc.layers) {
+    const src = layer.objectUrl || layer.url;
+    if (!src) continue;
+    const li = await loadImageFromUrl(src);
+
+    const dw = layer.w * scaleW;
+    const dh = dw * (li.naturalHeight / li.naturalWidth);
+    const dx = layer.x * scaleW;
+    const dy = layer.y * scaleH;
+
+    // Compose layer onto a temp canvas so we can manipulate pixels
+    const layerCanvas = document.createElement('canvas');
+    layerCanvas.width = canvas.width; layerCanvas.height = canvas.height;
+    const lctx = layerCanvas.getContext('2d');
+    lctx.save();
+    lctx.globalAlpha = layer.opacity || 1;
+    if (layer.rot) {
+      lctx.translate(dx + dw/2, dy + dh/2);
+      lctx.rotate((layer.rot || 0) * Math.PI / 180);
+      lctx.drawImage(li, -dw/2, -dh/2, dw, dh);
+    } else {
+      lctx.drawImage(li, dx, dy, dw, dh);
+    }
+    lctx.restore();
+
+    if (type === 'screenprint') {
+      applyScreenPrintEffect(lctx, layerCanvas, loc.inkColor?.hex);
+    } else if (type === 'embroidery') {
+      applyEmbroideryEffect(lctx, layerCanvas, loc.inkColor?.hex);
+    }
+    // DTG = photorealistic, just blend with slight fabric texture
+    if (type === 'dtg') {
+      applyDTGEffect(lctx, layerCanvas);
+    }
+
+    // Blend onto main canvas
+    ctx.save();
+    if (type === 'screenprint') {
+      ctx.globalCompositeOperation = 'multiply';
+    } else {
+      ctx.globalCompositeOperation = 'source-over';
+    }
+    ctx.drawImage(layerCanvas, 0, 0);
+    ctx.restore();
+  }
+
+  // 3. Add fabric grain overlay on top of everything
+  addFabricGrain(ctx, size, type);
+
+  return new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+}
+
+// Screen print: flatten to ink color, add halftone-ish grain + slight edge roughness
+function applyScreenPrintEffect(lctx, layerCanvas, inkHex) {
+  const W = layerCanvas.width, H = layerCanvas.height;
+  const imgData = lctx.getImageData(0, 0, W, H);
+  const d = imgData.data;
+  const [ir, ig, ib] = inkHex ? parseHexRgb(inkHex) : [30, 30, 30];
+
+  for (let i = 0; i < d.length; i += 4) {
+    const a = d[i+3];
+    if (a < 8) continue;
+    // Slight halftone-like ink density variation based on original luminance
+    const lum = 0.299*d[i] + 0.587*d[i+1] + 0.114*d[i+2];
+    const inkDensity = Math.min(1, (lum / 255) * 1.3);
+    // Add slight roughness per pixel (screen print ink isn't perfectly uniform)
+    const noise = (Math.random() - 0.5) * 18;
+    d[i]   = Math.max(0, Math.min(255, ir + noise));
+    d[i+1] = Math.max(0, Math.min(255, ig + noise));
+    d[i+2] = Math.max(0, Math.min(255, ib + noise));
+    // Ink opacity varies slightly — simulates ink laydown
+    d[i+3] = Math.min(255, Math.round(a * (0.88 + Math.random() * 0.12)));
+  }
+  lctx.putImageData(imgData, 0, 0);
+}
+
+// Embroidery: thread texture, slight puff, satin sheen lines
+function applyEmbroideryEffect(lctx, layerCanvas, inkHex) {
+  const W = layerCanvas.width, H = layerCanvas.height;
+  const imgData = lctx.getImageData(0, 0, W, H);
+  const d = imgData.data;
+  const [ir, ig, ib] = inkHex ? parseHexRgb(inkHex) : [30, 30, 30];
+
+  for (let i = 0; i < d.length; i += 4) {
+    const a = d[i+3];
+    if (a < 8) continue;
+    const px = (i/4) % W;
+    const py = Math.floor((i/4) / W);
+    // Diagonal satin stitch lines — every ~3px diagonal brightens slightly
+    const stitch = Math.sin((px + py) * 1.1) * 22;
+    // Cross-stitch texture
+    const crossStitch = (px % 4 === 0 || py % 4 === 0) ? -8 : 0;
+    // Slight puff: center of mass areas slightly brighter
+    const noise = (Math.random() - 0.5) * 12;
+    d[i]   = Math.max(0, Math.min(255, ir + stitch + crossStitch + noise));
+    d[i+1] = Math.max(0, Math.min(255, ig + stitch + crossStitch + noise));
+    d[i+2] = Math.max(0, Math.min(255, ib + stitch + crossStitch + noise));
+    d[i+3] = Math.min(255, a);
+  }
+  lctx.putImageData(imgData, 0, 0);
+}
+
+// DTG: photorealistic — slight bleed/softness at edges, ink saturation
+function applyDTGEffect(lctx, layerCanvas) {
+  const W = layerCanvas.width, H = layerCanvas.height;
+  const imgData = lctx.getImageData(0, 0, W, H);
+  const d = imgData.data;
+
+  for (let i = 0; i < d.length; i += 4) {
+    const a = d[i+3];
+    if (a < 8) continue;
+    // Slight ink bleed softness — very mild noise
+    const noise = (Math.random() - 0.5) * 6;
+    d[i]   = Math.max(0, Math.min(255, d[i]   + noise));
+    d[i+1] = Math.max(0, Math.min(255, d[i+1] + noise));
+    d[i+2] = Math.max(0, Math.min(255, d[i+2] + noise));
+    // Very slight alpha reduction for bleed effect
+    d[i+3] = Math.min(255, Math.round(a * 0.94));
+  }
+  lctx.putImageData(imgData, 0, 0);
+}
+
+// Fabric grain: subtle noise + weave texture to make design "sit" on fabric
+function addFabricGrain(ctx, size, type) {
+  const grainCanvas = document.createElement('canvas');
+  grainCanvas.width = size; grainCanvas.height = size;
+  const gctx = grainCanvas.getContext('2d');
+  const imgData = gctx.getImageData(0, 0, size, size);
+  const d = imgData.data;
+
+  const intensity = type === 'embroidery' ? 28 : type === 'screenprint' ? 18 : 10;
+
+  for (let i = 0; i < d.length; i += 4) {
+    const px = (i/4) % size;
+    const py = Math.floor((i/4) / size);
+    // Weave pattern — tiny grid
+    const weave = (px % 3 === 0 && py % 3 === 0) ? intensity * 0.5 : 0;
+    const n = (Math.random() - 0.5) * intensity + weave;
+    d[i] = d[i+1] = d[i+2] = 128 + n;
+    d[i+3] = type === 'embroidery' ? 22 : 12; // subtle overlay
+  }
+  gctx.putImageData(imgData, 0, 0);
+
+  ctx.save();
+  ctx.globalCompositeOperation = 'overlay';
+  ctx.globalAlpha = type === 'embroidery' ? 0.35 : 0.22;
+  ctx.drawImage(grainCanvas, 0, 0);
+  ctx.restore();
+}
+</script>
+
 </body>
 </html>
