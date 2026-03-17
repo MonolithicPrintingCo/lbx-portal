@@ -4268,50 +4268,62 @@ async function doMagicRender(gid, locId) {
   if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spin">⏳</span> Rendering…'; }
 
   const type = g._magicType || 'screenprint';
+  const inkHex = loc.inkColor?.hex || null;
 
   try {
-    // Rasterize each layer in-place: apply the print effect, replace layer src
     for (const layer of loc.layers) {
-      const src = layer.objectUrl || layer.url;
+      // Always read from the original url (data URL), not objectUrl which may be a prior rasterize
+      const src = layer._originalUrl || layer.url || layer.objectUrl;
       if (!src) continue;
       let li;
       try { li = await loadImageFromUrl(src); } catch(e) { continue; }
 
-      // Build a canvas the same size as the natural image
+      const W = li.naturalWidth || 400;
+      const H = li.naturalHeight || 400;
+
       const lc = document.createElement('canvas');
-      lc.width = li.naturalWidth; lc.height = li.naturalHeight;
+      lc.width = W; lc.height = H;
       const lx = lc.getContext('2d', { willReadFrequently: true });
       lx.drawImage(li, 0, 0);
 
-      // Apply the chosen print simulation directly
-      if (type === 'screenprint') applyScreenPrint(lx, lc, loc.inkColor?.hex);
-      else if (type === 'embroidery') applyEmbroidery(lx, lc, loc.inkColor?.hex);
-      // DTG: no pixel manip — full color stays as-is
+      if (type === 'screenprint') {
+        magicApplyScreenPrint(lx, W, H, inkHex);
+      } else if (type === 'embroidery') {
+        magicApplyEmbroidery(lx, W, H, inkHex);
+      }
+      // DTG: keep full color, no manipulation
 
-      // Convert to blob URL and replace layer source
-      const blob = await new Promise(res => lc.toBlob(res, 'image/png'));
+      const blob = await new Promise(r => lc.toBlob(r, 'image/png'));
       if (!blob) continue;
 
-      // Revoke old objectUrl if it was a blob to free memory
-      if (layer.objectUrl && layer.objectUrl.startsWith('blob:')) {
-        URL.revokeObjectURL(layer.objectUrl);
-      }
-      const newBlobUrl = URL.createObjectURL(blob);
-      layer.objectUrl = newBlobUrl;
-      layer._rasterized = type; // mark so we know it's been processed
+      // Save original url before first rasterize so we can re-apply later
+      if (!layer._originalUrl) layer._originalUrl = layer.url || layer.objectUrl;
 
-      // Also bust the ink cache so colorization doesn't overwrite the rasterized version
+      // Revoke previous rasterized blob
+      if (layer._rasterizedBlobUrl) URL.revokeObjectURL(layer._rasterizedBlobUrl);
+
+      const newUrl = URL.createObjectURL(blob);
+      layer._rasterizedBlobUrl = newUrl;
+      layer.objectUrl = newUrl;
+      layer._rasterized = type;
+
+      // Clear ink cache so the old flat-color version doesn't overwrite
       delete _inkCache[layer.id];
+
+      // Update the img element directly without a full re-render
+      const imgEl = document.getElementById(`layerImg_${layer.id}`);
+      if (imgEl) { imgEl.src = newUrl; }
     }
 
-    // Re-render the canvas so the rasterized layers are visible immediately
-    renderLayersForGarment(g, loc);
-
-    if (btn) { btn.disabled = false; btn.innerHTML = '✓ Applied — Move & resize freely'; btn.style.background = 'rgba(46,213,115,.15)'; btn.style.borderColor = '#2ed573'; btn.style.color = '#2ed573'; }
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = '✓ ' + (type === 'screenprint' ? 'Screen Print' : type === 'embroidery' ? 'Embroidery' : 'DTG') + ' applied';
+      btn.style.cssText = 'background:rgba(46,213,115,.15);border-color:#2ed573;color:#2ed573;';
+    }
   } catch(e) {
     console.error('Magic render error:', e);
     alert('Render failed: ' + e.message);
-    if (btn) { btn.disabled = false; btn.innerHTML = '✨ Generate Magic Render'; btn.style = ''; }
+    if (btn) { btn.disabled = false; btn.innerHTML = '✨ Generate Magic Render'; btn.style.cssText = ''; }
   }
 }
 
@@ -4415,48 +4427,108 @@ async function buildMagicRenderBlob(g, loc, type) {
 }
 
 // Screen print: flatten to ink color, preserve shape, slight edge texture
+// These are the OLD pixel-manip versions kept for the full-garment compositor (buildMagicRenderBlob)
 function applyScreenPrint(lx, lc, inkHex) {
   const W = lc.width, H = lc.height;
   let d;
   try { d = lx.getImageData(0, 0, W, H); } catch(e) { return; }
   const px = d.data;
   const [ir, ig, ib] = inkHex ? parseHexRgb(inkHex) : [20, 20, 20];
-
   for (let i = 0; i < px.length; i += 4) {
     const a = px[i+3];
     if (a < 8) continue;
-    // Ink density variation — simulates uneven ink laydown across mesh
     const grain = (Math.random() - 0.5) * 14;
     px[i]   = Math.max(0, Math.min(255, ir + grain));
     px[i+1] = Math.max(0, Math.min(255, ig + grain));
     px[i+2] = Math.max(0, Math.min(255, ib + grain));
-    // Slight alpha variation at edges (ink feather)
     px[i+3] = a > 200 ? Math.min(255, a) : Math.round(a * (0.8 + Math.random() * 0.2));
   }
   lx.putImageData(d, 0, 0);
 }
 
-// Embroidery: satin stitch sheen — bright diagonal highlights on thread
 function applyEmbroidery(lx, lc, inkHex) {
   const W = lc.width, H = lc.height;
   let d;
   try { d = lx.getImageData(0, 0, W, H); } catch(e) { return; }
   const px = d.data;
   const [ir, ig, ib] = inkHex ? parseHexRgb(inkHex) : [20, 20, 20];
-
   for (let i = 0; i < px.length; i += 4) {
     const a = px[i+3];
     if (a < 8) continue;
     const col = (i/4) % W;
     const row = Math.floor((i/4) / W);
-    // Satin stitch: diagonal wave of brightness simulates thread catching light
     const stitch = Math.sin((col - row) * 0.55) * 30;
-    // Tiny thread gap lines
     const gap = ((col + row) % 5 === 0) ? -15 : 0;
     const noise = (Math.random()-0.5) * 8;
     px[i]   = Math.max(0, Math.min(255, ir + stitch + gap + noise));
     px[i+1] = Math.max(0, Math.min(255, ig + stitch + gap + noise));
     px[i+2] = Math.max(0, Math.min(255, ib + stitch + gap + noise));
+    px[i+3] = Math.min(255, a);
+  }
+  lx.putImageData(d, 0, 0);
+}
+
+// ── New in-place rasterize effects for doMagicRender ──────────────────────
+
+// Screen print: flatten to ink color with halftone dot pattern + mesh grain
+function magicApplyScreenPrint(lx, W, H, inkHex) {
+  let d;
+  try { d = lx.getImageData(0, 0, W, H); } catch(e) { return; }
+  const px = d.data;
+  const [ir, ig, ib] = inkHex ? parseHexRgb(inkHex) : [30, 30, 30];
+
+  for (let i = 0; i < px.length; i += 4) {
+    const a = px[i+3];
+    if (a < 10) continue;
+    const col = (i / 4) % W;
+    const row = Math.floor((i / 4) / W);
+
+    // Halftone: circular dot grid — bright spot at dot centers, darker in between
+    const dotSize = 6;
+    const dx = col % dotSize - dotSize / 2;
+    const dy = row % dotSize - dotSize / 2;
+    const distFromCenter = Math.sqrt(dx * dx + dy * dy) / (dotSize / 2);
+    const dotBright = Math.max(0, 1 - distFromCenter) * 40;
+
+    // Mesh grain (random ink deposition variation)
+    const grain = (Math.random() - 0.5) * 18;
+
+    // Ink bleed at semi-transparent edges
+    const edgeFactor = a < 180 ? 0.75 + Math.random() * 0.25 : 1;
+
+    px[i]   = Math.max(0, Math.min(255, ir + dotBright + grain));
+    px[i+1] = Math.max(0, Math.min(255, ig + dotBright + grain));
+    px[i+2] = Math.max(0, Math.min(255, ib + dotBright + grain));
+    px[i+3] = Math.round(a * edgeFactor);
+  }
+  lx.putImageData(d, 0, 0);
+}
+
+// Embroidery: satin stitch sheen — strong diagonal light bands + thread gaps
+function magicApplyEmbroidery(lx, W, H, inkHex) {
+  let d;
+  try { d = lx.getImageData(0, 0, W, H); } catch(e) { return; }
+  const px = d.data;
+  const [ir, ig, ib] = inkHex ? parseHexRgb(inkHex) : [30, 30, 30];
+
+  for (let i = 0; i < px.length; i += 4) {
+    const a = px[i+3];
+    if (a < 10) continue;
+    const col = (i / 4) % W;
+    const row = Math.floor((i / 4) / W);
+
+    // Strong satin sheen: wide diagonal light/dark bands simulating thread direction
+    const sheen = Math.sin((col - row) * 0.35) * 55;
+    // Secondary cross-thread direction (90°) for woven look
+    const crossSheen = Math.sin((col + row) * 0.35) * 15;
+    // Thread gap lines every ~4px
+    const threadGap = ((col + row) % 4 === 0) ? -30 : 0;
+    // Fine noise for thread texture
+    const noise = (Math.random() - 0.5) * 10;
+
+    px[i]   = Math.max(0, Math.min(255, ir + sheen + crossSheen + threadGap + noise));
+    px[i+1] = Math.max(0, Math.min(255, ig + sheen + crossSheen + threadGap + noise));
+    px[i+2] = Math.max(0, Math.min(255, ib + sheen + crossSheen + threadGap + noise));
     px[i+3] = Math.min(255, a);
   }
   lx.putImageData(d, 0, 0);
