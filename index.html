@@ -1316,6 +1316,14 @@ function syncLayerPxFromInches(layer, g, locId) {
   if (px !== null) layer.w = Math.round(px);
 }
 
+// Returns true if this imprint's artwork size is locked (set by the first garment)
+function isImprintSizeLocked(locId) {
+  const impId = locId.replace('_loc', '');
+  const imp = imprints.find(i => i.id === impId);
+  return imp ? imp.garments.length > 1 : false;
+}
+
+
 // Full style list loaded from JSON
 let ALL_STYLES = [];
 let filteredStyles = [];
@@ -2493,11 +2501,12 @@ function renderGarmentMockupBody(g, imp) {
           <h4>⚙️ Layer Controls</h4>
           <div class="slider-row">
             <div class="slider-row-top">
-              <label>Size</label>
+              <label>Size ${isImprintSizeLocked(loc.id) ? '<span style="font-size:.68rem;color:#f59e0b;font-weight:600;margin-left:4px">🔒 locked</span>' : ''}</label>
               <span class="val" id="ctrlSizeVal_${g.id}_${loc.id}">${selLayer ? layerSizeLabel(selLayer) : '—'}</span>
             </div>
             <input type="range" min="20" max="${(() => { const pa = getPrintAreaPx({width:loc._wrapW||400,height:loc._wrapH||400}, getGarmentChestInches(g), loc.name||'Front', getGarmentGeometry(g)); return pa.w; })()}" value="${selLayer?selLayer.w:120}" id="ctrlSize_${g.id}_${loc.id}"
-              oninput="resizeSelectedLayer('${g.id}','${loc.id}',this.value)">
+              oninput="resizeSelectedLayer('${g.id}','${loc.id}',this.value)"
+              ${isImprintSizeLocked(loc.id)?'disabled style="opacity:.4;cursor:not-allowed" title="Size locked — set by first garment"':''}>
           </div>
           <div class="slider-row">
             <div class="slider-row-top">
@@ -3355,7 +3364,7 @@ function renderLayersForGarment(g, loc) {
       ? _inkCache[layer.id].blobUrl : null;
     const imgSrc = cachedInkSrc || layer.objectUrl || layer.url;
     div.innerHTML = `<img id="layerImg_${layer.id}" src="${imgSrc}" style="width:100%;opacity:${layer.opacity};display:block;pointer-events:none" draggable="false">
-      <div class="resize-handle" data-resize="${layer.id}"></div>
+      <div class="resize-handle" data-resize="${layer.id}" style="${isImprintSizeLocked(loc.id)?'opacity:.25;cursor:not-allowed;':''}" title="${isImprintSizeLocked(loc.id)?'Size locked — set by first garment':'Resize'}"></div>
       <div class="rotate-handle" data-rotate="${layer.id}">↻</div>`;
     if (!skipInk && inkHex && !cachedInkSrc) {
       // Not cached yet — colorize async, then update src AND preserve opacity
@@ -3479,6 +3488,7 @@ function deleteLayerFromLoc(gid, locId, lid) {
   renderGarmentList();
 }
 function resizeSelectedLayer(gid,locId,val) {
+  if (isImprintSizeLocked(locId)) return; // size locked after first garment
   const res=findGarmentById(gid); if(!res) return;
   const {g, loc} = res;
   const l=loc.layers.find(x=>x.id===loc.selectedLayer); if(!l) return;
@@ -3578,6 +3588,7 @@ function onDragLayerTouch(e){
 function stopDragLayerTouch(){_drag=null;document.removeEventListener('touchmove',onDragLayerTouch);document.removeEventListener('touchend',stopDragLayerTouch);}
 function startResizeLayer(e,g,loc,layer){
   e.preventDefault();
+  if (isImprintSizeLocked(loc.id)) return; // size locked after first garment
   _resize={g,loc,layer,startX:e.clientX,startW:layer.w};
   document.addEventListener('mousemove',onResizeLayer);
   document.addEventListener('mouseup',stopResizeLayer);
@@ -3600,6 +3611,7 @@ function onResizeLayer(e){
 function stopResizeLayer(){if(_resize){_resize.layer.w=Math.round(_resize.layer.w);renderLayersForGarment(_resize.g,_resize.loc);}_resize=null;document.removeEventListener('mousemove',onResizeLayer);document.removeEventListener('mouseup',stopResizeLayer);}
 function startResizeLayerTouch(e,g,loc,layer){
   e.preventDefault();
+  if (isImprintSizeLocked(loc.id)) return; // size locked after first garment
   const t=e.touches[0];
   _resize={g,loc,layer,startX:t.clientX,startW:layer.w};
   document.addEventListener('touchmove',onResizeLayerTouch,{passive:false});
