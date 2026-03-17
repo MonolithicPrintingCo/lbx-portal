@@ -2558,11 +2558,11 @@ function renderGarmentMockupBody(g, imp) {
           <h4>✨ Magic Render</h4>
           <p style="font-size:.75rem;color:var(--gray4);margin:0 0 4px">See your design as it would look printed or embroidered on the actual garment.</p>
           <div style="display:flex;gap:6px;margin-bottom:6px">
-            <button class="rtype-btn${(loc._magicType||'screenprint')==='screenprint'?' active':''}" style="flex:1;padding:7px 4px;border-radius:7px;border:1.5px solid ${(loc._magicType||'screenprint')==='screenprint'?'#ffd700':'rgba(255,255,255,.15)'};background:${(loc._magicType||'screenprint')==='screenprint'?'rgba(255,215,0,.14)':'rgba(255,255,255,.06)'};color:${(loc._magicType||'screenprint')==='screenprint'?'#ffd700':'#ccc'};font-size:.78rem;font-weight:600;cursor:pointer"
+            <button class="rtype-btn${(g._magicType||'screenprint')==='screenprint'?' active':''}" style="flex:1;padding:7px 4px;border-radius:7px;border:1.5px solid ${(g._magicType||'screenprint')==='screenprint'?'#ffd700':'rgba(255,255,255,.15)'};background:${(g._magicType||'screenprint')==='screenprint'?'rgba(255,215,0,.14)':'rgba(255,255,255,.06)'};color:${(g._magicType||'screenprint')==='screenprint'?'#ffd700':'#ccc'};font-size:.78rem;font-weight:600;cursor:pointer"
               onclick="setMagicType('${g.id}','${loc.id}','screenprint')">🖨 Screen Print</button>
-            <button class="rtype-btn${(loc._magicType||'screenprint')==='embroidery'?' active':''}" style="flex:1;padding:7px 4px;border-radius:7px;border:1.5px solid ${(loc._magicType||'screenprint')==='embroidery'?'#ffd700':'rgba(255,255,255,.15)'};background:${(loc._magicType||'screenprint')==='embroidery'?'rgba(255,215,0,.14)':'rgba(255,255,255,.06)'};color:${(loc._magicType||'screenprint')==='embroidery'?'#ffd700':'#ccc'};font-size:.78rem;font-weight:600;cursor:pointer"
+            <button class="rtype-btn${(g._magicType||'screenprint')==='embroidery'?' active':''}" style="flex:1;padding:7px 4px;border-radius:7px;border:1.5px solid ${(g._magicType||'screenprint')==='embroidery'?'#ffd700':'rgba(255,255,255,.15)'};background:${(g._magicType||'screenprint')==='embroidery'?'rgba(255,215,0,.14)':'rgba(255,255,255,.06)'};color:${(g._magicType||'screenprint')==='embroidery'?'#ffd700':'#ccc'};font-size:.78rem;font-weight:600;cursor:pointer"
               onclick="setMagicType('${g.id}','${loc.id}','embroidery')">🧵 Embroidery</button>
-            <button class="rtype-btn${(loc._magicType||'screenprint')==='dtg'?' active':''}" style="flex:1;padding:7px 4px;border-radius:7px;border:1.5px solid ${(loc._magicType||'screenprint')==='dtg'?'#ffd700':'rgba(255,255,255,.15)'};background:${(loc._magicType||'screenprint')==='dtg'?'rgba(255,215,0,.14)':'rgba(255,255,255,.06)'};color:${(loc._magicType||'screenprint')==='dtg'?'#ffd700':'#ccc'};font-size:.78rem;font-weight:600;cursor:pointer"
+            <button class="rtype-btn${(g._magicType||'screenprint')==='dtg'?' active':''}" style="flex:1;padding:7px 4px;border-radius:7px;border:1.5px solid ${(g._magicType||'screenprint')==='dtg'?'#ffd700':'rgba(255,255,255,.15)'};background:${(g._magicType||'screenprint')==='dtg'?'rgba(255,215,0,.14)':'rgba(255,255,255,.06)'};color:${(g._magicType||'screenprint')==='dtg'?'#ffd700':'#ccc'};font-size:.78rem;font-weight:600;cursor:pointer"
               onclick="setMagicType('${g.id}','${loc.id}','dtg')">🎨 DTG</button>
           </div>
           <button class="magic-render-btn" id="magicRenderBtn_${g.id}_${loc.id}"
@@ -4265,26 +4265,52 @@ async function doMagicRender(gid, locId) {
   const btn = document.getElementById(`magicRenderBtn_${gid}_${locId}`);
   if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spin">⏳</span> Rendering…'; }
 
-  const type = loc._magicType || 'screenprint';
-  if (_magicCtx.blobUrl) URL.revokeObjectURL(_magicCtx.blobUrl);
-  _magicCtx = { gid, locId, type, blobUrl: null };
-
-  const modal = document.getElementById('magicRenderModal');
-  const preview = document.getElementById('magicRenderPreview');
-  preview.innerHTML = '<div style="color:#888;font-size:.85rem;padding:40px">🎨 Compositing…</div>';
-  modal.style.display = 'flex';
+  const type = g._magicType || 'screenprint';
 
   try {
-    const blob = await buildMagicRenderBlob(g, loc, type);
-    const url = URL.createObjectURL(blob);
-    _magicCtx.blobUrl = url;
-    preview.innerHTML = `<img src="${url}" alt="Magic render" style="width:100%;height:100%;object-fit:contain">`;
-  } catch(e) {
-    preview.innerHTML = `<div style="color:#e74c3c;font-size:.82rem;padding:16px">Render failed: ${e.message}</div>`;
-    console.error('Magic render error:', e);
-  }
+    // Rasterize each layer in-place: apply the print effect, replace layer src
+    for (const layer of loc.layers) {
+      const src = layer.objectUrl || layer.url;
+      if (!src) continue;
+      let li;
+      try { li = await loadImageFromUrl(src); } catch(e) { continue; }
 
-  if (btn) { btn.disabled = false; btn.innerHTML = '✨ Generate Magic Render'; }
+      // Build a canvas the same size as the natural image
+      const lc = document.createElement('canvas');
+      lc.width = li.naturalWidth; lc.height = li.naturalHeight;
+      const lx = lc.getContext('2d', { willReadFrequently: true });
+      lx.drawImage(li, 0, 0);
+
+      // Apply the chosen print simulation directly
+      if (type === 'screenprint') applyScreenPrint(lx, lc, loc.inkColor?.hex);
+      else if (type === 'embroidery') applyEmbroidery(lx, lc, loc.inkColor?.hex);
+      // DTG: no pixel manip — full color stays as-is
+
+      // Convert to blob URL and replace layer source
+      const blob = await new Promise(res => lc.toBlob(res, 'image/png'));
+      if (!blob) continue;
+
+      // Revoke old objectUrl if it was a blob to free memory
+      if (layer.objectUrl && layer.objectUrl.startsWith('blob:')) {
+        URL.revokeObjectURL(layer.objectUrl);
+      }
+      const newBlobUrl = URL.createObjectURL(blob);
+      layer.objectUrl = newBlobUrl;
+      layer._rasterized = type; // mark so we know it's been processed
+
+      // Also bust the ink cache so colorization doesn't overwrite the rasterized version
+      delete _inkCache[layer.id];
+    }
+
+    // Re-render the canvas so the rasterized layers are visible immediately
+    renderLayersForGarment(g, loc);
+
+    if (btn) { btn.disabled = false; btn.innerHTML = '✓ Applied — Move & resize freely'; btn.style.background = 'rgba(46,213,115,.15)'; btn.style.borderColor = '#2ed573'; btn.style.color = '#2ed573'; }
+  } catch(e) {
+    console.error('Magic render error:', e);
+    alert('Render failed: ' + e.message);
+    if (btn) { btn.disabled = false; btn.innerHTML = '✨ Generate Magic Render'; btn.style = ''; }
+  }
 }
 
 function closeMagicModal() {
