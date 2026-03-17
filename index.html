@@ -364,10 +364,6 @@
 #lightbox-prev:hover,#lightbox-next:hover{background:rgba(255,255,255,.3)}
 
 /* ── Reuse artwork panel ─────────────────────────────── */
-.reuse-art-btn{display:inline-flex;align-items:center;gap:6px;font-size:.8rem;color:#60a5fa;background:rgba(26,111,222,.12);border:1.5px solid rgba(26,111,222,.4);border-radius:6px;padding:5px 12px;cursor:pointer;margin-top:8px;transition:background .15s}
-.reuse-art-btn:hover{background:rgba(26,111,222,.22)}
-.reuse-art-panel{background:rgba(26,111,222,.08);border:1.5px solid rgba(26,111,222,.3);border-radius:8px;padding:12px;margin-top:10px;display:none}
-.reuse-art-panel.open{display:block}
 .reuse-art-grid{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
 .reuse-art-item{display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;padding:6px;border-radius:6px;border:2px solid transparent;transition:border-color .15s,background .15s;width:80px}
 .reuse-art-item:hover{background:rgba(26,111,222,.2);border-color:#60a5fa}
@@ -2433,8 +2429,7 @@ function renderGarmentMockupBody(g, imp) {
         : `<div class="icon">${extIcon(f.name.split('.').pop().toUpperCase())}</div>`;
       return `<div class="reuse-art-item ${used?'used':''}" onclick="reuseArtFile('${g.id}','${loc.id}',${i})" title="${f.name}">${thumb}<span>${f.name}</span>${used?'<span class="used-badge">✓</span>':''}</div>`;
     }).join('');
-    reuseHtml = `<button class="reuse-art-btn" onclick="toggleReusePanel('${g.id}','${loc.id}')">📂 Reuse artwork (${reusePool.length})</button>
-      <div class="reuse-art-panel" id="reusePanel_${g.id}_${loc.id}"><div style="font-size:.78rem;color:var(--gray3);font-weight:600;margin-bottom:6px">Artwork from other garments:</div><div class="reuse-art-grid">${items}</div></div>`;
+    reuseHtml = `<div style="font-size:.78rem;color:var(--gray3);font-weight:600;margin:10px 0 6px">Reuse artwork:</div><div class="reuse-art-grid">${items}</div>`;
   }
 
   // Mode toggle
@@ -4034,12 +4029,6 @@ function getReusableArt(excludeGid, excludeLocId) {
     if (seen.has(key)) return false;
     seen.add(key); return true;
   });
-}
-
-function toggleReusePanel(gid, locId) {
-  const panel = document.getElementById(`reusePanel_${gid}_${locId}`);
-  if (!panel) return;
-  panel.classList.toggle('open');
 }
 
 function reuseArtFile(gid, locId, poolIndex) {
