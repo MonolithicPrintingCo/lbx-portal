@@ -3406,14 +3406,16 @@ function renderLayersForGarment(g, loc) {
     div.dataset.id = layer.id;
     div.style.transform = `rotate(${layer.rot||0}deg)`;
     const inkHex = loc.inkColor?.hex || null;
+    // Rasterized layers already have the effect baked in — skip ink color overlay
+    const skipInk = !!layer._rasterized;
     // If we already have a cached colorized version, use it immediately to avoid flash
-    const cachedInkSrc = (inkHex && _inkCache[layer.id]?.hex === inkHex && _inkCache[layer.id]?.blobUrl)
+    const cachedInkSrc = (!skipInk && inkHex && _inkCache[layer.id]?.hex === inkHex && _inkCache[layer.id]?.blobUrl)
       ? _inkCache[layer.id].blobUrl : null;
     const imgSrc = cachedInkSrc || layer.objectUrl || layer.url;
     div.innerHTML = `<img id="layerImg_${layer.id}" src="${imgSrc}" style="width:100%;opacity:${layer.opacity};display:block;pointer-events:none" draggable="false">
       <div class="resize-handle" data-resize="${layer.id}"></div>
       <div class="rotate-handle" data-rotate="${layer.id}">↻</div>`;
-    if (inkHex && !cachedInkSrc) {
+    if (!skipInk && inkHex && !cachedInkSrc) {
       // Not cached yet — colorize async, then update src AND preserve opacity
       const _layerId = layer.id;
       const _opacity = layer.opacity;
