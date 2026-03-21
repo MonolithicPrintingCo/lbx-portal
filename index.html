@@ -332,6 +332,10 @@
   .ptab.active{background:var(--black);color:var(--white);border-color:#efefef}
   .mockup-hint{font-size:.75rem;color:var(--gray3);margin-top:10px;line-height:1.5}
 
+  /* ── Photo Mockup Generate Button ── */
+  #genMockupBtn:hover, [id^="genMockupBtn_"]:hover { opacity:.88; transform:translateY(-1px); box-shadow:0 4px 16px rgba(230,57,70,.4); transition:all .18s; }
+  [id^="genMockupBtn_"]:disabled { opacity:.5; cursor:not-allowed; transform:none; box-shadow:none; }
+
   /* ── Modal ── */
   .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:999;display:flex;align-items:center;justify-content:center;padding:20px}
   .modal-box{background:#1a1a22;border:1px solid rgba(255,255,255,.14);border-radius:12px;padding:28px;max-width:480px;width:100%;box-shadow:0 8px 40px rgba(0,0,0,.2)}
@@ -1849,6 +1853,151 @@ async function renderLocMockupBlob(g, loc, size=600) {
 
 // Upload a PNG Blob to Base44 CDN via the uploadMockup function
 // Returns a public https URL or null on failure
+// ── Photo Mockup Generator ──────────────────────────────────────────────────
+// Grabs the garment background image and first artwork layer from the canvas,
+// sends both to the photoMockup backend function, and displays the result.
+async function generatePhotoMockup(gid, locId) {
+  const res = findGarmentById(gid);
+  if (!res) return;
+  const { g, loc } = res;
+
+  const btn    = document.getElementById(`genMockupBtn_${gid}_${locId}`);
+  const status = document.getElementById(`photoMockupStatus_${gid}_${locId}`);
+  const thumb  = document.getElementById(`photoMockupThumb_${gid}_${locId}`);
+  const imgEl  = document.getElementById(`photoMockupImg_${gid}_${locId}`);
+  const dlEl   = document.getElementById(`photoMockupDl_${gid}_${locId}`);
+
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Generating…'; }
+  if (status) status.textContent = 'Loading product image…';
+
+  try {
+    // 1. Capture the garment background image as base64 JPEG
+    const bgImgEl = document.getElementById(`bg_${gid}_${locId}`);
+    if (!bgImgEl || !bgImgEl.src) throw new Error('No garment image found.');
+
+    const productBase64 = await imgElToBase64(bgImgEl, 'image/jpeg', 0.92);
+
+    // 2. Get the first layer's artwork image as base64 PNG
+    if (!loc.layers.length) throw new Error('No artwork layers found.');
+    const layer = loc.layers[0];
+    const artImgEl = document.getElementById(`layerImg_${gid}_${locId}_${layer.id}`);
+    let artworkBase64;
+    if (artImgEl && artImgEl.src && (artImgEl.src.startsWith('blob:') || artImgEl.src.startsWith('data:'))) {
+      artworkBase64 = await imgElToBase64(artImgEl, 'image/png', 1);
+    } else if (layer.objectUrl || layer.url) {
+      // Load from object URL
+      const tmpImg = await loadImageFromUrl(layer.objectUrl || layer.url);
+      artworkBase64 = await imgElToBase64(tmpImg, 'image/png', 1);
+    } else {
+      throw new Error('Could not load artwork image.');
+    }
+
+    // 3. Compute artwork position as fractions of the garment image
+    // layer.x, layer.y, layer.w are in canvas display pixels (relative to _wrapW, _wrapH)
+    const wrapW = loc._wrapW || 400;
+    const wrapH = loc._wrapH || wrapW;
+
+    // Center of the artwork layer in canvas coords
+    const layerImg = artImgEl || (await (async () => { const i = new Image(); i.src = layer.objectUrl || layer.url; await new Promise(r => { i.onload = r; i.onerror = r; }); return i; })());
+    const layerH = layer.w ? Math.round(layer.w * (layerImg.naturalHeight / layerImg.naturalWidth)) : 100;
+    const artCenterX = (layer.x || 0) + (layer.w || 100) / 2;
+    const artCenterY = (layer.y || 0) + layerH / 2;
+
+    const artCenterXFrac = artCenterX / wrapW;
+    const artCenterYFrac = artCenterY / wrapH;
+    const artHeightFrac  = layerH / wrapH;
+
+    // 4. Get ink color
+    const inkHex = loc.inkColor?.hex || '#FFFFFF';
+
+    if (status) status.textContent = 'Compositing mockup…';
+
+    // 5. Call the backend
+    const resp = await fetch('https://printbot-a98e71ad.base44.app/functions/photoMockup', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        artworkBase64,
+        productBase64,
+        artCenterXFrac,
+        artCenterYFrac,
+        artHeightFrac,
+        artworkColor: inkHex,
+        colorize: true,
+      }),
+    });
+
+    if (!resp.ok) {
+      const err = await resp.json().catch(() => ({}));
+      throw new Error(err.error || `Server error ${resp.status}`);
+    }
+
+    const { url } = await resp.json();
+    if (!url) throw new Error('No URL returned from server.');
+
+    // 6. Show result
+    if (imgEl) { imgEl.src = url; }
+    if (dlEl)  { dlEl.href = url; }
+    if (thumb) { thumb.style.display = 'block'; }
+    if (status) status.textContent = '✅ Done! Tap to view full size.';
+    if (btn) { btn.textContent = '🔄 Regenerate'; btn.disabled = false; }
+
+    // Save to loc for review step
+    loc._photoMockupUrl = url;
+
+  } catch (e) {
+    console.error('generatePhotoMockup error:', e);
+    if (status) status.textContent = '❌ ' + (e.message || 'Failed');
+    if (btn) { btn.disabled = false; btn.textContent = '✨ Generate Photo Mockup'; }
+  }
+}
+
+// Helper: convert an <img> element to a base64 data URL via an offscreen canvas
+// Handles cross-origin images by fetching through the proxy first
+async function imgElToBase64(imgEl, mimeType, quality) {
+  let src = imgEl.src || imgEl.currentSrc || '';
+  // If cross-origin (S&S, SanMar, etc.) fetch via proxy to avoid canvas taint
+  const isCrossOrigin = src && !src.startsWith('data:') && !src.startsWith('blob:') &&
+    !src.startsWith(location.origin) &&
+    (src.includes('ssactivewear.com') || src.includes('sanmar.com') || src.includes('mccrearys'));
+  
+  if (isCrossOrigin && typeof PROXY !== 'undefined') {
+    // Fetch the image via our proxy as a blob
+    try {
+      const proxyUrl = PROXY + '/img?url=' + encodeURIComponent(src);
+      const r = await fetch(proxyUrl);
+      if (r.ok) {
+        const blob = await r.blob();
+        src = URL.createObjectURL(blob);
+        // Load into a new image element
+        const tmpImg = new Image();
+        tmpImg.src = src;
+        await new Promise((res, rej) => { tmpImg.onload = res; tmpImg.onerror = rej; });
+        const c = document.createElement('canvas');
+        c.width = tmpImg.naturalWidth; c.height = tmpImg.naturalHeight;
+        const ctx = c.getContext('2d');
+        ctx.drawImage(tmpImg, 0, 0);
+        URL.revokeObjectURL(src);
+        return c.toDataURL(mimeType, quality);
+      }
+    } catch (e) { console.warn('Proxy fetch failed, falling back:', e); }
+  }
+  
+  // Direct draw (works for data:, blob:, or same-origin)
+  const c = document.createElement('canvas');
+  c.width  = imgEl.naturalWidth  || imgEl.width  || 400;
+  c.height = imgEl.naturalHeight || imgEl.height || 400;
+  const ctx = c.getContext('2d');
+  try { ctx.drawImage(imgEl, 0, 0); } catch(e) {
+    // Canvas tainted — try with crossOrigin
+    const tmpImg = new Image(); tmpImg.crossOrigin = 'anonymous';
+    tmpImg.src = imgEl.src + (imgEl.src.includes('?') ? '&' : '?') + '_t=' + Date.now();
+    await new Promise((res, rej) => { tmpImg.onload = res; tmpImg.onerror = rej; });
+    ctx.drawImage(tmpImg, 0, 0);
+  }
+  return c.toDataURL(mimeType, quality);
+}
+
 async function uploadMockupBlob(blob, filename) {
   try {
     const fd = new FormData();
@@ -2548,6 +2697,20 @@ function renderGarmentMockupBody(g, imp) {
             <span class="val" id="wandTolVal_${g.id}_${loc.id}">${selLayer._wandTolerance||32}</span>
           </div>
           ${selLayer._wandHistory?.length ? `<button class="wand-undo-btn" onclick="undoWand('${g.id}','${loc.id}','${selLayer.id}')">↩ Undo last removal</button>` : ''}
+        </div>` : ''}
+        <!-- Photo Mockup Generator -->
+        ${loc.layers.length > 0 ? `
+        <div class="mockup-panel" id="photoMockupPanel_${g.id}_${loc.id}" style="gap:8px">
+          <h4>📸 Photo Mockup</h4>
+          <div id="photoMockupThumb_${g.id}_${loc.id}" style="display:none;margin-bottom:4px">
+            <img id="photoMockupImg_${g.id}_${loc.id}" src="" alt="Photo mockup" style="width:100%;border-radius:8px;border:1px solid rgba(255,255,255,.15);cursor:pointer" onclick="openLightboxAt([{name:'Photo Mockup',img:this.src}],0)">
+            <a id="photoMockupDl_${g.id}_${loc.id}" href="" download="mockup.jpg" style="display:block;font-size:.72rem;color:var(--accent);text-align:center;margin-top:4px;text-decoration:none">⬇ Download</a>
+          </div>
+          <button onclick="generatePhotoMockup('${g.id}','${loc.id}')" id="genMockupBtn_${g.id}_${loc.id}"
+            style="width:100%;padding:9px 12px;background:linear-gradient(135deg,#e63946,#c41d2a);border:none;border-radius:8px;color:#fff;font-size:.8rem;font-weight:700;cursor:pointer;letter-spacing:.5px">
+            ✨ Generate Photo Mockup
+          </button>
+          <div id="photoMockupStatus_${g.id}_${loc.id}" style="font-size:.72rem;color:var(--gray3);text-align:center;min-height:14px"></div>
         </div>` : ''}
     </div>` : '';
 
