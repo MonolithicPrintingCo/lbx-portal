@@ -1854,9 +1854,8 @@ async function renderLocMockupBlob(g, loc, size=600) {
 // Upload a PNG Blob to Base44 CDN via the uploadMockup function
 // Returns a public https URL or null on failure
 // ── Photo Mockup Generator ──────────────────────────────────────────────────
-// Composites all artwork layers onto the product photo using an offscreen canvas.
-// All scaling math uses the PRODUCT IMAGE's natural pixel dimensions so positions
-// are always accurate regardless of display size.
+// Composites artwork as an embroidery effect onto the product photo.
+// Uses client-side canvas: correct pixel-perfect positioning + stitch texture.
 async function generatePhotoMockup(gid, locId) {
   const res = findGarmentById(gid);
   if (!res) return;
@@ -1872,7 +1871,7 @@ async function generatePhotoMockup(gid, locId) {
     if (btn) { btn.disabled = true; btn.textContent = 'Generating…'; }
     if (status) status.textContent = 'Loading garment image…';
 
-    // ── 1. Load the product image at FULL resolution via proxy ──────────────
+    // ── 1. Load product image at full resolution via proxy ──────────────────
     const bgImgEl = document.getElementById(`bg_${gid}_${locId}`);
     if (!bgImgEl || !bgImgEl.src) throw new Error('No garment image found.');
 
@@ -1880,7 +1879,7 @@ async function generatePhotoMockup(gid, locId) {
     const PW = productImg.naturalWidth  || productImg.width;
     const PH = productImg.naturalHeight || productImg.height;
 
-    // ── 2. Set up offscreen canvas at full product resolution ────────────────
+    // ── 2. Offscreen canvas at full product resolution ───────────────────────
     const canvas = document.createElement('canvas');
     canvas.width  = PW;
     canvas.height = PH;
@@ -1895,61 +1894,104 @@ async function generatePhotoMockup(gid, locId) {
 
     if (!loc.layers || !loc.layers.length) throw new Error('No artwork layers found.');
 
-    if (status) status.textContent = 'Compositing artwork…';
+    if (status) status.textContent = 'Stitching embroidery…';
 
-    // ── 4. Draw each artwork layer ──────────────────────────────────────────
+    // ── 4. Draw each artwork layer as embroidery ────────────────────────────
     for (const layer of loc.layers) {
       const artSrc = layer.objectUrl || layer.url || '';
       if (!artSrc) continue;
 
-      // Load artwork image
       const artImg = await loadImageFromUrl(artSrc);
       const natW = artImg.naturalWidth  || artImg.width;
       const natH = artImg.naturalHeight || artImg.height;
 
-      // Layer dimensions in product-image pixels
+      // Layer dimensions in product pixels
       const layerDispW = layer.w || 100;
       const layerDispH = layer.w ? Math.round(layer.w * natH / natW) : 100;
-      const artPxW = Math.round(layerDispW * scaleX);
-      const artPxH = Math.round(layerDispH * scaleY);
+      const artPxW = Math.max(4, Math.round(layerDispW * scaleX));
+      const artPxH = Math.max(4, Math.round(layerDispH * scaleY));
       const artPxX = Math.round((layer.x || 0) * scaleX);
       const artPxY = Math.round((layer.y || 0) * scaleY);
 
-      // Draw artwork with color tint using offscreen canvas
-      const artCanvas = document.createElement('canvas');
-      artCanvas.width  = artPxW;
-      artCanvas.height = artPxH;
-      const artCtx = artCanvas.getContext('2d');
+      // Parse ink color
+      const inkHex = (loc.inkColor?.hex || '#FFFFFF').replace('#','').padEnd(6,'0');
+      const iR = parseInt(inkHex.slice(0,2),16);
+      const iG = parseInt(inkHex.slice(2,4),16);
+      const iB = parseInt(inkHex.slice(4,6),16);
 
-      // Draw the artwork scaled
-      artCtx.drawImage(artImg, 0, 0, artPxW, artPxH);
+      // ── Build the embroidery layer on its own canvas ──────────────────────
+      const ec = document.createElement('canvas');
+      ec.width  = artPxW;
+      ec.height = artPxH;
+      const ectx = ec.getContext('2d');
 
-      // Apply ink color tint (multiply/source-atop)
-      const inkHex = loc.inkColor?.hex || '#FFFFFF';
-      artCtx.globalCompositeOperation = 'source-atop';
-      // Add directional lighting: lighter top-left, darker bottom-right
-      const grad = artCtx.createLinearGradient(0, 0, artPxW, artPxH);
-      // Parse hex color
-      const r = parseInt(inkHex.slice(1,3)||'ff',16);
-      const rb = parseInt(inkHex.slice(1,3)||'ff',16);
-      const gb = parseInt(inkHex.slice(3,5)||'ff',16);
-      const bb = parseInt(inkHex.slice(5,7)||'ff',16);
-      const bright = `rgba(${Math.min(255,rb+40)},${Math.min(255,gb+40)},${Math.min(255,bb+40)},1)`;
-      const dark   = `rgba(${Math.max(0,rb-30)},${Math.max(0,gb-30)},${Math.max(0,bb-30)},1)`;
-      grad.addColorStop(0, bright);
-      grad.addColorStop(1, dark);
-      artCtx.fillStyle = grad;
-      artCtx.fillRect(0, 0, artPxW, artPxH);
-      artCtx.globalCompositeOperation = 'source-over';
+      // Step A: Draw the artwork as a shape mask
+      ectx.drawImage(artImg, 0, 0, artPxW, artPxH);
 
-      // Drop shadow
+      // Step B: Read alpha mask so we only operate on non-transparent pixels
+      const maskData = ectx.getImageData(0, 0, artPxW, artPxH);
+
+      // Step C: Build the embroidery pixel data from scratch
+      const embData = ectx.createImageData(artPxW, artPxH);
+
+      // Stitch direction: horizontal lines (like a satin stitch)
+      // Every 2px row gets a slightly different brightness to simulate thread rows
+      const stitchSpacing = Math.max(2, Math.round(artPxH / 60)); // ~60 stitch rows
+
+      for (let py = 0; py < artPxH; py++) {
+        for (let px2 = 0; px2 < artPxW; px2++) {
+          const idx = (py * artPxW + px2) * 4;
+          const alpha = maskData.data[idx + 3];
+          if (alpha < 20) continue; // transparent — skip
+
+          // ── Directional lighting (upper-left light source) ────────────────
+          // Simulates raised 3D puff: bright top, dark bottom
+          const lightY = 1.25 - (py / artPxH) * 0.55;   // 1.25 at top → 0.70 at bottom
+          const lightX = 1.10 - (px2 / artPxW) * 0.22;  // slight left-to-right falloff
+
+          // ── Stitch texture (alternating thread rows) ──────────────────────
+          // Odd/even stitch rows get slightly different brightness
+          const stitchRow = Math.floor(py / stitchSpacing);
+          const stitchBright = (stitchRow % 2 === 0) ? 1.0 : 0.88;
+
+          // ── Thread grain (subtle noise per pixel) ────────────────────────
+          // Seed based on position for consistency
+          const noise = (Math.sin(px2 * 127.1 + py * 311.7) * 43758.5453) % 1;
+          const grain = 0.92 + Math.abs(noise) * 0.12; // 0.92–1.04
+
+          // ── Edge bevel: inner highlight/shadow ───────────────────────────
+          // Check if we're near the edge of the shape (alpha dropoff)
+          const edgeDist = alpha / 255; // 0 at edge, 1 in center
+          const bevel = edgeDist < 0.3
+            ? (py < artPxH * 0.5 ? 1.15 : 0.82) // top edge: bright, bottom edge: dark
+            : 1.0;
+
+          const L = lightY * lightX * stitchBright * grain * bevel;
+
+          embData.data[idx]     = Math.min(255, Math.round(iR * L));
+          embData.data[idx + 1] = Math.min(255, Math.round(iG * L));
+          embData.data[idx + 2] = Math.min(255, Math.round(iB * L));
+          embData.data[idx + 3] = alpha; // preserve original alpha
+        }
+      }
+
+      ectx.putImageData(embData, 0, 0);
+
+      // ── Step D: Felt backing/underlay shadow ─────────────────────────────
+      // A tight dark halo under the embroidery patch (not a blurry drop shadow)
       ctx.save();
-      ctx.shadowColor = 'rgba(0,0,0,0.35)';
-      ctx.shadowBlur  = Math.round(artPxW * 0.04);
-      ctx.shadowOffsetX = Math.round(artPxW * 0.01);
-      ctx.shadowOffsetY = Math.round(artPxH * 0.02);
-      ctx.drawImage(artCanvas, artPxX, artPxY, artPxW, artPxH);
+      ctx.shadowColor = 'rgba(0,0,0,0.55)';
+      ctx.shadowBlur  = Math.round(Math.min(artPxW, artPxH) * 0.06);
+      ctx.shadowOffsetX = 0;
+      ctx.shadowOffsetY = Math.round(Math.min(artPxW, artPxH) * 0.03);
+      // Draw transparent rect to cast shadow shape, then cover with embroidery
+      ectx.globalCompositeOperation = 'destination-out';
+      // (use embroidery itself as shadow caster)
+      ctx.drawImage(ec, artPxX, artPxY, artPxW, artPxH);
       ctx.restore();
+
+      // ── Step E: Draw the actual embroidery ──────────────────────────────
+      ctx.drawImage(ec, artPxX, artPxY, artPxW, artPxH);
     }
 
     if (status) status.textContent = 'Uploading…';
@@ -1959,7 +2001,6 @@ async function generatePhotoMockup(gid, locId) {
     const url  = await uploadMockupBlob(blob, `mockup_${gid}_${locId}.jpg`);
     if (!url) throw new Error('Upload failed');
 
-    // ── 6. Display result ────────────────────────────────────────────────────
     loc._photoMockupUrl = url;
     if (imgEl)  { imgEl.src = url; imgEl.style.display = 'block'; }
     if (thumb)  thumb.style.display = 'block';
@@ -1994,7 +2035,6 @@ async function loadImageProxied(src) {
     } catch (e) { console.warn('Proxy load failed, trying direct:', e); }
   }
 
-  // Try direct with crossOrigin
   return new Promise((resolve, reject) => {
     const img = new Image();
     img.crossOrigin = 'anonymous';
