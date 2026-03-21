@@ -409,6 +409,7 @@
   .print-type-btn,
   [class*="-chip"]{color:#f0f0f0}
   .supplier-badge{opacity:.85}
+  .sanmar-badge{display:inline-block;background:rgba(26,111,222,.12);color:#60a5fa;font-size:.65rem;font-weight:600;padding:2px 6px;border-radius:4px;margin-top:3px;letter-spacing:.02em}
   table{border-collapse:collapse}
   th{background:rgba(255,255,255,.06);color:rgba(255,255,255,.55);font-size:.72rem;text-transform:uppercase;letter-spacing:.5px;padding:8px 12px}
   td{padding:8px 12px;border-bottom:1px solid rgba(255,255,255,.07);color:#e0e0e0;font-size:.85rem}
@@ -567,6 +568,8 @@
         <select id="brandFilter" class="filter-select">
           <option value="">All Brands</option>
         </select>
+          <select id="supplierFilter" class="filter-select" style="min-width:130px">
+          </select>
       </div>
       <!-- Price Range -->
       <div>
@@ -1359,9 +1362,70 @@ function fmt(p) { return p>0 ? '$'+p.toFixed(2) : 'Call'; }
 async function initCatalog() {
   try {
     document.getElementById('catalogStatus').textContent = 'Loading catalog...';
-    const res = await fetch('./ss_catalog.json');
-    if (!res.ok) throw new Error('Catalog fetch failed: ' + res.status);
-    ALL_STYLES = await res.json();
+
+    // Load both S&S and SanMar catalogs in parallel
+    const [ssRes, sanmarRes] = await Promise.allSettled([
+      fetch('./ss_catalog.json'),
+      fetch('./sanmar_catalog.json')
+    ]);
+
+    let ssStyles = [];
+    let sanmarStyles = [];
+
+    if (ssRes.status === 'fulfilled' && ssRes.value.ok) {
+      ssStyles = await ssRes.value.json();
+      // Normalize SS entries
+      ssStyles = ssStyles.map(s => ({ ...s, supplier: 'S&S Activewear', title: s.title || s.name || s.style }));
+    }
+
+    if (sanmarRes.status === 'fulfilled' && sanmarRes.value.ok) {
+      const rawSanMar = await sanmarRes.value.json();
+      // Normalize SanMar entries to match SS format
+      sanmarStyles = rawSanMar.map(s => ({
+        id: s.id,
+        style: s.style,
+        title: s.name || s.style,
+        brand: s.brand || 'Port & Company',
+        cat: guessCat(s.name || '', s.style),
+        img: s.img || '',
+        minPrice: 0,
+        colorCount: s.color_count || Object.keys(s.colors || {}).length,
+        colorFamilies: [],
+        supplier: 'SanMar',
+        _sanmarColors: s.colors || {},  // Store color data directly
+      }));
+
+      // Pre-populate CATALOG with SanMar data (no API call needed)
+      rawSanMar.forEach(s => {
+        const colors = {};
+        Object.entries(s.colors || {}).forEach(([cn, cd]) => {
+          colors[cn] = {
+            img: cd.img || '',
+            back: cd.img || '',
+            direct: cd.img || '',
+            hex: '#888',
+            pms: cd.pms || '',
+            thumb: cd.thumb || cd.img || '',
+          };
+        });
+        const entry = {
+          styleID: String(s.id),
+          styleName: s.style,
+          brand: s.brand || 'Port & Company',
+          title: s.name || s.style,
+          category: guessCat(s.name || '', s.style),
+          supplier: 'SanMar',
+          img: s.img || '',
+          description: '',
+          colors,
+          pricing: {},
+        };
+        CATALOG[s.id] = entry;
+        CATALOG[s.style] = entry;
+      });
+    }
+
+    ALL_STYLES = [...ssStyles, ...sanmarStyles];
 
     // Populate brand filter
     const brands = [...new Set(ALL_STYLES.map(s => s.brand))].sort();
@@ -1372,11 +1436,33 @@ async function initCatalog() {
       sel.appendChild(opt);
     });
 
+    // Add supplier filter options if element exists
+    const supFilter = document.getElementById('supplierFilter');
+    if (supFilter) {
+      [['', 'All Suppliers'], ['S&S Activewear', 'S&S Activewear'], ['SanMar', 'SanMar']].forEach(([v, t]) => {
+        const opt = document.createElement('option');
+        opt.value = v; opt.textContent = t;
+        supFilter.appendChild(opt);
+      });
+    }
+
     applyFilters();
   } catch(e) {
     document.getElementById('catalogStatus').textContent = 'Failed to load catalog. Please refresh.';
     console.error(e);
   }
+}
+
+function guessCat(name, style) {
+  const n = (name + ' ' + style).toLowerCase();
+  if (n.includes('hoodie') || n.includes('hooded') || n.includes('zip')) return 'Hoodies';
+  if (n.includes('fleece') || n.includes('crewneck') || n.includes('sweatshirt')) return 'Crewnecks';
+  if (n.includes('polo')) return 'Polos';
+  if (n.includes('jacket') || n.includes('vest') || n.includes('soft shell')) return 'Outerwear';
+  if (n.includes('cap') || n.includes('hat') || n.includes('beanie') || n.includes('trucker') || n.includes('snapback')) return 'Headwear';
+  if (n.includes('long sleeve') || n.includes(' ls')) return 'Long Sleeves';
+  if (n.includes('tank')) return 'Tank Tops';
+  return 'T-Shirts';
 }
 
 function applyFilters() {
@@ -1393,10 +1479,13 @@ function applyFilters() {
     priceMin = lo; priceMax = hi;
   }
 
+  const supplier = document.getElementById('supplierFilter')?.value || '';
+
   filteredStyles = ALL_STYLES.filter(p => {
     if (activeCat !== 'all' && p.cat !== activeCat) return false;
     if (brand && p.brand !== brand) return false;
-    if (q && !p.style.toLowerCase().includes(q) && !p.brand.toLowerCase().includes(q) && !p.title.toLowerCase().includes(q)) return false;
+    if (supplier && p.supplier !== supplier) return false;
+    if (q && !p.style.toLowerCase().includes(q) && !p.brand.toLowerCase().includes(q) && !(p.title||'').toLowerCase().includes(q)) return false;
     if (priceRange) {
       const mp = p.minPrice || 0;
       if (mp <= 0 || mp < priceMin || mp > priceMax) return false;
@@ -1438,6 +1527,8 @@ function resetFilters() {
   if (pf) pf.value = '';
   if (cf) cf.value = '';
   if (sf) sf.value = 'default';
+  const supf = document.getElementById('supplierFilter');
+  if (supf) supf.value = '';
   applyFilters();
 }
 
@@ -1475,6 +1566,7 @@ function renderNextPage() {
         <div class="product-style">${p.style}</div>
         ${priceStr ? `<div class="price-badge">${priceStr}</div>` : ''}
         ${colorsStr ? `<div class="color-count-badge">🎨 ${colorsStr}</div>` : ''}
+        ${p.supplier === 'SanMar' ? `<div class="supplier-badge sanmar-badge">SanMar</div>` : ''}
       </div>`;
     grid.appendChild(card);
   });
@@ -1590,6 +1682,7 @@ document.getElementById('searchInput').addEventListener('input', applyFilters);
   document.getElementById('brandFilter')?.addEventListener('change', applyFilters);
 document.getElementById('brandFilter').addEventListener('change', () => {
   activeBrand = document.getElementById('brandFilter').value;
+  document.getElementById('supplierFilter')?.addEventListener('change', applyFilters);
   applyFilters();
 });
 document.querySelectorAll('.filter-btn').forEach(btn => btn.addEventListener('click', () => {
@@ -1628,7 +1721,7 @@ function renderStep2() {
   document.getElementById('previewImg').src = cd.img || p.img || '';
   document.getElementById('previewBrand').textContent = p.brand;
   document.getElementById('previewName').textContent = p.title;
-  document.getElementById('previewStyle').textContent = p.styleName;
+  document.getElementById('previewStyle').textContent = p.styleName || p.style || '';
   document.getElementById('previewDesc').textContent = p.description || '';
   // Show piece price range under photo
   const _ppEl = document.getElementById('previewPiecePrice');
@@ -1646,7 +1739,12 @@ function renderStep2() {
 
   document.getElementById('colorSwatches').innerHTML = Object.entries(p.colors).map(([name,cd2])=>{
     const sel = state.selectedColor===name?' selected':'';
-    return `<div class="color-swatch${sel}" style="background:${cd2.hex||'#ccc'}" title="${name}" onclick="selectColor('${name}')"></div>`;
+    // Use thumbnail image as swatch background if available (SanMar), else hex color (S&S)
+    const thumbUrl = cd2.thumb || cd2.img || '';
+    const bgStyle = thumbUrl
+      ? `background:${cd2.hex||'#ccc'};background-image:url(${PROXY}/img?url=${encodeURIComponent(thumbUrl)});background-size:cover;background-position:top center`
+      : `background:${cd2.hex||'#ccc'}`;
+    return `<div class="color-swatch${sel}" style="${bgStyle}" title="${name}" onclick="selectColor('${name}')"></div>`;
   }).join('');
   document.getElementById('selectedColorLabel').textContent = state.selectedColor||'(select a color)';
   renderPhotoStrip(p, firstColor);
@@ -1707,16 +1805,32 @@ function selectColor(name) {
 }
 function renderQtyTable() {
   const p=CATALOG[state.selectedStyleID || state.selectedStyle];
-  document.getElementById('qtyBody').innerHTML = Object.keys(p.pricing).map(sz=>{
-    const price=p.pricing[sz]||0, qty=state.quantities[sz]||'';
-    return `<tr>
-      <td><strong>${sz}</strong></td>
-      <td><input class="qty-input" type="number" min="0" value="${qty}"
-        oninput="updateQty('${sz}',this.value)"></td>
-      <td>${fmt(price)}</td>
-      <td id="sub_${sz}">${qty?fmt(price*parseInt(qty)):'—'}</td>
-    </tr>`;
-  }).join('');
+  const sizes = Object.keys(p.pricing);
+  if (sizes.length === 0) {
+    // SanMar or no pricing - show standard size inputs with no pricing
+    const defaultSizes = ['XS','S','M','L','XL','2XL','3XL'];
+    document.getElementById('qtyBody').innerHTML = defaultSizes.map(sz=>{
+      const qty=state.quantities[sz]||'';
+      return `<tr>
+        <td><strong>${sz}</strong></td>
+        <td><input class="qty-input" type="number" min="0" value="${qty}"
+          oninput="updateQty('${sz}',this.value)"></td>
+        <td><span style="opacity:.5;font-size:.8rem">Quoted</span></td>
+        <td id="sub_${sz}">${qty?qty+' pcs':'—'}</td>
+      </tr>`;
+    }).join('');
+  } else {
+    document.getElementById('qtyBody').innerHTML = sizes.map(sz=>{
+      const price=p.pricing[sz]||0, qty=state.quantities[sz]||'';
+      return `<tr>
+        <td><strong>${sz}</strong></td>
+        <td><input class="qty-input" type="number" min="0" value="${qty}"
+          oninput="updateQty('${sz}',this.value)"></td>
+        <td>${fmt(price)}</td>
+        <td id="sub_${sz}">${qty?fmt(price*parseInt(qty)):'—'}</td>
+      </tr>`;
+    }).join('');
+  }
   updateTotals();
 }
 function updateQty(sz,val) {
@@ -1724,7 +1838,11 @@ function updateQty(sz,val) {
   if(n>0) state.quantities[sz]=n; else delete state.quantities[sz];
   const p=CATALOG[state.selectedStyleID || state.selectedStyle];
   const sub=document.getElementById('sub_'+sz);
-  if(sub) sub.textContent=n>0?fmt((p.pricing[sz]||0)*n):'—';
+  const hasPricing = p && Object.keys(p.pricing||{}).length > 0;
+  if(sub) {
+    if (n > 0) sub.textContent = hasPricing ? fmt((p.pricing[sz]||0)*n) : n+' pcs';
+    else sub.textContent = '—';
+  }
   updateTotals(); checkStep2();
   persistState();
 }
