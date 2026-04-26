@@ -1456,6 +1456,12 @@
 <script>
 const PROXY = 'https://lbx-order-proxy.lbxprints.workers.dev';
 
+// ── Garment pricing markup ────────────────────────────────────────────────────
+// Prices shown to customers = wholesale cost × GARMENT_MARKUP
+// Set to your preferred multiplier (e.g. 2.0 = 100% markup, 1.5 = 50% markup)
+// Note: S&S MAP price is used instead when available and higher than markup price
+const GARMENT_MARKUP = 2.0;   // ← Danny: adjust this to control "Starting at" prices
+
 // ── Current step tracker ───────────────────────────────────────────────────
 let currentStep = 1;
 const MAX_COMPLETED_STEP = () => {
@@ -1538,6 +1544,8 @@ function clearCart() {
   if (!confirm('Clear all items from cart and start over?')) return;
   cart = [];
   imprints = [];
+  artPool = [];
+  mockupPlacements = [];   // ← FIXED: clear stale placements on cart reset
   activeImprintId = null;
   activeGarmentId = null;
   garments = [];
@@ -1559,6 +1567,101 @@ function clearCart() {
 function addToCartAndGoToCart() {
   saveCurrentToCart();
   goTo(6);
+}
+
+
+
+// Async wrapper for setMockupView — waits for bg image to load before resolving
+async function setMockupViewAsync(view) {
+  mockupActiveView = view;
+  const g = getActiveGarmentInImprint(getActiveImprint());
+  if (!g) return;
+  const src = getGarmentImg(g, view) || getGarmentImg(g, 'front');
+  const bg = document.getElementById('mockupBgImg');
+  if (bg && src) {
+    if (bg.src !== src && bg.currentSrc !== src) {
+      await new Promise(res => {
+        bg.onload = res;
+        bg.onerror = res;
+        bg.src = src;
+        setTimeout(res, 1500); // safety timeout
+      });
+    }
+  }
+  _mockupCanvasCache.clear();
+  renderMockupLayerHost();
+  // Give the canvas a tick to render
+  await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+  await new Promise(r => setTimeout(r, 80));
+}
+
+// ── Capture live mockup canvas as a data URL for cart thumbnails ──────────────
+// This grabs exactly what the user sees in step 5 — bg image + colorized art layers.
+// Returns a data URL (PNG) or null if capture fails.
+async function captureMockupThumb(view) {
+  const bgEl = document.getElementById('mockupBgImg');
+  const host  = document.getElementById('mockupLayerHost');
+  if (!bgEl || !host) return null;
+
+  // We need the bg to be loaded
+  const bgSrc = bgEl.src || bgEl.currentSrc;
+  if (!bgSrc || bgEl.naturalWidth === 0) return null;
+
+  const SIZE = 600;
+  const out  = document.createElement('canvas');
+  out.width  = SIZE;
+  out.height = SIZE;
+  const ctx  = out.getContext('2d');
+
+  // 1. Draw garment background via proxy (avoids CORS taint)
+  try {
+    const bgImg = typeof loadImageProxied === 'function'
+      ? await loadImageProxied(bgSrc)
+      : await loadImageFromUrl(bgSrc);
+    ctx.drawImage(bgImg, 0, 0, SIZE, SIZE);
+  } catch(e) { console.warn('captureMockupThumb: bg load failed', e); }
+
+  // 2. Composite each placement canvas that is visible in this view
+  const containerW = bgEl.offsetWidth  || SIZE;
+  const containerH = bgEl.offsetHeight || SIZE;
+
+  const placements = mockupPlacements.filter(p => !view || p.view === view);
+  for (const p of placements) {
+    const cvs = document.getElementById('mpCanvas_' + p.id);
+    if (!cvs || cvs.width === 1) continue; // not yet rendered
+    try {
+      // The placement canvas already has the ink-colorized pixels drawn on it.
+      // We need to extract its pixel data via proxy to avoid CORS taint.
+      // Strategy: toBlob → createObjectURL → load as img → draw to output canvas.
+      const placementBlob = await new Promise(res => cvs.toBlob(res, 'image/png'));
+      if (!placementBlob) continue;
+      const blobUrl = URL.createObjectURL(placementBlob);
+      const artImg  = await loadImageFromUrl(blobUrl);
+      URL.revokeObjectURL(blobUrl);
+
+      // Compute position/size scaled to our output canvas
+      const wPx = (p.w_pct / 100) * containerW;
+      const xPx = (p.x_pct / 100) * containerW - wPx / 2;
+      const yPx = (p.y_pct / 100) * containerH - wPx / 2;
+      const scaleX = SIZE / containerW;
+      const scaleY = SIZE / containerH;
+
+      ctx.save();
+      ctx.globalAlpha = 1;
+      if (p.rot) {
+        const cx2 = (xPx + wPx / 2) * scaleX;
+        const cy2 = (yPx + wPx / 2) * scaleY;
+        ctx.translate(cx2, cy2);
+        ctx.rotate(p.rot * Math.PI / 180);
+        ctx.drawImage(artImg, -wPx * scaleX / 2, -wPx * scaleY / 2, wPx * scaleX, wPx * scaleY);
+      } else {
+        ctx.drawImage(artImg, xPx * scaleX, yPx * scaleY, wPx * scaleX, wPx * scaleY);
+      }
+      ctx.restore();
+    } catch(e) { console.warn('captureMockupThumb: layer draw failed', e); }
+  }
+
+  return out.toDataURL('image/png');
 }
 
 async function saveCurrentToCart() {
@@ -1682,6 +1785,46 @@ async function saveCurrentToCart() {
     ? cart.findIndex(c => c.id === window._editingCartItemId)
     : -1; // Don't auto-match — always add as new unless explicitly editing
 
+  // ── Capture live mockup thumbnails for all views ──────────────────────────
+  // This grabs the exact rendered state (ink color + bg removal) from step 5.
+  // We do it per-view so front/back/etc each get their own thumb.
+  const _capturedViews = {};
+  if (currentStep === 5 && mockupPlacements.length > 0) {
+    const _views = [...new Set(mockupPlacements.map(p => p.view))];
+    for (const _v of _views) {
+      try {
+        // Switch to this view temporarily if needed, capture, then restore
+        const _prevView = mockupActiveView;
+        if (_v !== mockupActiveView) {
+          mockupActiveView = _v;
+          await setMockupViewAsync(_v);
+        }
+        const _thumb = await captureMockupThumb(_v);
+        if (_thumb) _capturedViews[_v] = _thumb;
+        if (_v !== _prevView) {
+          mockupActiveView = _prevView;
+          await setMockupViewAsync(_prevView);
+        }
+      } catch(e) { console.warn('captureMockupThumb failed for view', _v, e); }
+    }
+  } else if (mockupPlacements.length > 0) {
+    // Not on step 5, but we have placements — try capturing the active view
+    try {
+      const _thumb = await captureMockupThumb(mockupActiveView);
+      if (_thumb) _capturedViews[mockupActiveView] = _thumb;
+    } catch(e) {}
+  }
+
+  // Attach captured thumbs to location entries
+  for (const loc of _locationEntries) {
+    const _viewKey = loc._bgView || 'front';
+    if (_capturedViews[_viewKey]) loc._thumbDataUrl = _capturedViews[_viewKey];
+    else if (Object.keys(_capturedViews).length > 0) {
+      // Fallback to any captured view
+      loc._thumbDataUrl = Object.values(_capturedViews)[0];
+    }
+  }
+
   const item = {
     id: existing >= 0 ? cart[existing].id : 'cart_' + Date.now(),
     style: state.selectedStyleID || state.selectedStyle,
@@ -1736,10 +1879,47 @@ function editCartItem(id) {
     garments = JSON.parse(JSON.stringify(item.garmentData));
   }
   window._editingCartItemId = id; // track which item we're editing
+
+  // Rebuild mockupPlacements from the saved layers so step 5 is restored
+  // Each _isPct layer in an imprint's garments corresponds to a placement
+  mockupPlacements = [];
+  artPool = [];
+  if (item.imprintData && item.imprintData.length) {
+    for (const imp of item.imprintData) {
+      for (const g of (imp.garments || [])) {
+        for (const layer of (g.layers || [])) {
+          // Rebuild artPool entry if not already there
+          if (!artPool.find(a => a.id === (layer.fileId || layer.id))) {
+            artPool.push({
+              id: layer.fileId || layer.id || uid(),
+              name: layer.name || 'artwork',
+              url: layer.url || null,
+              objectUrl: layer.objectUrl || layer.url || null,
+              isImage: layer.isImage !== false,
+              rasterized: layer.rasterized || false,
+            });
+          }
+          if (layer._isPct) {
+            mockupPlacements.push({
+              id: layer.id || uid(),
+              fileId: layer.fileId || layer.id,
+              location: imp.location,
+              view: g._bgView || getViewForLocation(imp.location),
+              x_pct: layer.x,
+              y_pct: layer.y,
+              w_pct: layer.w,
+              rot: layer.rot || 0,
+            });
+          }
+        }
+      }
+    }
+  }
+
   cart = cart.filter(c => c.id !== id);
   persistState();
   renderCartDisplay();
-  goTo(4);
+  goTo(5);  // Go directly to mockup step (step 5 = sec4b) so they can see/edit the mockup
 }
 
 function renderCartDisplay() {
@@ -1754,13 +1934,19 @@ function renderCartDisplay() {
     const total = Object.values(item.quantities).reduce((a,b)=>a+b,0);
     const sizes = Object.entries(item.quantities).filter(([,q])=>q>0).map(([s,q])=>`${s}×${q}`).join(', ');
 
-    // Mockup thumbs — prefer rendered mockups, fall back to artwork layers
-    const thumbsHtml = item.garmentData.flatMap(g => g.locations.flatMap(loc => {
+    // Build placeholder spans with unique IDs — async-fill with colorized renders below
+    const thumbPlaceholders = item.garmentData.flatMap(g => g.locations.flatMap(loc => {
       const mockupImg = loc.mockupFiles && loc.mockupFiles.find(f => f.url && (f.isImage !== false));
       if (mockupImg) return [`<img class="cart-mockup-thumb" src="${mockupImg.url}" alt="">`];
-      const layerImg = loc.layers && loc.layers.find(l => (l.url || l.objectUrl) && l.isImage !== false);
-      if (layerImg) return [`<img class="cart-mockup-thumb" src="${layerImg.objectUrl || layerImg.url}" alt="">`];
-      return [];
+      // ── If we have a captured thumb (from save time), use it directly ─────
+      if (loc._thumbDataUrl) return [`<img class="cart-mockup-thumb" src="${loc._thumbDataUrl}" alt="">`];
+      const hasLayers = loc.layers && loc.layers.some(l => (l.url || l.objectUrl) && l.isImage !== false);
+      if (!hasLayers) return [];
+      const pid = 'cthumb_' + item.id + '_' + (loc.id||loc.name).replace(/\s/g,'_');
+      // Use raw layer url as immediate src, async-replace with colorized version
+      const rawSrc = loc.layers.find(l => l.url||l.objectUrl);
+      const fallbackSrc = rawSrc ? (rawSrc.objectUrl||rawSrc.url) : '';
+      return [`<img class="cart-mockup-thumb" id="${pid}" src="${fallbackSrc}" alt="" data-cid="${item.id}" data-loc="${(loc.id||loc.name)}">`];
     })).slice(0,4).join('');
 
     return `<div class="cart-item">
@@ -1768,7 +1954,7 @@ function renderCartDisplay() {
       <div class="cart-item-info">
         <div class="cart-item-name">${prod.brand||''} ${prod.title||item.style}</div>
         <div class="cart-item-sub">${item.color} · ${sizes} (${total} pcs) · ${item.printType}</div>
-        ${thumbsHtml ? `<div class="cart-mockup-thumbs">${thumbsHtml}</div>` : ''}
+        ${thumbPlaceholders ? `<div class="cart-mockup-thumbs">${thumbPlaceholders}</div>` : ''}
       </div>
       <div class="cart-item-actions">
         <button class="cart-item-edit" onclick="editCartItem('${item.id}')">✏️ Edit</button>
@@ -1785,6 +1971,27 @@ function renderCartDisplay() {
     </div>
   </div>
   ${items}`;
+
+  // Async: replace raw-image placeholders with colorized canvas renders
+  (async () => {
+    for (const item of cart) {
+      for (const g of item.garmentData) {
+        for (const loc of g.locations) {
+          if (!loc.layers || !loc.layers.some(l => (l.url||l.objectUrl) && l.isImage !== false)) continue;
+          if (loc.mockupFiles && loc.mockupFiles.some(f => f.url && f.isImage !== false)) continue;
+          if (loc._thumbDataUrl) continue; // ← already have a captured thumb, skip re-render
+          const pid = 'cthumb_' + item.id + '_' + (loc.id||loc.name).replace(/\s/g,'_');
+          const imgEl = document.getElementById(pid);
+          if (!imgEl) continue;
+          try {
+            const blob = await renderLocMockupBlob(g, loc, 200);
+            const dataUrl = await new Promise(res => { const fr = new FileReader(); fr.onload = () => res(fr.result); fr.readAsDataURL(blob); });
+            if (imgEl.isConnected) imgEl.src = dataUrl;
+          } catch(e) { /* keep fallback raw image */ }
+        }
+      }
+    }
+  })();
 }
 
 function goToStep5FromCart() {
@@ -1807,6 +2014,7 @@ function addAnotherGarmentFromCart() {
   imprints = [];
   garments = [];
   artPool = [];
+  mockupPlacements = [];   // ← FIXED: clear old placements so they don't bleed into next session
   activeImprintId = null;
   activeGarmentId = null;
   state.selectedStyle = null;
@@ -1927,7 +2135,11 @@ function restoreState() {
       // Restore art pool — objectUrl can't survive, use url (base64)
       artPool = snap.artPool.map(f => ({...f, objectUrl: f.url || null}));
     }
-    if (snap.mockupPlacements) mockupPlacements = snap.mockupPlacements;
+    if (snap.mockupPlacements) {
+      mockupPlacements = snap.mockupPlacements.filter(p => artPool.some(a => a.id === p.fileId));
+      // ^ Safety net: drop any placement whose artwork no longer exists in artPool
+      //   (prevents ghost "Previously placed artwork" from old sessions bleeding through)
+    }
     if (snap.mockupActiveView) mockupActiveView = snap.mockupActiveView;
 
     return true;
@@ -2612,7 +2824,7 @@ async function fetchProductData(styleID, styleName) {
       if (p.sizeName && !sizesMap[p.sizeName]) {
         const wholesale = p.piecePrice || p.customerPrice || 0;
         const mapP = p.mapPrice || 0;
-        const retailPrice = mapP > 1 ? mapP : Math.round(wholesale * 1.9 * 100) / 100;
+        const retailPrice = mapP > 1 ? mapP : Math.round(wholesale * GARMENT_MARKUP * 100) / 100;
         sizesMap[p.sizeName] = { order: p.sizeOrder || 99, price: retailPrice };
       }
     });
@@ -3025,28 +3237,60 @@ function updateDecorationUI() {
       tagline: 'The industry standard for bold, lasting prints.',
       pros: ['Vibrant, opaque ink — pops on any garment color', 'Most cost-effective for 12+ pieces', 'Extremely durable — outlasts the shirt', 'Best for simple to mid-complexity designs'],
       cons: ['Setup fee per color (screens)', 'Less practical for very small runs', 'Each color adds cost — complex art = higher price'],
-      bestFor: 'T-shirts, hoodies, and bulk runs with 1–6 spot colors.'
+      bestFor: 'T-shirts, hoodies, and bulk runs with 1–6 spot colors.',
+      media: {
+        photos: [
+          { url: 'https://images.unsplash.com/photo-1565084888279-aca607ecce0c?w=400&q=80', caption: 'Plastisol ink — rich, vivid color on fabric' },
+          { url: 'https://images.unsplash.com/photo-1503341733017-1901578f9f1e?w=400&q=80', caption: 'Bold multi-color screen print on black tee' },
+          { url: 'https://images.unsplash.com/photo-1620799140188-3b2a02fd9a77?w=400&q=80', caption: 'Close-up: crisp plastisol edge detail' },
+        ],
+        videoId: 'v_VFW_0IBXk'  // "How To Screen Print Smooth Plastisol Ink Tutorial"
+      }
     },
     'Embroidery': {
       icon: '🧵',
       tagline: 'Thread-stitched decoration that gives a premium, professional look.',
       pros: ['Ultra-premium feel — perceived as high quality', 'Extremely durable — holds up through countless washes', 'Great for hats, polos, and jackets', 'No fading or cracking'],
       cons: ['Highly detailed or photographic art doesn\'t translate well', 'More expensive per piece than screen printing', 'Limited color blending capability'],
-      bestFor: 'Left-chest logos, hats, bags, and corporate apparel.'
+      bestFor: 'Left-chest logos, hats, bags, and corporate apparel.',
+      media: {
+        photos: [
+          { url: 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=400&q=80', caption: 'Close-up embroidered logo on polo' },
+          { url: 'https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?w=400&q=80', caption: 'Structured hat embroidery detail' },
+          { url: 'https://images.unsplash.com/photo-1589782182703-2aaa69037b5b?w=400&q=80', caption: 'Thread texture under macro lens' },
+        ],
+        videoId: 'BlA4S7HssjQ'  // "ULTIMATE Guide to Perfect T-Shirt Embroidery"
+      }
     },
     'DTF': {
       icon: '🎨',
       tagline: 'Direct-to-Film transfers — full color, no minimums, works on anything.',
       pros: ['Full color with gradients and photo-realistic detail', 'No minimum order — great for 1–11 pieces', 'Works on virtually any fabric or material', 'Quick turnaround with no screen setup'],
       cons: ['Less breathable feel compared to screen printing', 'Higher per-piece cost at large quantities', 'Not ideal for very large print areas'],
-      bestFor: 'Small runs, full-color designs, and specialty items.'
+      bestFor: 'Small runs, full-color designs, and specialty items.',
+      media: {
+        photos: [
+          { url: 'https://images.unsplash.com/photo-1503341504253-dff4815485f1?w=400&q=80', caption: 'DTF full-color transfer on black tee' },
+          { url: 'https://images.unsplash.com/photo-1622290291468-a28f7a7dc6a8?w=400&q=80', caption: 'Photo-quality detail — gradients and fine lines' },
+          { url: 'https://images.unsplash.com/photo-1618354691373-d851c5c3a990?w=400&q=80', caption: 'Vibrant DTF print up close' },
+        ],
+        videoId: 'FdwAbu6HEpw'  // "Direct to Film(DTF) Transfer Application Tips"
+      }
     },
     'HTV': {
       icon: '♨️',
       tagline: 'Pre-made transfers pressed onto garments with heat.',
       pros: ['Good for names, numbers, and individual customization', 'Full color capable', 'No minimum quantity'],
       cons: ['Can peel or crack over time with heavy washing', 'Not as durable as screen printing or embroidery', 'Limited to flat, smooth surfaces'],
-      bestFor: 'Sports jerseys, name customization, and small unique orders.'
+      bestFor: 'Sports jerseys, name customization, and small unique orders.',
+      media: {
+        photos: [
+          { url: 'https://images.unsplash.com/photo-1612037021025-f84cd4e90ea5?w=400&q=80', caption: 'HTV vinyl pressed onto fabric' },
+          { url: 'https://images.unsplash.com/photo-1591085686350-798c0f9faa7f?w=400&q=80', caption: 'Sharp vinyl edge detail' },
+          { url: 'https://images.unsplash.com/photo-1503342250614-ca440f8dcd8e?w=400&q=80', caption: 'Customized jersey with vinyl numbers' },
+        ],
+        videoId: 'kHbcrk8IMPI'  // "How to apply Siser EasyWeed Heat Transfer Vinyl"
+      }
     }
   };
 
@@ -3077,7 +3321,77 @@ function updateDecorationUI() {
       <div style="background:rgba(124,58,237,.1);border-radius:8px;padding:8px 12px;font-size:.8rem;color:#a78bfa;border:1px solid rgba(124,58,237,.2)">
         <strong>Best for:</strong> ${d.bestFor}
       </div>
+      ${d.media ? `
+      <!-- ── Media Gallery + Video ── -->
+      <div style="margin-top:16px">
+        <div style="font-size:.73rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px">📸 See it in action</div>
+        <div style="display:flex;gap:10px;overflow-x:auto;padding-bottom:4px;scrollbar-width:thin">
+          ${d.media.photos.map(p=>`
+            <div onclick="openDecoMediaLightbox('${p.url}','${p.caption}')" style="flex-shrink:0;cursor:pointer;border-radius:10px;overflow:hidden;border:1.5px solid var(--border);transition:transform .15s;width:130px;height:100px" onmouseover="this.style.transform='scale(1.04)'" onmouseout="this.style.transform=''">
+              <img src="${p.url}" alt="${p.caption}" style="width:100%;height:100%;object-fit:cover" loading="lazy">
+            </div>`).join('')}
+          ${d.media.videoId ? `
+          <div onclick="openDecoVideoLightbox('${d.media.videoId}')" style="flex-shrink:0;cursor:pointer;border-radius:10px;overflow:hidden;border:1.5px solid rgba(230,57,70,.5);transition:transform .15s;width:130px;height:100px;position:relative;background:#000" onmouseover="this.style.transform='scale(1.04)'" onmouseout="this.style.transform=''">
+            <img src="https://img.youtube.com/vi/${d.media.videoId}/mqdefault.jpg" alt="Watch video" style="width:100%;height:100%;object-fit:cover;opacity:.75">
+            <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center">
+              <div style="width:38px;height:38px;background:rgba(230,57,70,.9);border-radius:50%;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 12px rgba(0,0,0,.5)">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="white"><polygon points="5,3 19,12 5,21"/></svg>
+              </div>
+            </div>
+            <div style="position:absolute;bottom:6px;left:0;right:0;text-align:center;font-size:.63rem;color:#fff;font-weight:600;text-shadow:0 1px 3px rgba(0,0,0,.8)">▶ Watch Video</div>
+          </div>` : ''}
+        </div>
+      </div>` : ''}
     </div>`;
+
+  // ── Lightbox helpers for decoration media ──────────────────────────────────
+  // (idempotent — only inject once)
+  if (!document.getElementById('decoMediaLightbox')) {
+    const lb = document.createElement('div');
+    lb.id = 'decoMediaLightbox';
+    lb.style.cssText = 'display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.88);align-items:center;justify-content:center;padding:20px';
+    lb.innerHTML = `
+      <div style="position:relative;max-width:90vw;max-height:90vh;display:flex;flex-direction:column;align-items:center;gap:10px">
+        <button onclick="document.getElementById('decoMediaLightbox').style.display='none'" style="position:absolute;top:-14px;right:-14px;width:32px;height:32px;border-radius:50%;border:none;background:#e63946;color:#fff;font-size:1.1rem;cursor:pointer;z-index:2;display:flex;align-items:center;justify-content:center">✕</button>
+        <img id="decoLbImg" src="" style="max-width:100%;max-height:75vh;border-radius:12px;object-fit:contain">
+        <div id="decoLbCaption" style="color:#fff;font-size:.85rem;text-align:center;opacity:.8"></div>
+      </div>`;
+    lb.addEventListener('click', e => { if(e.target===lb) lb.style.display='none'; });
+    document.body.appendChild(lb);
+  }
+  if (!document.getElementById('decoVideoLightbox')) {
+    const vb = document.createElement('div');
+    vb.id = 'decoVideoLightbox';
+    vb.style.cssText = 'display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.9);align-items:center;justify-content:center;padding:20px';
+    vb.innerHTML = `
+      <div style="position:relative;width:min(860px,92vw);aspect-ratio:16/9">
+        <button onclick="closeDecoVideo()" style="position:absolute;top:-14px;right:-14px;width:32px;height:32px;border-radius:50%;border:none;background:#e63946;color:#fff;font-size:1.1rem;cursor:pointer;z-index:2;display:flex;align-items:center;justify-content:center">✕</button>
+        <iframe id="decoVideoFrame" src="" frameborder="0" allow="autoplay;encrypted-media" allowfullscreen style="width:100%;height:100%;border-radius:12px"></iframe>
+      </div>`;
+    vb.addEventListener('click', e => { if(e.target===vb) closeDecoVideo(); });
+    document.body.appendChild(vb);
+  }
+}
+
+// ─── Decoration Media Lightbox helpers ────────────────────────────────────────
+function openDecoMediaLightbox(url, caption) {
+  const lb = document.getElementById('decoMediaLightbox');
+  if (!lb) return;
+  document.getElementById('decoLbImg').src = url;
+  document.getElementById('decoLbCaption').textContent = caption || '';
+  lb.style.display = 'flex';
+}
+function openDecoVideoLightbox(videoId) {
+  const vb = document.getElementById('decoVideoLightbox');
+  if (!vb) return;
+  document.getElementById('decoVideoFrame').src = 'https://www.youtube.com/embed/' + videoId + '?autoplay=1';
+  vb.style.display = 'flex';
+}
+function closeDecoVideo() {
+  const vb = document.getElementById('decoVideoLightbox');
+  if (!vb) return;
+  document.getElementById('decoVideoFrame').src = '';
+  vb.style.display = 'none';
 }
 
 // ─── Step 4 inputs ─────────────────────────────────────────────────────────
@@ -3343,6 +3657,38 @@ async function renderLocMockupBlob(g, loc, size=600) {
       const li = typeof loadImageProxied === 'function'
         ? await loadImageProxied(finalSrc)
         : await loadImageFromUrl(finalSrc);
+
+      // Apply ink colorization if set — same pixel logic as live mockup canvas
+      const inkHex = loc.inkColor?.hex || layer.inkColor?.hex || null;
+      let drawSrc = li; // default: draw original image
+      if (inkHex) {
+        try {
+          const W = li.naturalWidth || li.width || 200;
+          const H = li.naturalHeight || li.height || 200;
+          const off = document.createElement('canvas');
+          off.width = W; off.height = H;
+          const offCtx = off.getContext('2d', { willReadFrequently: true });
+          offCtx.drawImage(li, 0, 0);
+          const r2 = parseInt(inkHex.slice(1,3),16);
+          const g2 = parseInt(inkHex.slice(3,5),16);
+          const b2 = parseInt(inkHex.slice(5,7),16);
+          let px;
+          try { px = offCtx.getImageData(0, 0, W, H); } catch(e) { px = null; }
+          if (px) {
+            const d = px.data;
+            for (let i = 0; i < d.length; i += 4) {
+              const a = d[i+3];
+              if (a < 10) continue;
+              const lum = (0.299*d[i] + 0.587*d[i+1] + 0.114*d[i+2]) / 255;
+              const inkAlpha = lum > 0.85 ? Math.round(a * (1-lum) / 0.15) : a;
+              d[i]=r2; d[i+1]=g2; d[i+2]=b2; d[i+3]=inkAlpha;
+            }
+            offCtx.putImageData(px, 0, 0);
+            drawSrc = off;
+          }
+        } catch(e) { /* CORS or security error — fall back to raw image */ }
+      }
+
       // _isPct flag = coords are percentage-based center coords (0–100)
       // Legacy layers use pixel coords relative to wrapW
       const isPct = layer._isPct === true;
@@ -3358,9 +3704,9 @@ async function renderLocMockupBlob(g, loc, size=600) {
         if (layer.rot) {
           ctx.translate(cx + dw/2, cy + dh/2);
           ctx.rotate((layer.rot || 0) * Math.PI / 180);
-          ctx.drawImage(li, -dw/2, -dh/2, dw, dh);
+          ctx.drawImage(drawSrc, -dw/2, -dh/2, dw, dh);
         } else {
-          ctx.drawImage(li, cx, cy, dw, dh);
+          ctx.drawImage(drawSrc, cx, cy, dw, dh);
         }
         ctx.restore();
       } else {
@@ -3371,9 +3717,9 @@ async function renderLocMockupBlob(g, loc, size=600) {
         if (layer.rot) {
           ctx.translate(layer.x * scaleW + dw/2, layer.y * scaleH + dh/2);
           ctx.rotate((layer.rot || 0) * Math.PI / 180);
-          ctx.drawImage(li, -dw/2, -dh/2, dw, dh);
+          ctx.drawImage(drawSrc, -dw/2, -dh/2, dw, dh);
         } else {
-          ctx.drawImage(li, layer.x * scaleW, layer.y * scaleH, dw, dh);
+          ctx.drawImage(drawSrc, layer.x * scaleW, layer.y * scaleH, dw, dh);
         }
         ctx.restore();
       }
@@ -6947,7 +7293,11 @@ async function buildReviewMockups() {
         const f = loc.mockupFiles.find(f => f.url && f.isImage);
         item.innerHTML = `<img class="cart-garment-mockup-thumb" src="${f.url}" style="cursor:zoom-in" onclick="openLightboxAt([{name:'${loc.name}',img:'${f.url}'}],0)"><div class="cart-garment-mockup-label">${loc.name}</div>`;
       } else if (loc.layers.length > 0) {
-        // Use renderLocMockupBlob for pixel-perfect match with the editor
+        // Prefer the captured-at-save thumbnail (exact match with what user saw in step 5)
+        if (loc._thumbDataUrl) {
+          item.innerHTML = `<img class="cart-garment-mockup-thumb" src="${loc._thumbDataUrl}" style="cursor:zoom-in" onclick="openLightboxAt([{name:'${loc.name}',img:'${loc._thumbDataUrl}'}],0)"><div class="cart-garment-mockup-label">${loc.name}</div>`;
+        } else {
+        // Fallback: Use renderLocMockupBlob for pixel-perfect match with the editor
         item.innerHTML = `<div class="cart-garment-mockup-thumb" style="display:flex;align-items:center;justify-content:center;font-size:.7rem;color:rgba(255,255,255,.3)">Rendering…</div><div class="cart-garment-mockup-label">${loc.name}</div>`;
         (async () => {
           try {
@@ -6956,6 +7306,7 @@ async function buildReviewMockups() {
             item.innerHTML = `<img class="cart-garment-mockup-thumb" src="${dataUrl}" style="cursor:zoom-in" onclick="openLightboxAt([{name:'${loc.name}',img:'${dataUrl}'}],0)"><div class="cart-garment-mockup-label">${loc.name}</div>`;
           } catch(e) { item.innerHTML = `<div class="cart-garment-mockup-thumb" style="display:flex;align-items:center;justify-content:center;font-size:.7rem;color:rgba(255,255,255,.3)">Preview unavailable</div><div class="cart-garment-mockup-label">${loc.name}</div>`; }
         })();
+        } // end else (no _thumbDataUrl)
       } else {
         // No layers — render garment image with "no art" indicator
         (async () => {
